@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SimulationInputParameters",
+  "description": "Operational input parameters for forward CSS and SRP simulation.",
+  "type": "object",
+  "required": ["well_id", "css_parameters", "srp_parameters"],
+  "properties": {
+    "well_id": { "type": "string" },
+    "css_parameters": {
+      "type": "object",
+      "required": [
+        "steam_volume_tonnes",
+        "injection_pressure_psi",
+        "steam_temperature_c",
+        "injection_duration_days",
+        "soak_duration_days",
+        "production_duration_days"
+      ],
+      "properties": {
+        "steam_volume_tonnes": { "type": "number", "minimum": 100.0, "maximum": 15000.0 },
+        "injection_pressure_psi": { "type": "number", "minimum": 500.0, "maximum": 3500.0 },
+        "steam_temperature_c": { "type": "number", "minimum": 150.0, "maximum": 350.0 },
+        "steam_quality": { "type": "number", "minimum": 0.5, "maximum": 1.0, "default": 0.8 },
+        "injection_duration_days": { "type": "number", "minimum": 1.0, "maximum": 90.0 },
+        "soak_duration_days": { "type": "number", "minimum": 1.0, "maximum": 45.0 },
+        "production_duration_days": { "type": "number", "minimum": 10.0, "maximum": 365.0 }
+      }
+    },
+    "srp_parameters": {
+      "type": "object",
+      "required": ["spm", "stroke_length_inch", "pump_diameter_inch"],
+      "properties": {
+        "spm": { "type": "number", "minimum": 0.5, "maximum": 15.0 },
+        "stroke_length_inch": { "type": "number", "minimum": 24.0, "maximum": 240.0 },
+        "pump_diameter_inch": { "type": "number", "minimum": 1.0, "maximum": 4.5 },
+        "vfd_enabled": { "type": "boolean", "default": true },
+        "downstroke_speed_ratio": { "type": "number", "minimum": 0.2, "maximum": 2.0, "default": 0.8 }
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "benchmark_metadata": {
+    "version": "1.0.0",
+    "provenance": {
+      "provenance_type": "ASSUMED",
+      "source_description": "Standard heavy oil heuristic operational baselines for comparison"
+    },
+    "note": "Reference input policy definitions for benchmarking optimizer improvements. No fake outputs."
+  },
+  "baseline_policies": [
+    {
+      "policy_id": "HEURISTIC_FIXED_SCHEDULE",
+      "description": "Standard fixed 3000t steam with constant 4.0 SPM lift",
+      "css_parameters": {
+        "steam_volume_tonnes": 3000.0,
+        "injection_pressure_psi": 1800.0,
+        "steam_temperature_c": 260.0,
+        "soak_duration_days": 7.0,
+        "production_duration_days": 90.0
+      },
+      "srp_parameters": {
+        "spm": 4.0,
+        "stroke_length_inch": 100.0,
+        "pump_diameter_inch": 2.25,
+        "vfd_enabled": false
+      }
+    },
+    {
+      "policy_id": "HEURISTIC_AGGRESSIVE_LIFT",
+      "description": "High SPM lift strategy without thermal cooling compensation",
+      "css_parameters": {
+        "steam_volume_tonnes": 3500.0,
+        "injection_pressure_psi": 1950.0,
+        "steam_temperature_c": 270.0,
+        "soak_duration_days": 5.0,
+        "production_duration_days": 75.0
+      },
+      "srp_parameters": {
+        "spm": 6.5,
+        "stroke_length_inch": 120.0,
+        "pump_diameter_inch": 2.25,
+        "vfd_enabled": false
+      }
+    }
+  ]
+}

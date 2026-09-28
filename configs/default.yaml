@@ -1,0 +1,24 @@
+# Default Global Application Configuration — SIH 26120
+app:
+  name: "SIH-26120-Digital-Twin"
+  version: "1.0.0"
+  environment: "development"
+  debug: true
+  api_prefix: "/api/v1"
+  default_field: "Baghewala"
+
+database:
+  driver: "sqlite"
+  database_url: "sqlite:///./sih_digital_twin.db"
+  pool_size: 10
+  echo_sql: false
+
+provenance:
+  default_mode: "SIMULATED"
+  enforce_manifest_checks: true
+  disclaimer: "Demonstration / simulated data. Operational deployment requires calibration on validated Baghewala field data."
+
+security:
+  cors_allowed_origins:
+    - "http://localhost:3000"
+    - "http://127.0.0.1:3000"

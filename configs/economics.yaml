@@ -1,0 +1,19 @@
+# Field Economics & Net Benefit Pricing — Baghewala Operations
+pricing:
+  crude_oil_benchmark_usd_bbl: 75.0
+  # Baghewala crude quality discount due to low API gravity (7° API) and high viscosity
+  heavy_oil_discount_usd_bbl: 18.0
+  effective_oil_price_usd_bbl: 57.0
+
+costs:
+  steam_generation_cost_per_tonne_usd: 28.50
+  boiler_feed_water_treatment_usd_m3: 2.10
+  electricity_cost_per_kwh_usd: 0.11
+  water_disposal_cost_per_bbl_usd: 1.50
+  routine_wellhead_opex_per_day_usd: 120.0
+  srp_workover_cost_per_incident_usd: 35000.0
+
+financial:
+  annual_discount_rate: 0.10
+  currency: "USD"
+  target_payback_cycles: 2

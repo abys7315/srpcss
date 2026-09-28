@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WellStaticParameters",
+  "description": "Static physical and completion properties of a heavy oil well in Baghewala Field.",
+  "type": "object",
+  "required": [
+    "well_id",
+    "well_name",
+    "reservoir_depth_m",
+    "reservoir_temperature_c",
+    "initial_viscosity_cp",
+    "api_gravity",
+    "casing_od_inch",
+    "tubing_od_inch",
+    "pump_depth_m",
+    "provenance"
+  ],
+  "properties": {
+    "well_id": { "type": "string", "example": "BGW-01" },
+    "well_name": { "type": "string", "example": "Baghewala-01" },
+    "field_name": { "type": "string", "default": "Baghewala" },
+    "formation": { "type": "string", "default": "Jodhpur Sandstone" },
+    "reservoir_depth_m": { "type": "number", "minimum": 100.0, "maximum": 5000.0 },
+    "net_pay_thickness_m": { "type": "number", "minimum": 1.0, "maximum": 200.0 },
+    "porosity_fraction": { "type": "number", "minimum": 0.01, "maximum": 0.50 },
+    "permeability_d": { "type": "number", "minimum": 0.01, "maximum": 50.0 },
+    "reservoir_temperature_c": { "type": "number", "minimum": 15.0, "maximum": 250.0 },
+    "initial_reservoir_pressure_psi": { "type": "number", "minimum": 100.0, "maximum": 10000.0 },
+    "initial_viscosity_cp": { "type": "number", "minimum": 10.0, "maximum": 1000000.0 },
+    "api_gravity": { "type": "number", "minimum": 1.0, "maximum": 25.0 },
+    "casing_od_inch": { "type": "number", "minimum": 4.5, "maximum": 13.375 },
+    "tubing_od_inch": { "type": "number", "minimum": 2.0625, "maximum": 5.5 },
+    "pump_depth_m": { "type": "number", "minimum": 50.0, "maximum": 4500.0 },
+    "pump_bore_inch": { "type": "number", "minimum": 1.25, "maximum": 4.75 },
+    "rod_string_grade": { "type": "string", "enum": ["Grade C", "Grade D", "Grade K", "Ultra-High-Strength"] },
+    "provenance": {
+      "type": "object",
+      "required": ["provenance_type"],
+      "properties": {
+        "provenance_type": { "type": "string", "enum": ["REAL", "PUBLIC_EXTERNAL", "SIMULATED", "ASSUMED"] },
+        "source_description": { "type": "string" }
+      }
+    }
+  }
+}

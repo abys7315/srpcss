@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CSSCycleHistoryRecord",
+  "description": "Historical or simulated record of a complete Cyclic Steam Stimulation cycle.",
+  "type": "object",
+  "required": [
+    "well_id",
+    "cycle_number",
+    "steam_injected_tonnes",
+    "cumulative_oil_bbl",
+    "water_cut_avg_pct",
+    "steam_oil_ratio",
+    "cycle_duration_days",
+    "provenance"
+  ],
+  "properties": {
+    "well_id": { "type": "string" },
+    "cycle_number": { "type": "integer", "minimum": 1 },
+    "steam_injected_tonnes": { "type": "number", "minimum": 0.0 },
+    "cumulative_oil_bbl": { "type": "number", "minimum": 0.0 },
+    "cumulative_water_bbl": { "type": "number", "minimum": 0.0 },
+    "water_cut_avg_pct": { "type": "number", "minimum": 0.0, "maximum": 100.0 },
+    "steam_oil_ratio": { "type": "number", "minimum": 0.0 },
+    "peak_oil_rate_bpd": { "type": "number", "minimum": 0.0 },
+    "cycle_duration_days": { "type": "number", "minimum": 1.0 },
+    "rod_floating_events_recorded": { "type": "integer", "default": 0 },
+    "provenance": {
+      "type": "object",
+      "required": ["provenance_type"],
+      "properties": {
+        "provenance_type": { "type": "string", "enum": ["REAL", "PUBLIC_EXTERNAL", "SIMULATED", "ASSUMED"] },
+        "source_description": { "type": "string" }
+      }
+    }
+  }
+}

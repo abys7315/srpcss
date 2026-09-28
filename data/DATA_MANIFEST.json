@@ -1,0 +1,69 @@
+{
+  "manifest_version": "1.0.0",
+  "last_updated": "2026-09-28T12:00:00Z",
+  "provenance_policy": "Strict provenance enforcement (REAL, PUBLIC_EXTERNAL, SIMULATED, ASSUMED)",
+  "field_disclaimer": "Demonstration/simulated data. Deployment requires calibration on validated Baghewala field data.",
+  "datasets": [
+    {
+      "id": "DS-BAGH-FIELD-SIM",
+      "name": "Baghewala 10-Well Integrated Digital Twin Simulation",
+      "source": "Petro-Twin Physics Core (Marx-Langenheim + Gibbs Wave SRP)",
+      "license": "Internal Academic / Hackathon Use",
+      "wells_count": 10,
+      "records_count": 900,
+      "variables": [
+        "temperature_c",
+        "viscosity_cp",
+        "oil_rate_bpd",
+        "water_rate_bpd",
+        "float_margin_index",
+        "pump_intake_pressure_bar",
+        "daily_electricity_kwh"
+      ],
+      "units": "Celsius, cP, BPD, Bar, kWh",
+      "purpose": "Digital twin forward simulation, UI dashboards, and optimizer benchmarking",
+      "provenance_label": "SIMULATED",
+      "preprocessing_steps": "Added 2% Gaussian noise, 1.5% simulated sensor dropouts (NaNs), and 1% outlier spikes",
+      "known_limitations": "Simulated reservoir response; requires field recalibration prior to operational actuation"
+    },
+    {
+      "id": "DS-BAGH-WELL-CATALOG",
+      "name": "Baghewala Well Static Specifications",
+      "source": "Petrotech & SPE literature on Bikaner-Nagaur Basin Jodhpur sandstone",
+      "license": "Public Domain Engineering Literature",
+      "wells_count": 10,
+      "records_count": 10,
+      "variables": [
+        "well_id",
+        "reservoir_depth_m",
+        "pump_depth_m",
+        "net_pay_thickness_m",
+        "porosity_fraction",
+        "permeability_md",
+        "api_gravity"
+      ],
+      "units": "m, Darcy, API",
+      "purpose": "Static wellbore and reservoir geometry initialization",
+      "provenance_label": "ASSUMED",
+      "preprocessing_steps": "Literature parameter extraction and unit conversion to metric standards",
+      "known_limitations": "Assumed homogeneous layer properties"
+    },
+    {
+      "id": "DS-PUB-EXT-VISC",
+      "name": "Rajasthan Extra-Heavy Crude Viscosity-Temperature Model",
+      "source": "Published Andrade constants for Rajasthan extra-heavy oil",
+      "license": "Academic Research Citation",
+      "wells_count": 1,
+      "records_count": 50,
+      "variables": [
+        "temperature_c",
+        "viscosity_cp"
+      ],
+      "units": "Celsius, cP",
+      "purpose": "Calibrating Andrade A and B parameters for thermal viscosity swing",
+      "provenance_label": "PUBLIC_EXTERNAL",
+      "preprocessing_steps": "Fitted Andrade log-linear regression",
+      "known_limitations": "Does not account for non-Newtonian shear-thinning at ultra-high shear rates without ML residual correction"
+    }
+  ]
+}
