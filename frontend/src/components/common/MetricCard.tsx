@@ -28,34 +28,50 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   danger
 }) => {
   return (
-    <div className={`bg-white border rounded-xl p-4 flex flex-col justify-between shadow-xs transition-all hover:shadow-sm ${
-      danger ? 'border-rose-200 bg-rose-50/30' : warning ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200'
+    <div className={`bg-white dark:bg-[#0c1322] border rounded-xl p-3.5 sm:p-4 flex flex-col justify-between shadow-xs transition-all hover:shadow-md hover:border-cyan-500/40 min-w-0 ${
+      danger
+        ? 'border-rose-200 dark:border-rose-800/60 bg-rose-50/20 dark:bg-rose-950/20'
+        : warning
+        ? 'border-amber-200 dark:border-amber-800/60 bg-amber-50/20 dark:bg-amber-950/20'
+        : 'border-slate-200 dark:border-slate-800/80'
     }`}>
       {/* Top Header */}
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
-          {icon && <span className={danger ? 'text-rose-600' : warning ? 'text-amber-600' : 'text-blue-600'}>{icon}</span>}
-          {title}
+      <div className="flex items-center justify-between gap-1.5 mb-2 min-w-0">
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5 truncate">
+          {icon && <span className={`shrink-0 ${danger ? 'text-rose-500' : warning ? 'text-amber-500' : 'text-cyan-500 dark:text-cyan-400'}`}>{icon}</span>}
+          <span className="truncate">{title}</span>
         </span>
-        <ProvenanceBadge tier={provenance} size="sm" />
+        <div className="shrink-0 scale-90 origin-right">
+          <ProvenanceBadge tier={provenance} size="sm" variant="bracket" />
+        </div>
       </div>
 
       {/* Main Metric Value */}
-      <div className="flex items-baseline gap-2 my-1">
-        <span className={`text-2xl font-semibold tracking-tight ${
-          danger ? 'text-rose-600' : warning ? 'text-amber-700' : 'text-slate-900'
+      <div className="flex items-baseline gap-1.5 my-1 min-w-0 overflow-hidden">
+        <span className={`text-2xl font-bold tracking-tight font-mono truncate ${
+          danger
+            ? 'text-rose-600 dark:text-rose-400'
+            : warning
+            ? 'text-amber-700 dark:text-amber-400'
+            : 'text-slate-900 dark:text-white'
         }`}>
           {value}
         </span>
-        {unit && <span className="text-xs text-slate-500 font-normal">{unit}</span>}
+        {unit && <span className="text-xs text-slate-500 dark:text-slate-400 font-normal shrink-0">{unit}</span>}
       </div>
 
       {/* Footer / Delta */}
-      <div className="flex items-center justify-between text-xs mt-1.5 pt-1.5 border-t border-slate-100">
-        {subtitle && <span className="text-slate-500 truncate text-[11px]">{subtitle}</span>}
+      <div className="flex items-center justify-between gap-1.5 text-xs mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 min-w-0">
+        {subtitle && (
+          <span className="text-slate-500 dark:text-slate-400 truncate text-[11px] max-w-[55%]" title={subtitle}>
+            {subtitle}
+          </span>
+        )}
         {delta && (
-          <span className={`text-xs font-medium ml-auto ${
-            deltaPositive ? 'text-emerald-600' : 'text-rose-600'
+          <span className={`text-[10px] font-semibold ml-auto shrink-0 px-1.5 py-0.5 rounded border ${
+            deltaPositive
+              ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/50'
+              : 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/50'
           }`}>
             {delta}
           </span>

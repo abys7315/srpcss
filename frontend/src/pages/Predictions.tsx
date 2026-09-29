@@ -146,7 +146,7 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
     spm: 4.5,
     diagnostic_card_label: cardClassification.predicted_label,
     card_area_in_lbs: 104000,
-    peak_gearbox_torque_in_lbs: 285000,
+    peak_gearbox_torque_in_lbs: 282000,
   };
 
   return (
@@ -211,10 +211,10 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
         />
 
         <MetricCard
-          title="ML Residual Corrector"
-          value="Online (v1.0.1)"
-          unit="MAE: 3.8 bpd (-28.4% error)"
-          delta="Hybrid Physics-Informed"
+          title="ML Residual Model"
+          value="Planned / Experimental"
+          unit="Physics surrogate base"
+          delta="Simulation-generated base"
           deltaPositive={true}
           provenance="SIMULATED"
         />
@@ -222,26 +222,40 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
 
       {/* Section 1: Quantile Production Forecaster Chart (SVG) */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
           <div>
-            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingUp className="w-4 h-4 text-blue-600" />
-              Quantile Production Decline Forecast (p10 / p50 / p90 Uncertainty Band)
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <TrendingUp className="w-4 h-4 text-blue-600" />
+                PRODUCTION FORECAST
+              </h2>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-800 font-semibold border border-blue-200">
+                Physics baseline
+              </span>
+            </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Probabilistic hybrid physics + gradient boosted residual forecast accounting for reservoir heterogeneity and cooling.
+              Reservoir thermal depletion & sucker rod lifting response over 180-day cycle horizon.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1.5 text-blue-700 font-medium">
-              <span className="w-3 h-2 bg-blue-100 inline-block border border-blue-300 rounded-xs" />
-              p10–p90 Band
-            </span>
-            <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-              <span className="w-3 h-0.5 bg-emerald-600 inline-block rounded-xs" />
-              p50 Median
-            </span>
+          {/* Forecast Quantiles Block (Section 9 Specification) */}
+          <div className="flex items-center gap-4 text-xs font-mono bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+            <div>
+              <span className="text-slate-400 block text-[9px] font-sans">P10:</span>
+              <strong className="text-slate-700">1,420 bbl</strong>
+            </div>
+            <div>
+              <span className="text-slate-400 block text-[9px] font-sans">P50:</span>
+              <strong className="text-emerald-700 font-bold">1,845 bbl</strong>
+            </div>
+            <div>
+              <span className="text-slate-400 block text-[9px] font-sans">P90:</span>
+              <strong className="text-slate-700">2,150 bbl</strong>
+            </div>
+            <div className="pl-2 border-l border-slate-200">
+              <span className="text-slate-400 block text-[9px] font-sans">Data Source:</span>
+              <span className="text-[10px] text-slate-600 font-sans font-bold">SIMULATED</span>
+            </div>
           </div>
         </div>
 
@@ -307,11 +321,16 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
         {/* Dynacard Classifier Panel */}
         <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-              <Activity className="w-4 h-4 text-blue-600" />
-              Dynacard Pattern Classifier (Random Forest)
-            </h2>
-            <span className="text-xs text-slate-500">10,000+ Gibbs cards trained</span>
+            <div>
+              <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Activity className="w-4 h-4 text-blue-600" />
+                DYNACARD CLASSIFICATION
+              </h2>
+              <span className="text-[11px] text-slate-500">Physics-based screening</span>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
+              Physics-generated training set
+            </span>
           </div>
 
           {/* Preset Card Archetype Selector */}
@@ -357,14 +376,10 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
             ))}
           </div>
 
-          {/* Root cause and mitigation */}
-          <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1.5 leading-relaxed">
-            <div className="text-slate-700">
-              <strong className="text-slate-900 font-semibold">Root Cause:</strong> {cardClassification.root_cause}
-            </div>
-            <div className="text-emerald-700 font-medium">
-              <strong className="text-slate-900 font-semibold">Mitigation:</strong> {cardClassification.recommended_mitigation}
-            </div>
+          {/* Notice box regarding model status */}
+          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-[11px] text-slate-600 space-y-1">
+            <div className="font-semibold text-slate-800">Physics + ML Classifier Status:</div>
+            <div>Model: Random Forest • Validation accuracy: Synthetic benchmark evaluation • Dataset: Gibbs wave cards library (Model Registry: DC-0.1 Experimental).</div>
           </div>
         </div>
 
@@ -375,7 +390,7 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
               <AlertTriangle className="w-4 h-4 text-blue-600" />
               Thermal & Operational Anomaly Detector
             </h2>
-            <span className="text-xs text-slate-500">Boberg-Lantz vs. Field Residuals</span>
+            <span className="text-xs text-slate-500">Boberg-Lantz vs. Simulated Residuals</span>
           </div>
 
           <div className="space-y-3">
@@ -414,7 +429,7 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
                         : 'bg-white hover:bg-slate-100 border-slate-300 text-blue-700 shadow-xs'
                     }`}
                   >
-                    {containmentApplied[anom.day] ? 'Containment Active' : 'Apply Action'}
+                    {containmentApplied[anom.day] ? 'Containment Active' : 'Evaluate Action / Send for Approval'}
                   </button>
                 </div>
               </div>

@@ -7,7 +7,6 @@ import { DomainShiftWarning } from '../components/common/DomainShiftWarning';
 import {
   BarChart3,
   CheckCircle2,
-  AlertTriangle,
   ShieldCheck,
   Layers,
   Award,
@@ -59,7 +58,7 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
             <ProvenanceBadge tier="SIMULATED" />
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Empirical validation against unconstrained baseline and comparative ablation of physics, pure ML, and hybrid models.
+            Physics-based synthetic benchmark against simulated baseline policy and comparative ablation of CSS-only, SRP-only, and joint co-optimization.
           </p>
         </div>
 
@@ -85,7 +84,7 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
               ? `+$${Math.round(netBenefitItem.optimized_value - netBenefitItem.baseline_value).toLocaleString()} / cycle`
               : 'Cycle Evaluation'
           }
-          delta="Joint Optimal vs Heuristic"
+          delta="Joint Optimal vs Baseline"
           deltaPositive={true}
           provenance="SIMULATED"
         />
@@ -107,7 +106,7 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
           title="Rod-Floating Events"
           value={floatItem ? `${floatItem.optimized_value} Events` : '0 Events'}
           unit={floatItem ? `Baseline: ${floatItem.baseline_value} Events` : 'Strict safety gating'}
-          delta="Complete Float Avoidance"
+          delta="0 modeled float events in benchmark"
           deltaPositive={true}
           provenance="SIMULATED"
         />
@@ -122,131 +121,148 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
         />
       </div>
 
-      {/* Section 1: Baseline vs Optimized Verification Table */}
+      {/* Section 1: Main Performance Comparison (Section 14 Specification) */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            Benchmark Verification: Baseline vs. Optimized
-          </h2>
-          <span className="text-[11px] text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200 font-medium">180-Day Simulated Cycle (Jodhpur Sandstone)</span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              Main Comparison: Baseline vs. PETRO-TWIN
+            </h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              5-Well benchmark simulation over 180-day production cycle in the Baghewala formation.
+            </p>
+          </div>
+          <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">
+            {data?.overall_net_benefit_gain_pct ? `+${data.overall_net_benefit_gain_pct.toFixed(1)}% Cycle Net Lift` : 'Physics-based validation'}
+          </span>
         </div>
 
         <div className="overflow-x-auto border border-slate-200 rounded-lg">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50">
+          <table className="w-full text-left text-xs font-mono">
+            <thead className="bg-slate-50 font-sans">
               <tr className="border-b border-slate-200 text-slate-600 uppercase text-[11px]">
-                <th className="py-2.5 px-3 font-semibold">Evaluation Metric</th>
-                <th className="py-2.5 px-3 font-semibold">Baseline Setpoint</th>
-                <th className="py-2.5 px-3 font-semibold text-emerald-700">Petro-Twin Optimal</th>
-                <th className="py-2.5 px-3 font-semibold">Engineering Unit</th>
-                <th className="py-2.5 px-3 font-semibold text-right">Net Improvement</th>
+                <th className="py-3 px-4 font-semibold">Metric</th>
+                <th className="py-3 px-4 font-semibold text-slate-600">Baseline</th>
+                <th className="py-3 px-4 font-bold text-emerald-700">PETRO-TWIN</th>
+                <th className="py-3 px-4 font-semibold text-right">Net Improvement</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {baselineVsOptimized.map((row, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/50">
-                  <td className="py-2.5 px-3 font-medium text-slate-900">{row.metric}</td>
-                  <td className="py-2.5 px-3 text-slate-600">
-                    {typeof row.baseline_value === 'number' && row.baseline_value >= 1000
-                      ? row.baseline_value.toLocaleString()
-                      : row.baseline_value}
-                  </td>
-                  <td className="py-2.5 px-3 text-emerald-700 font-bold">
-                    {typeof row.optimized_value === 'number' && row.optimized_value >= 1000
-                      ? row.optimized_value.toLocaleString()
-                      : row.optimized_value}
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-500">{row.unit}</td>
-                  <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
-                    {row.improvement_pct > 0 ? `+${row.improvement_pct.toFixed(1)}%` : `${row.improvement_pct.toFixed(1)}%`}
+            <tbody className="divide-y divide-slate-100 text-slate-800">
+              {baselineVsOptimized.length > 0 ? (
+                baselineVsOptimized.map((row, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/50">
+                    <td className="py-3 px-4 font-sans font-semibold text-slate-900">{row.metric}</td>
+                    <td className="py-3 px-4 text-slate-600">
+                      {row.unit === 'USD' ? `$${Math.round(row.baseline_value).toLocaleString()}` : `${row.baseline_value} ${row.unit}`}
+                    </td>
+                    <td className="py-3 px-4 text-emerald-700 font-bold text-sm">
+                      {row.unit === 'USD' ? `$${Math.round(row.optimized_value).toLocaleString()}` : `${row.optimized_value} ${row.unit}`}
+                    </td>
+                    <td className="py-3 px-4 text-right font-sans font-bold text-emerald-600">
+                      {row.improvement_pct > 0 ? `+${row.improvement_pct.toFixed(1)}%` : `${row.improvement_pct.toFixed(1)}%`}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr className="hover:bg-slate-50/50">
+                  <td colSpan={4} className="py-3 px-4 text-center text-slate-500 font-sans">
+                    Loading benchmark validation results...
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
+
+        <p className="text-[11px] text-slate-500 italic">
+          *Synthetic benchmark scenarios; not field measurements. Evaluated on 5 benchmark wells (BGW-01 to BGW-05).
+        </p>
       </div>
 
-      {/* Section 2: 4-Variant Architectural Ablation Study */}
+      {/* Section 2: Architectural Ablation Study (Section 14 Specification) */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 border-b border-slate-100 gap-2">
           <div>
-            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-blue-600" />
-              Ablation Study: Single-Domain vs. Joint Co-Optimization
+              Ablation Study: Architecture & Discipline Breakdown
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Comparative analysis of single-discipline optimization vs. multi-objective joint optimization balancing economics, SOR, and rod-float safety.
+              Proves that Joint CSS + SRP Co-Optimization delivers superior value compared to decoupled single-domain policies.
             </p>
           </div>
+          <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-blue-50 text-blue-800 border border-blue-200 font-semibold shrink-0">
+            4 Evaluation Architectures
+          </span>
         </div>
 
         <div className="overflow-x-auto border border-slate-200 rounded-lg">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50">
               <tr className="border-b border-slate-200 text-slate-600 uppercase text-[11px]">
-                <th className="py-2.5 px-3 font-semibold">Optimization Variant</th>
-                <th className="py-2.5 px-3 font-semibold">Net Benefit ($USD)</th>
-                <th className="py-2.5 px-3 font-semibold">SOR (t/t)</th>
+                <th className="py-2.5 px-3 font-semibold">Architecture / Strategy</th>
+                <th className="py-2.5 px-3 font-semibold">Net Benefit</th>
+                <th className="py-2.5 px-3 font-semibold">SOR</th>
+                <th className="py-2.5 px-3 font-semibold">Oil Recovery</th>
                 <th className="py-2.5 px-3 font-semibold">Float Events</th>
+                <th className="py-2.5 px-3 font-semibold">Computation Time</th>
                 <th className="py-2.5 px-3 font-semibold">Physics Feasibility</th>
-                <th className="py-2.5 px-3 font-semibold">Engineering Assessment & Notes</th>
+                <th className="py-2.5 px-3 font-semibold">Assessment & Notes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {ablationStudy.map((item, idx) => {
-                const isWinner = item.architecture.includes('Petro-Twin');
-                const isCatastrophic = item.architecture.includes('ML-Only');
-
-                return (
-                  <tr
-                    key={idx}
-                    className={
-                      isWinner
-                        ? 'bg-emerald-50/60 font-medium'
-                        : isCatastrophic
-                        ? 'bg-rose-50/40'
-                        : 'hover:bg-slate-50/50'
-                    }
-                  >
-                    <td className="py-2.5 px-3 text-slate-900">
-                      <div className="flex items-center gap-2">
-                        {isWinner && <Award className="w-4 h-4 text-emerald-600 shrink-0" />}
-                        {isCatastrophic && <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />}
-                        <span className={isWinner ? 'font-bold text-emerald-900' : ''}>{item.architecture}</span>
-                      </div>
-                    </td>
-                    <td className={`py-2.5 px-3 font-bold ${isWinner ? 'text-emerald-700' : isCatastrophic ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
-                      ${item.net_benefit_usd.toLocaleString()}
-                    </td>
-                    <td className="py-2.5 px-3">{item.steam_oil_ratio.toFixed(2)}</td>
-                    <td className="py-2.5 px-3">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                          item.total_float_events > 0
-                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        }`}
-                      >
-                        {item.total_float_events} events
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                          item.is_safe
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}
-                      >
-                        {item.is_safe ? 'Physically Safe' : 'Unsafe / Invalid'}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-[11px] text-slate-500 max-w-xs">{item.notes}</td>
-                  </tr>
-                );
-              })}
+              {ablationStudy.length > 0 ? (
+                ablationStudy.map((row, idx) => {
+                  const isJoint = row.architecture.toLowerCase().includes('joint');
+                  return (
+                    <tr
+                      key={idx}
+                      className={
+                        isJoint
+                          ? "bg-emerald-50/70 border-l-2 border-emerald-600 font-medium"
+                          : "hover:bg-slate-50/50"
+                      }
+                    >
+                      <td className={`py-2.5 px-3 font-semibold ${isJoint ? 'text-emerald-950 flex items-center gap-1.5' : 'text-slate-900'}`}>
+                        {isJoint && <Award className="w-4 h-4 text-emerald-600 shrink-0" />}
+                        {row.architecture}
+                      </td>
+                      <td className={`py-2.5 px-3 font-mono font-medium ${isJoint ? 'text-emerald-700 font-bold text-sm' : 'text-slate-700'}`}>
+                        ${Math.round(row.net_benefit_usd ?? 0).toLocaleString()}
+                      </td>
+                      <td className={`py-2.5 px-3 font-mono ${isJoint ? 'font-semibold text-emerald-800' : ''}`}>
+                        {(row.steam_oil_ratio ?? 0).toFixed(2)} t/t
+                      </td>
+                      <td className="py-2.5 px-3 font-mono">
+                        {Math.round(row.oil_recovery_bbl ?? 0).toLocaleString()} bbl
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${(row.total_float_events ?? 0) === 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
+                          {row.total_float_events ?? 0} events
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-slate-500">
+                        {(row.computation_time_s ?? 0).toFixed(3)} s
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${row.is_safe ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
+                          {row.is_safe ? '✓ Physically Safe' : '✕ Unsafe'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-[11px] text-slate-500 max-w-xs">
+                        {row.notes}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr className="hover:bg-slate-50/50">
+                  <td colSpan={8} className="py-2.5 px-3 text-center text-slate-500">
+                    Loading ablation benchmarks...
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -267,3 +283,4 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
     </div>
   );
 };
+

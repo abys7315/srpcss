@@ -26,7 +26,8 @@ try:
         benchmarks,
         provenance,
         health,
-        recommendations
+        recommendations,
+        models
     )
 except ImportError:
     from .db.init_db import init_db
@@ -41,7 +42,8 @@ except ImportError:
         benchmarks,
         provenance,
         health,
-        recommendations
+        recommendations,
+        models
     )
 
 @asynccontextmanager
@@ -112,6 +114,7 @@ app.include_router(risks.router, prefix="/api/v1")
 app.include_router(feedback.router, prefix="/api/v1")
 app.include_router(benchmarks.router, prefix="/api/v1")
 app.include_router(provenance.router, prefix="/api/v1")
+app.include_router(models.router, prefix="/api/v1")
 
 @app.get("/")
 def root():

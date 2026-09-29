@@ -132,6 +132,111 @@ export const DataProvenance: React.FC<Props> = ({ onNavigate: _onNavigate }) => 
         </div>
       </div>
 
+      {/* DATA SOURCES & DATASET PARTITION (Section 12 Specification) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Box 1: DATA SOURCES PROVENANCE */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+              <Database className="w-4 h-4 text-blue-600" />
+              DATA PROVENANCE SOURCES
+            </span>
+            <span className="text-[10px] font-mono text-slate-500 font-semibold">SIH Audit Ready</span>
+          </div>
+
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
+              <div>
+                <span className="font-semibold text-slate-800 block">Baghewala operational data</span>
+                <span className="text-[10px] text-slate-500">Commercial / proprietary asset of Oil India Limited</span>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700 border border-slate-300">
+                NOT AVAILABLE
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
+              <div>
+                <span className="font-semibold text-slate-800 block">Public SRP datasets & Literature</span>
+                <span className="text-[10px] text-slate-500">Everitt-Jennings, API Spec 11B/11E, SPE Technical Papers</span>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                PUBLIC_EXTERNAL
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
+              <div>
+                <span className="font-semibold text-slate-800 block">Physics-generated scenarios</span>
+                <span className="text-[10px] text-slate-500">Marx-Langenheim, Boberg-Lantz, Gibbs 1D wave solver</span>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                SIMULATED
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
+              <div>
+                <span className="font-semibold text-slate-800 block">Engineering assumptions</span>
+                <span className="text-[10px] text-slate-500">RSEB power tariff, steam generation cost, water disposal fees</span>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                ASSUMED
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Box 2: SYNTHETIC DATASET PARTITION */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+              <FileCheck2 className="w-4 h-4 text-emerald-600" />
+              SURROGATE MODELING DATASET
+            </span>
+            <span className="text-[10px] font-mono text-emerald-700 font-bold">25,000 Scenarios</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Complexity</span>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Scenario count:</span>
+                <strong className="text-slate-900 font-mono">25,000</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Input variables:</span>
+                <strong className="text-slate-900 font-mono">30+</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Target variables:</span>
+                <strong className="text-slate-900 font-mono">4</strong>
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Split Partitioning</span>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Train:</span>
+                <strong className="text-blue-700 font-mono">70% (17,500)</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Validation:</span>
+                <strong className="text-amber-700 font-mono">15% (3,750)</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Test:</span>
+                <strong className="text-emerald-700 font-mono">15% (3,750)</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-2.5 bg-blue-50/60 rounded-lg border border-blue-200 text-[11px] text-blue-900 space-y-0.5">
+            <strong>Honest Disclosure:</strong> All training samples are generated using calibrated multiphysics solvers (Gibbs 1D wave equation + Boberg-Lantz dissipation) across Jodhpur Sandstone reservoir bounds.
+          </div>
+        </div>
+      </div>
+
       {/* Official Disclaimer */}
       <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 shadow-xs flex items-start gap-3">
         <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />

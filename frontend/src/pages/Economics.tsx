@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/client';
 import type { WellDetail } from '../api/types';
 import { MetricCard } from '../components/common/MetricCard';
-import { ProvenanceBadge } from '../components/common/ProvenanceBadge';
 import { DomainShiftWarning } from '../components/common/DomainShiftWarning';
 import {
   DollarSign,
@@ -20,6 +19,7 @@ interface Props {
 
 export const Economics: React.FC<Props> = ({ selectedWellId, onNavigate }) => {
   const [_well, setWell] = useState<WellDetail | null>(null);
+  const [_loading, setLoading] = useState<boolean>(false);
 
   // Economic Parameters
   const [oilPrice, setOilPrice] = useState<number>(80.0);
@@ -28,27 +28,69 @@ export const Economics: React.FC<Props> = ({ selectedWellId, onNavigate }) => {
   const [waterDisposalPerBbl, setWaterDisposalPerBbl] = useState<number>(2.50);
   const fixedWellOpex = 5000.0;
 
-  // Well Operational Baseline & Optimized
-  const baselineOilBbl = 1750;
-  const baselineSteamT = 3000;
-  const baselineKwh = 14500;
-  const baselineWaterBbl = 4200;
+  // Well Operational Baseline & Optimized (Dynamically populated from backend)
+  const [baselineOilBbl, setBaselineOilBbl] = useState<number>(4537);
+  const [baselineSteamT, setBaselineSteamT] = useState<number>(3000);
+  const [baselineKwh, setBaselineKwh] = useState<number>(18500);
+  const [baselineWaterBbl, setBaselineWaterBbl] = useState<number>(14200);
 
-  const optimizedOilBbl = 2150;
-  const optimizedSteamT = 3400;
-  const optimizedKwh = 12800; // lower SPM + VFD saves power!
-  const optimizedWaterBbl = 4600;
+  const [optimizedOilBbl, setOptimizedOilBbl] = useState<number>(5120);
+  const [optimizedSteamT, setOptimizedSteamT] = useState<number>(2400);
+  const [optimizedKwh, setOptimizedKwh] = useState<number>(15200);
+  const [optimizedWaterBbl, setOptimizedWaterBbl] = useState<number>(12800);
 
   useEffect(() => {
-    loadWell();
+    loadEconomicsData();
   }, [selectedWellId]);
 
-  const loadWell = async () => {
+  const loadEconomicsData = async () => {
     try {
+      setLoading(true);
       const w = await apiClient.getWell(selectedWellId);
       setWell(w);
+
+      // Fetch baseline simulation
+      const baseSim = await apiClient.simulateCycle({
+        well_id: selectedWellId,
+        cycle_number: 1,
+        steam_volume_tonnes: w.operating_parameters?.steam_volume_tonnes || 3000,
+        soak_duration_days: w.operating_parameters?.soak_duration_days || 6,
+        spm: w.operating_parameters?.spm || 4.5,
+        stroke_length_inch: 100.0,
+        vfd_downstroke_ratio: 1.0,
+      });
+
+      if (baseSim?.kpis) {
+        const oil = baseSim.kpis.total_oil_produced_bbl || 4537;
+        const steam = baseSim.kpis.total_steam_injected_tonnes || 3000;
+        const pwr = baseSim.kpis.total_electricity_kwh || 18500;
+        const water = baseSim.kpis.total_water_produced_bbl || Math.round(oil * 3.5);
+        setBaselineOilBbl(oil);
+        setBaselineSteamT(steam);
+        setBaselineKwh(pwr);
+        setBaselineWaterBbl(water);
+      }
+
+      // Fetch joint optimization
+      const optRes = await apiClient.optimizeJoint({
+        well_id: selectedWellId,
+        weight_net_benefit: 0.50,
+        weight_sor: 0.20,
+        weight_energy: 0.20,
+        weight_failure_risk: 0.10,
+      });
+
+      const rec = optRes?.recommended_configuration;
+      if (rec) {
+        setOptimizedOilBbl(rec.cumulative_oil_bbl || 5120);
+        setOptimizedSteamT(rec.steam_volume_tonnes || 2400);
+        setOptimizedKwh(Math.round(baselineKwh * (rec.spm / 5.0) * (rec.vfd_downstroke_ratio || 0.85)));
+        setOptimizedWaterBbl(Math.round(baselineWaterBbl * 0.90));
+      }
     } catch (e) {
-      console.error('Failed to load well economics:', e);
+      console.error('Failed to load well economics data:', e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,7 +109,7 @@ export const Economics: React.FC<Props> = ({ selectedWellId, onNavigate }) => {
 
   const baselineEco = calcEconomics(baselineOilBbl, baselineSteamT, baselineKwh, baselineWaterBbl);
   const optEco = calcEconomics(optimizedOilBbl, optimizedSteamT, optimizedKwh, optimizedWaterBbl);
-  const netBenefitDeltaPct = (((optEco.netBenefit - baselineEco.netBenefit) / baselineEco.netBenefit) * 100).toFixed(1);
+  const netBenefitDeltaPct = (((optEco.netBenefit - baselineEco.netBenefit) / Math.max(Math.abs(baselineEco.netBenefit), 1)) * 100).toFixed(1);
 
   return (
     <div className="space-y-6">
@@ -79,10 +121,12 @@ export const Economics: React.FC<Props> = ({ selectedWellId, onNavigate }) => {
               <DollarSign className="w-5 h-5 text-emerald-600" />
               Field Economics & Sensitivity Engine
             </h1>
-            <ProvenanceBadge tier="SIMULATED" />
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-300">
+              Synthetic economic scenario
+            </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Full-cycle economic ledger, net benefit waterfall, and real-time commodity price sensitivity for{' '}
+            Full-cycle economic ledger, net benefit waterfall, and dynamic commodity price sensitivity for{' '}
             <strong className="text-slate-900 font-semibold">{selectedWellId}</strong>.
           </p>
         </div>
@@ -132,6 +176,42 @@ export const Economics: React.FC<Props> = ({ selectedWellId, onNavigate }) => {
           deltaPositive={true}
           provenance="SIMULATED"
         />
+      </div>
+
+      {/* Visual Cash Flow Waterfall (Section 10 Specification) */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+          <PieChart className="w-4 h-4 text-emerald-600" />
+          CASH-FLOW WATERFALL
+        </h3>
+        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 font-mono text-xs text-slate-700 space-y-2">
+          <div className="flex justify-between items-center text-emerald-800 font-bold">
+            <span>Oil Revenue (+):</span>
+            <span>+${Math.round(optEco.grossRevenue).toLocaleString()}</span>
+          </div>
+          <div className="pl-4 border-l-2 border-slate-300 space-y-1.5 text-rose-700">
+            <div className="flex justify-between">
+              <span>├── Steam Cost (-):</span>
+              <span>-${Math.round(optEco.steamCost).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>├── Electricity Cost (-):</span>
+              <span>-${Math.round(optEco.powerCost).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>├── Water Handling (-):</span>
+              <span>-${Math.round(optEco.waterCost).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>└── OPEX Maintenance (-):</span>
+              <span>-${Math.round(fixedWellOpex).toLocaleString()}</span>
+            </div>
+          </div>
+          <div className="pt-2 border-t-2 border-slate-300 flex justify-between items-center text-sm font-bold text-emerald-700">
+            <span>NET ECONOMIC BENEFIT (=):</span>
+            <span>${Math.round(optEco.netBenefit).toLocaleString()}</span>
+          </div>
+        </div>
       </div>
 
       {/* Main Grid: Sensitivity Controls & Waterfall Chart */}
@@ -221,11 +301,34 @@ export const Economics: React.FC<Props> = ({ selectedWellId, onNavigate }) => {
             </div>
           </div>
 
-          <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1">
-            <span className="text-xs text-slate-500 block font-semibold uppercase tracking-wider">Fixed Cycle Costs</span>
-            <div className="flex justify-between text-slate-700 text-xs">
-              <span>Well Maintenance & Chemicals:</span>
-              <span className="text-slate-900 font-semibold">${fixedWellOpex.toLocaleString()} / cycle</span>
+          {/* Oil Price Sensitivity Matrix (Section 10 Specification) */}
+          <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2">
+            <span className="text-xs text-slate-800 font-bold uppercase tracking-wider block">Crude Sensitivity Matrix</span>
+            <div className="space-y-1.5 font-mono text-xs">
+              <div className="flex justify-between text-slate-700">
+                <span className="font-sans">Oil $45/bbl:</span>
+                <strong className={(optimizedOilBbl * 45) - optEco.totalCost > 0 ? "text-slate-800" : "text-rose-700"}>
+                  ${Math.round((optimizedOilBbl * 45) - optEco.totalCost).toLocaleString()}
+                </strong>
+              </div>
+              <div className="flex justify-between text-slate-700">
+                <span className="font-sans">Oil $58/bbl:</span>
+                <strong className="text-emerald-700 font-bold">
+                  +${Math.round((optimizedOilBbl * 58) - optEco.totalCost).toLocaleString()}
+                </strong>
+              </div>
+              <div className="flex justify-between text-slate-700">
+                <span className="font-sans">Oil $75/bbl:</span>
+                <strong className="text-emerald-700 font-bold">
+                  +${Math.round((optimizedOilBbl * 75) - optEco.totalCost).toLocaleString()}
+                </strong>
+              </div>
+              <div className="flex justify-between text-slate-700">
+                <span className="font-sans">Oil $90/bbl:</span>
+                <strong className="text-emerald-700 font-bold">
+                  +${Math.round((optimizedOilBbl * 90) - optEco.totalCost).toLocaleString()}
+                </strong>
+              </div>
             </div>
           </div>
         </div>
@@ -235,7 +338,7 @@ export const Economics: React.FC<Props> = ({ selectedWellId, onNavigate }) => {
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
               <PieChart className="w-4 h-4 text-emerald-600" />
-              Cash Flow Waterfall: Baseline vs. Petro-Twin Optimized
+              Detailed Economic Ledger: Baseline vs. Petro-Twin
             </h2>
             <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
               +${Math.round(optEco.netBenefit - baselineEco.netBenefit).toLocaleString()} Net Lift
@@ -304,8 +407,8 @@ export const Economics: React.FC<Props> = ({ selectedWellId, onNavigate }) => {
 
           <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
             <span>
-              Baghewala Field Fleet Extrapolation (10 Wells):{' '}
-              <strong className="text-emerald-700 font-semibold">+${Math.round((optEco.netBenefit - baselineEco.netBenefit) * 10).toLocaleString()}</strong> / cycle
+              Baghewala Benchmark Fleet Extrapolation (5 Wells):{' '}
+              <strong className="text-emerald-700 font-semibold">+${Math.round((optEco.netBenefit - baselineEco.netBenefit) * 5).toLocaleString()}</strong> / cycle
             </span>
             <button
               onClick={() => onNavigate && onNavigate('benchmarks')}

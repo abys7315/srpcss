@@ -203,5 +203,18 @@ export const apiClient = {
     const res = await api.get<APIResponse<ProvenanceManifest>>('/provenance');
     return res.data.data;
   },
+
+  // Models Registry
+  getModels: async (): Promise<any> => {
+    const res = await api.get<APIResponse<any>>('/models');
+    return res.data.data;
+  },
+
+  // System Readiness
+  getSystemReadiness: async (): Promise<Record<string, string>> => {
+    const res = await api.get<Record<string, string>>('/system/readiness');
+    return res.data;
+  },
 };
+
 

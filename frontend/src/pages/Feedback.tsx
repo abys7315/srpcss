@@ -353,7 +353,7 @@ export const Feedback: React.FC<Props> = ({ selectedWellId }) => {
                   <td className="py-2.5 px-3 font-medium text-slate-900">Day 35</td>
                   <td className="py-2.5 px-3 text-slate-600">66.5 bpd</td>
                   <td className="py-2.5 px-3 font-semibold text-slate-900">72.1 bpd</td>
-                  <td className="py-2.5 px-3 text-rose-600 font-semibold">+5.6 bpd</td>
+                  <td className="py-2.5 px-3 text-rose-600 font-semibold">+5.8 bpd</td>
                   <td className="py-2.5 px-3 text-right text-amber-600 font-bold">2.33σ</td>
                 </tr>
                 <tr className="hover:bg-slate-50/50">

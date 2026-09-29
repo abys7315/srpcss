@@ -4,9 +4,9 @@
 > **Title**: Digital Twin for Well-to-Surface Optimization of Cyclic Steam Stimulation (CSS) and Sucker Rod Pump (SRP) Operations for Heavy Oil Wells of Baghewala Field.  
 > **Target Asset**: Baghewala Field (Jodhpur Sandstone), Thar Desert, Rajasthan. Canonical Crude: 17–19° API (18.0° API nominal), Reservoir Temp: 46–48°C (47.0°C nominal), Dead Oil Viscosity: ~2,100 cP at 47°C.
 
-[![Tests](https://img.shields.io/badge/pytest-34%2F34%20passing%20(100%25)-emerald)]()
+[![Tests](https://img.shields.io/badge/pytest-72%2F72%20passing%20(100%25)-emerald)]()
 [![Acceptance](https://img.shields.io/badge/21--Step%20Acceptance-VERIFIED-emerald)]()
-[![Self--Audit](https://img.shields.io/badge/Self--Audit-23%2F23%20PASS-emerald)]()
+[![Self--Audit](https://img.shields.io/badge/Self--Audit-25%2F25%20PASS-emerald)]()
 [![Frontend](https://img.shields.io/badge/React%2019-Vite%20%2B%20TypeScript-cyan)]()
 [![Backend](https://img.shields.io/badge/FastAPI-REST%20v1-teal)]()
 [![Provenance](https://img.shields.io/badge/Data%20Provenance-AUDITED%20%26%20DISCLOSED-indigo)]()
@@ -64,7 +64,7 @@ cd frontend && npm run build
 | **Simulated Baseline Historical** | 4,432.0 | 4.23 | 0.887 (UNSAFE) | $111,154 | Fixed schedule: 3000t steam, 5.2 SPM, unshaped downstroke |
 | **CSS-Only Optimization** | 3,176.9 | 4.33 | 1.537 (SAFE) | $77,309 | Optimized steam & soak with safe conventional 3.0 SPM lift |
 | **SRP-Only Optimization** | 4,728.9 | 3.97 | 1.223 (SAFE) | $132,238 | Optimized SPM & VFD with fixed 3000t steam schedule |
-| **Joint Co-Optimization** | 4,639.1 | **3.23 (BEST)** | **1.155 (SAFE)** | **$150,471 (BEST)** | Simultaneous co-optimization of CSS thermal schedule & SRP dynamic lift |
+| **Joint Co-Optimization** | 4,639.1 | **3.23 (Lowest SOR)** | **1.155 (SAFE)** | **$150,471 (Highest net benefit)** | Simultaneous co-optimization of CSS thermal schedule & SRP dynamic lift |
 
 *Trade-off Assessment:* While SRP-only optimization increases oil production by adjusting lift on fixed steam ($132,238), it cannot adapt the reservoir thermal envelope (SOR 3.97). Joint Co-Optimization simultaneously adjusts both the thermal delivery (steam volume and soak) and the dynamic artificial lift envelope, unlocking the lowest Steam-to-Oil Ratio (3.23 t/t), 0 modeled float events ($M_{\text{float}} = 1.155$), and the highest net economic benefit ($150,471).
 

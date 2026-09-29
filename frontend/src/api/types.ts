@@ -151,14 +151,15 @@ export interface ParetoPoint {
   cumulative_oil_bbl: number;
   net_benefit_usd: number;
   steam_oil_ratio: number;
-  energy_intensity_kwh_per_bbl: number;
-  failure_risk_probability: number;
+  energy_intensity_kwh_per_bbl?: number;
+  failure_risk_probability?: number;
   min_float_margin_index: number;
-  pareto_rank: number;
-  is_non_dominated: boolean;
-  status: OperationalStatus;
-  composite_score: number;
-  provenance: ProvenanceTier;
+  pareto_rank?: number;
+  is_non_dominated?: boolean;
+  is_feasible?: boolean;
+  status?: OperationalStatus;
+  composite_score?: number;
+  provenance?: ProvenanceTier;
 }
 
 export interface OptimizationResult {
@@ -252,6 +253,7 @@ export interface BenchmarkData {
     architecture: string;
     net_benefit_usd: number;
     steam_oil_ratio: number;
+    oil_recovery_bbl?: number;
     total_float_events: number;
     computation_time_s: number;
     is_safe: boolean;

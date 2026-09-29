@@ -19,6 +19,7 @@ class AblationItemDTO(BaseModel):
     architecture: str
     net_benefit_usd: float
     steam_oil_ratio: float
+    oil_recovery_bbl: float = 0.0
     total_float_events: int
     computation_time_s: float
     is_safe: bool

@@ -75,6 +75,7 @@ class BenchmarkService:
                     architecture=name.replace("_", " "),
                     net_benefit_usd=float(item.get("net_benefit_usd", 0.0)),
                     steam_oil_ratio=float(item.get("sor", 0.0)),
+                    oil_recovery_bbl=float(item.get("oil_bbl", 0.0)),
                     total_float_events=int(item.get("total_float_events", 0 if item.get("float_margin", 1.0) >= 1.0 else 2)),
                     computation_time_s=float(item.get("computation_time_s", 0.0)),
                     is_safe=bool(item.get("float_margin", 1.0) >= 1.0),
