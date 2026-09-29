@@ -40,17 +40,20 @@ class FeedbackService:
         soak_d = well.soak_duration_days if well else 6.0
         spm_val = well.spm if well else 4.5
 
+        effective_day = req.day_in_cycle if req.day_in_cycle is not None else req.day
+        effective_notes = req.notes if req.notes is not None else req.operator_notes
+
         # Compute physics-expected production for this day:
         sim = CSSCycleSimulator(CycleConfig(
             well_id=req.well_id,
             steam_volume_tonnes=st_vol,
             soak_duration_days=soak_d,
             spm=spm_val,
-            production_duration_days=float(max(req.day + 5, 60))
+            production_duration_days=float(max(effective_day + 5, 60))
         ))
         sim_res = sim.run_simulation()
         
-        day_idx = min(req.day - 1, len(sim_res.daily_history) - 1)
+        day_idx = min(effective_day - 1, len(sim_res.daily_history) - 1)
         expected_oil = sim_res.daily_history[day_idx].oil_rate_bpd if sim_res.daily_history else 35.0
         residual_error = req.observed_oil_rate_bpd - expected_oil
 
@@ -76,14 +79,14 @@ class FeedbackService:
         # Save feedback to DB
         fb = FeedbackModel(
             well_id=req.well_id,
-            day=req.day,
+            day=effective_day,
             observed_oil_rate_bpd=round(req.observed_oil_rate_bpd, 2),
             observed_temperature_c=round(req.observed_temperature_c, 1),
             observed_float_events=req.observed_float_events,
             observed_dynacard_label=req.observed_dynacard_label or "NORMAL",
             physics_expected_oil_bpd=round(expected_oil, 2),
             residual_error_bpd=round(residual_error, 2),
-            operator_notes=req.operator_notes,
+            operator_notes=effective_notes,
             is_drift_detected=is_drift
         )
         self.db.add(fb)
@@ -98,7 +101,7 @@ class FeedbackService:
         return FeedbackSubmissionResponse(
             feedback_id=f"FB-{fb.id:04d}",
             well_id=req.well_id,
-            day=req.day,
+            day=effective_day,
             observed_oil_rate_bpd=req.observed_oil_rate_bpd,
             physics_expected_oil_bpd=round(expected_oil, 2),
             residual_error_bpd=round(residual_error, 2),
@@ -111,7 +114,8 @@ class FeedbackService:
     def recalibrate_model(self, req: RecalibrationRequest) -> RecalibrationResponse:
         """
         Executes online recalibration of the residual corrector using recorded observations.
-        Measures pre vs post recalibration error to verify positive learning closure.
+        Rigorously implements train / validation split on held-out observations to ensure honest metrics.
+        Promotes challenger to champion only if validation MAE shows measurable reduction.
         """
         feedbacks = (
             self.db.query(FeedbackModel)
@@ -120,13 +124,32 @@ class FeedbackService:
             .all()
         )
 
-        # If sparse feedback, synthesize realistic observation set around recent drift:
-        if len(feedbacks) < 6:
-            # Generate synthetic observation points with systematic cooling offset
-            days = [10, 25, 40, 55, 70, 85, 100, 115]
-            obs_rates = [48.0, 42.0, 36.0, 29.0, 22.0, 17.0, 13.0, 9.5]
-            exp_rates = [45.0, 38.0, 31.0, 24.0, 18.0, 13.0, 9.5, 7.0]
-            temps = [165.0, 140.0, 118.0, 98.0, 82.0, 69.0, 58.0, 49.0]
+        is_demo_mode = False
+        unique_days = set(f.day for f in feedbacks)
+        if len(feedbacks) < 8 or len(unique_days) < 4:
+            if not req.allow_synthetic_fallback:
+                return RecalibrationResponse(
+                    well_id=req.well_id,
+                    model_name="ResidualCorrector-HistogramGradientBoosting",
+                    previous_model_version="v1.2.0",
+                    new_model_version="v1.2.0",
+                    sample_points_used=len(feedbacks),
+                    train_mae_bpd=0.0,
+                    validation_mae_bpd=0.0,
+                    pre_recalibration_mae_bpd=0.0,
+                    post_recalibration_mae_bpd=0.0,
+                    mae_reduction_pct=0.0,
+                    drift_status_cleared=False,
+                    status="INSUFFICIENT_OBSERVATIONS",
+                    explanation=f"Insufficient distinct observations ({len(unique_days)}/4 distinct days, {len(feedbacks)}/8 required) for statistical model recalibration. Record more field gauge points or request SIMULATION DEMO MODE.",
+                    provenance=ProvenanceEnum.SIMULATED
+                )
+            # SIMULATION DEMO MODE with explicit provenance disclosure
+            is_demo_mode = True
+            days = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+            obs_rates = [48.0, 42.0, 37.0, 32.0, 26.0, 21.0, 17.0, 13.5, 10.5, 8.0]
+            exp_rates = [42.0, 36.0, 30.0, 25.0, 20.0, 15.5, 12.0, 9.0, 7.0, 5.5]
+            temps = [160.0, 142.0, 126.0, 110.0, 95.0, 82.0, 70.0, 60.0, 52.0, 48.0]
         else:
             days = [f.day for f in feedbacks]
             obs_rates = [f.observed_oil_rate_bpd for f in feedbacks]
@@ -139,49 +162,91 @@ class FeedbackService:
             np.array(temps, dtype=float),
             np.full(len(days), 4.5, dtype=float)
         ])
-        y_residuals = np.array(obs_rates) - np.array(exp_rates)
+        y_obs = np.array(obs_rates, dtype=float)
+        y_exp = np.array(exp_rates, dtype=float)
 
-        pre_mae = float(np.mean(np.abs(y_residuals)))
+        # -------------------------------------------------------------
+        # Real Train / Validation Split (70% train, 30% held-out)
+        # -------------------------------------------------------------
+        n_samples = len(days)
+        split_idx = max(2, int(n_samples * 0.70))
+        
+        # Chronological split for time-series field data
+        X_train, X_val = X[:split_idx], X[split_idx:]
+        obs_train, obs_val = y_obs[:split_idx], y_obs[split_idx:]
+        exp_train, exp_val = y_exp[:split_idx], y_exp[split_idx:]
 
-        # Fit residual corrector:
-        self.residual_corrector.fit(X, y_observed=np.array(obs_rates), y_physics=np.array(exp_rates))
-        post_mae = float(self.residual_corrector.training_mae)
+        # 1. Baseline Model Validation MAE on held-out split
+        baseline_val_residuals = obs_val - exp_val
+        pre_val_mae = float(np.mean(np.abs(baseline_val_residuals)))
 
-        reduction_pct = max(0.0, ((pre_mae - post_mae) / max(pre_mae, 0.01)) * 100.0)
+        # 2. Train Challenger Model on training set
+        challenger = HybridResidualCorrector()
+        challenger.fit(X_train, y_observed=obs_train, y_physics=exp_train)
+        train_mae = float(challenger.training_mae)
+
+        # 3. Evaluate Challenger Model on held-out validation set
+        val_preds = []
+        for i in range(len(X_val)):
+            pred_obj = challenger.predict(X_val[i], exp_val[i])
+            val_preds.append(pred_obj.final_hybrid_prediction)
+        
+        post_val_mae = float(np.mean(np.abs(obs_val - np.array(val_preds))))
+
+        # Calculate genuine validation improvement percentage
+        reduction_pct = max(0.0, ((pre_val_mae - post_val_mae) / max(pre_val_mae, 0.01)) * 100.0)
 
         prev_v = "v1.2.0"
         new_v = f"v1.2.{int(time.time()) % 1000}"
 
+        # Canonical promotion threshold: Challenger becomes Champion only if held-out validation MAE improves by >= 20.0%
+        canonical_threshold = 20.0
+        is_promoted = reduction_pct >= canonical_threshold
+        model_status = "PROMOTED_CHAMPION" if is_promoted else "REJECTED_CHALLENGER"
+
+        if is_promoted:
+            self.residual_corrector = challenger
+
+        demo_prefix = "[SIMULATION DEMO MODE] " if is_demo_mode else ""
+        explanation_msg = (
+            f"{demo_prefix}Online challenger model trained on {len(X_train)} samples, evaluated on {len(X_val)} held-out validation points. "
+            f"Held-out Validation MAE reduced by {reduction_pct:.1f}% ({pre_val_mae:.2f} -> {post_val_mae:.2f} BPD). "
+            f"Status: {model_status}."
+        )
+
         # Record recalibration event
         log = RecalibrationLogModel(
             well_id=req.well_id,
-            model_name="ResidualCorrector-GradientBoosting",
+            model_name="ResidualCorrector-HistogramGradientBoosting",
             previous_version=prev_v,
             new_version=new_v,
-            sample_count=len(days),
-            pre_mae=round(pre_mae, 3),
-            post_mae=round(post_mae, 3),
+            sample_count=n_samples,
+            pre_mae=round(pre_val_mae, 3),
+            post_mae=round(post_val_mae, 3),
             reduction_pct=round(reduction_pct, 1),
-            explanation=f"Online residual retrained on {len(days)} ground truth field gauge points. Drift corrected."
+            explanation=explanation_msg
         )
         self.db.add(log)
 
-        # Clear drift flag on recent feedback:
-        for f in feedbacks:
-            f.is_drift_detected = False
+        # Clear drift flag on recent feedback if model was promoted:
+        if is_promoted:
+            for f in feedbacks:
+                f.is_drift_detected = False
         self.db.commit()
 
         return RecalibrationResponse(
             well_id=req.well_id,
-            model_name="ResidualCorrector-GradientBoosting",
+            model_name="ResidualCorrector-HistogramGradientBoosting",
             previous_model_version=prev_v,
-            new_model_version=new_v,
-            sample_points_used=len(days),
-            pre_recalibration_mae_bpd=round(pre_mae, 2),
-            post_recalibration_mae_bpd=round(post_mae, 2),
+            new_model_version=new_v if is_promoted else prev_v,
+            sample_points_used=n_samples,
+            train_mae_bpd=round(train_mae, 2),
+            validation_mae_bpd=round(post_val_mae, 2),
+            pre_recalibration_mae_bpd=round(pre_val_mae, 2),
+            post_recalibration_mae_bpd=round(post_val_mae, 2),
             mae_reduction_pct=round(reduction_pct, 1),
-            drift_status_cleared=True,
-            status="SUCCESS",
-            explanation=f"Recalibration completed successfully. Forecast error reduced by {reduction_pct:.1f}% across held-out observations.",
+            drift_status_cleared=is_promoted,
+            status=model_status,
+            explanation=explanation_msg,
             provenance=ProvenanceEnum.SIMULATED
         )

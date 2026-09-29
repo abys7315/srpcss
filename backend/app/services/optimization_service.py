@@ -39,14 +39,19 @@ class OptimizationService:
             "economic_cutoff_bpd": 7.0
         }
 
+        w_benefit = req.weight_net_benefit if req.weight_net_benefit is not None else req.weights.weight_net_benefit
+        w_oil = req.weight_oil_recovery if req.weight_oil_recovery is not None else (req.weight_energy if req.weight_energy is not None else req.weights.weight_oil_recovery)
+        w_sor = req.weight_sor if req.weight_sor is not None else req.weights.weight_sor_minimization
+        w_risk = req.weight_failure_risk if req.weight_failure_risk is not None else req.weights.weight_risk_minimization
+
         res = self.joint_opt.optimize_well(
             well_id=req.well_id,
             current_cfg=current_cfg,
             cycle_number=req.cycle_number,
-            weight_net_benefit=req.weights.weight_net_benefit,
-            weight_oil_recovery=req.weights.weight_oil_recovery,
-            weight_sor_minimization=req.weights.weight_sor_minimization,
-            weight_risk_minimization=req.weights.weight_risk_minimization,
+            weight_net_benefit=w_benefit,
+            weight_oil_recovery=w_oil,
+            weight_sor_minimization=w_sor,
+            weight_risk_minimization=w_risk,
             cooling_anomaly_day=req.cooling_anomaly_day,
             cooling_anomaly_severity_pct=req.cooling_anomaly_severity_pct
         )
@@ -55,13 +60,20 @@ class OptimizationService:
 
     def optimize_css(self, req: CSSOptimizationRequest) -> OptimizationResponse:
         current_cfg = req.current_configuration or {
-            "steam_volume_tonnes": 3000.0,
-            "soak_duration_days": 6.0,
+            "steam_volume_tonnes": req.steam_volume_tonnes or 3000.0,
+            "soak_duration_days": req.soak_duration_days or 6.0,
             "spm": req.fixed_spm,
             "stroke_length_inch": 100.0,
             "vfd_downstroke_ratio": 1.0,
-            "economic_cutoff_bpd": 7.0
+            "economic_cutoff_bpd": req.cutoff_bpd or 7.0
         }
+        if req.steam_volume_tonnes:
+            current_cfg["steam_volume_tonnes"] = req.steam_volume_tonnes
+        if req.soak_duration_days:
+            current_cfg["soak_duration_days"] = req.soak_duration_days
+        if req.cutoff_bpd:
+            current_cfg["economic_cutoff_bpd"] = req.cutoff_bpd
+
         res = self.css_opt.optimize_css_cycle(
             well_id=req.well_id,
             current_cfg=current_cfg,
@@ -73,11 +85,18 @@ class OptimizationService:
         current_cfg = req.current_configuration or {
             "steam_volume_tonnes": req.fixed_steam_tonnes,
             "soak_duration_days": 6.0,
-            "spm": 5.0,
-            "stroke_length_inch": 100.0,
-            "vfd_downstroke_ratio": 1.0,
+            "spm": req.spm or 5.0,
+            "stroke_length_inch": req.stroke_length_inch or 100.0,
+            "vfd_downstroke_ratio": req.vfd_downstroke_ratio or 1.0,
             "economic_cutoff_bpd": 7.0
         }
+        if req.spm:
+            current_cfg["spm"] = req.spm
+        if req.stroke_length_inch:
+            current_cfg["stroke_length_inch"] = req.stroke_length_inch
+        if req.vfd_downstroke_ratio:
+            current_cfg["vfd_downstroke_ratio"] = req.vfd_downstroke_ratio
+
         res = self.srp_opt.optimize_srp_schedule(
             well_id=req.well_id,
             current_cfg=current_cfg,
@@ -124,6 +143,18 @@ class OptimizationService:
             self.db.add(log_entry)
             self.db.commit()
 
+        # Construct explicit Pareto trade-off options for operator selection
+        pareto_options: Dict[str, ParetoSolutionDTO] = {}
+        if front_dto:
+            # Balanced: recommended configuration (highest composite score)
+            pareto_options["balanced"] = rec_dto or front_dto[0]
+            # Conservative: maximum float margin, lowest failure risk
+            pareto_options["conservative"] = max(front_dto, key=lambda p: (p.min_float_margin_index, -p.failure_risk_probability))
+            # Economic: maximum net benefit USD
+            pareto_options["economic"] = max(front_dto, key=lambda p: p.net_benefit_usd)
+            # Production-focused: maximum cumulative oil production
+            pareto_options["production_focused"] = max(front_dto, key=lambda p: p.cumulative_oil_bbl)
+
         return OptimizationResponse(
             well_id=res.well_id,
             optimization_mode=res.optimization_mode,
@@ -131,6 +162,7 @@ class OptimizationService:
             current_configuration=curr_dto,
             recommended_configuration=rec_dto,
             pareto_front=front_dto,
+            pareto_options=pareto_options,
             total_evaluated_count=res.total_evaluated_count,
             feasible_count=res.feasible_count,
             infeasible_count=res.infeasible_count,
@@ -138,6 +170,7 @@ class OptimizationService:
             delta_summary=res.delta_summary,
             confidence_score=res.confidence_score,
             recommendation_mode=rmode,
+            confidence_breakdown=getattr(res, "confidence_breakdown", {}),
             explanation=res.explanation,
             contributing_factors=res.contributing_factors,
             constraints_checked=res.constraints_checked,
@@ -155,6 +188,8 @@ class OptimizationService:
             stroke_length_inch=pt.stroke_length_inch,
             vfd_downstroke_ratio=pt.vfd_downstroke_ratio,
             economic_cutoff_bpd=pt.economic_cutoff_bpd,
+            injection_pressure_bar=getattr(pt, 'injection_pressure_bar', 125.0),
+            injection_duration_days=getattr(pt, 'injection_duration_days', 15.0),
             cumulative_oil_bbl=round(pt.cumulative_oil_bbl, 1),
             net_benefit_usd=round(pt.net_benefit_usd, 2),
             steam_oil_ratio=round(pt.steam_oil_ratio, 2),

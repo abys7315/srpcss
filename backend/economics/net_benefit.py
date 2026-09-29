@@ -15,18 +15,19 @@ PROVENANCE: ASSUMED (Economic defaults based on Baghewala benchmarks).
 
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
+from core.config import canonical_config
 
 @dataclass
 class EconomicParameters:
-    crude_oil_benchmark_usd_bbl: float = 75.0
-    heavy_oil_discount_usd_bbl: float = 18.0     # 17-19 API discount [ASSUMED]
-    steam_generation_cost_per_tonne_usd: float = 28.50
-    electricity_tariff_usd_kwh: float = 0.11
-    water_disposal_cost_usd_bbl: float = 1.20
-    daily_wellhead_opex_usd: float = 85.0
-    workover_incident_cost_usd: float = 35000.0  # Repair cost for rod parted / pump unseating
-    target_sor: float = 3.5                      # Benchmark Steam-Oil Ratio
-    sor_penalty_per_unit_excess_usd: float = 12000.0
+    crude_oil_benchmark_usd_bbl: float = canonical_config.economics.crude_oil_benchmark_usd_bbl
+    heavy_oil_discount_usd_bbl: float = canonical_config.economics.heavy_oil_discount_usd_bbl
+    steam_generation_cost_per_tonne_usd: float = canonical_config.economics.steam_generation_cost_per_tonne_usd
+    electricity_tariff_usd_kwh: float = canonical_config.economics.electricity_cost_per_kwh_usd
+    water_disposal_cost_usd_bbl: float = canonical_config.economics.water_disposal_cost_per_bbl_usd
+    daily_wellhead_opex_usd: float = canonical_config.economics.routine_wellhead_opex_per_day_usd
+    workover_incident_cost_usd: float = canonical_config.economics.srp_workover_cost_per_incident_usd
+    target_sor: float = canonical_config.economics.target_sor_mass_ratio
+    sor_penalty_per_unit_excess_usd: float = canonical_config.economics.sor_penalty_per_unit_excess_usd
 
 @dataclass
 class NetBenefitResult:

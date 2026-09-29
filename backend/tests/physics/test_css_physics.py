@@ -16,6 +16,8 @@ from twin.fluid.viscosity import AndradeViscosityModel, BaghewalaViscosityParame
 from twin.thermal.css_model import CSSThermalModel, CSSThermalParameters
 from twin.reservoir.inflow import ThermalInflowModel
 
+pytestmark = pytest.mark.unit
+
 def test_higher_temperature_implies_lower_viscosity():
     """Verify monotonic decrease in viscosity with increasing temperature."""
     model = AndradeViscosityModel()

@@ -73,6 +73,7 @@ class ConstraintStatusDTO(BaseModel):
     near_limit_warnings: List[str]
     binding_constraints: List[str]
     suggested_engineer_action: str
+    margins: List[Dict[str, Any]] = Field(default_factory=list)
 
 class SimulationResponse(BaseModel):
     well_id: str

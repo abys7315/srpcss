@@ -9,10 +9,22 @@ from pathlib import Path
 from .database import engine, Base, SessionLocal
 from .models import WellModel
 
+from core.config import canonical_config
+
 def init_db():
     """Initializes tables and seeds initial wells if database is empty."""
     Base.metadata.create_all(bind=engine)
     
+    # Check and migrate columns if table already exists in SQLite
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    if "optimization_runs" in inspector.get_table_names():
+        cols = [c["name"] for c in inspector.get_columns("optimization_runs")]
+        if "recommendation_mode" not in cols:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE optimization_runs ADD COLUMN recommendation_mode VARCHAR(32)"))
+                conn.commit()
+
     db = SessionLocal()
     try:
         count = db.query(WellModel).count()
@@ -23,13 +35,20 @@ def init_db():
 
 def seed_wells(db):
     """Loads well data from field_simulation_history.json or default seed."""
-    sim_path = Path("data/simulated/field_simulation_history.json")
+    _repo_root = Path(__file__).resolve().parent.parent.parent.parent
+    sim_path = _repo_root / "data" / "simulated" / "field_simulation_history.json"
     if not sim_path.exists():
-        # Look relative to parent directories
-        for p in [Path("../data/simulated/field_simulation_history.json"), Path("../../data/simulated/field_simulation_history.json")]:
+        # Fallback look relative to parent directories
+        for p in [Path("data/simulated/field_simulation_history.json"), Path("../data/simulated/field_simulation_history.json"), Path("../../data/simulated/field_simulation_history.json")]:
             if p.exists():
                 sim_path = p
                 break
+
+    base_api = float(canonical_config.fluid.api_gravity) # 18.0
+    base_depth = float(canonical_config.reservoir.depth_m) # 1050.0 m
+    base_pump_depth = float(canonical_config.srp.pump_depth_m) # 980.0 m
+    base_tubing_od = float(canonical_config.srp.tubing_od_inch) # 3.5 in
+    base_cutoff = float(canonical_config.css.default_production_cutoff_oil_rate_bpd) # 8.0 bpd
 
     if sim_path.exists():
         with open(sim_path, "r") as f:
@@ -57,11 +76,11 @@ def seed_wells(db):
                 well_name=meta.get("well_name", f"Baghewala Well {well_id[-2:]}"),
                 field_name=meta.get("field_name", "Baghewala"),
                 formation="Jodhpur Sandstone",
-                crude_api=float(meta.get("api_gravity", 18.0)),
-                depth_m=float(meta.get("reservoir_depth_m", 1020.0)),
+                crude_api=float(meta.get("api_gravity", base_api)),
+                depth_m=float(meta.get("reservoir_depth_m", base_depth)),
                 casing_od_inch=float(meta.get("casing_od_inch", 7.0)),
-                tubing_od_inch=float(meta.get("tubing_od_inch", 3.5)),
-                pump_depth_m=float(meta.get("pump_depth_m", 950.0)),
+                tubing_od_inch=float(meta.get("tubing_od_inch", base_tubing_od)),
+                pump_depth_m=float(meta.get("pump_depth_m", base_pump_depth)),
                 rod_string_description="API Grade D Taper 76",
                 surface_unit_description="API C-456-256-100 Conventional Beam Unit",
                 current_cycle_number=int(meta.get("active_cycle", 1)),
@@ -81,34 +100,39 @@ def seed_wells(db):
                 spm=4.5,
                 stroke_length_inch=100.0,
                 vfd_downstroke_ratio=1.0,
-                economic_cutoff_oil_rate_bpd=7.0,
+                economic_cutoff_oil_rate_bpd=base_cutoff,
                 provenance="SIMULATED"
             )
             db.add(well)
         db.commit()
     else:
-        # Fallback 10 default wells
+        # Fallback 10 synthetic wells derived from canonical Baghewala baseline with explicit documented perturbations:
         for i in range(1, 11):
             well_id = f"BGW-{i:02d}"
+            # Explicit documented geological/structural variations across Baghewala cluster:
+            api_variation = round((i - 1) * 0.1 - 0.3, 2)  # Variation around 18.0 API
+            depth_variation = float((i - 1) * 5.0 - 15.0)  # Variation around 1050m depth
+            pump_variation = float((i - 1) * 3.0 - 10.0)   # Variation around 980m pump depth
             well = WellModel(
                 well_id=well_id,
                 well_name=f"Baghewala Well {i:02d}",
                 field_name="Baghewala",
                 formation="Jodhpur Sandstone",
-                crude_api=17.5 + (i * 0.15),
-                depth_m=1020.0 + (i * 5.0),
+                crude_api=round(base_api + api_variation, 2),
+                depth_m=round(base_depth + depth_variation, 1),
                 casing_od_inch=7.0,
-                tubing_od_inch=3.5,
-                pump_depth_m=950.0,
+                tubing_od_inch=base_tubing_od,
+                pump_depth_m=round(base_pump_depth + pump_variation, 1),
                 current_cycle_number=(i % 3) + 1,
                 status="FEASIBLE" if i != 4 else "NEAR_LIMIT",
-                latest_temperature_c=75.0,
-                latest_viscosity_cp=450.0,
-                latest_oil_rate_bpd=35.0,
-                latest_water_cut_pct=60.0,
+                latest_temperature_c=65.0,
+                latest_viscosity_cp=1200.0,
+                latest_oil_rate_bpd=28.5,
+                latest_water_cut_pct=72.0,
                 latest_float_margin=1.75,
-                latest_goodman_stress=0.65,
+                latest_goodman_stress=0.62,
                 latest_dynacard_label="NORMAL",
+                economic_cutoff_oil_rate_bpd=base_cutoff,
                 provenance="SIMULATED"
             )
             db.add(well)

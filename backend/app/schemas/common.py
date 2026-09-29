@@ -5,7 +5,7 @@ SIH 2026, PS26120 — Baghewala Heavy Oil Digital Twin.
 
 from enum import Enum
 from typing import Generic, TypeVar, Optional, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
 T = TypeVar("T")
@@ -43,4 +43,4 @@ class APIResponse(BaseModel, Generic[T]):
     message: str = "Operation completed successfully."
     provenance: ProvenanceEnum = ProvenanceEnum.SIMULATED
     data: Optional[T] = None
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

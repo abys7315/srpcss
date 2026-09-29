@@ -1,27 +1,32 @@
 # Physics & First-Principles Configuration — Baghewala Heavy Oil Digital Twin
+# Aligned with configs/field.yaml canonical source of truth
+
 field:
   name: "Baghewala"
   location: "Bikaner-Nagaur Basin, Rajasthan, India"
-  oil_type: "Extra Heavy Crude"
+  formation: "Jodhpur Sandstone"
+  oil_type: "Heavy Crude"
 
 reservoir:
   depth_m: 1050.0
-  initial_pressure_psi: 1450.0
-  initial_temperature_c: 35.0
+  initial_pressure_bar: 65.0
+  initial_temperature_c: 47.0
   net_pay_thickness_m: 14.0
   porosity: 0.28
   permeability_md: 250.0
   rock_heat_capacity_j_kg_k: 920.0
+  rock_volumetric_heat_capacity_j_m3_k: 2.3e6
   rock_density_kg_m3: 2400.0
   overburden_conductivity_w_m_k: 1.8
-  fracture_gradient_psi_ft: 0.72
+  overburden_volumetric_heat_capacity_j_m3_k: 2.2e6
 
 fluid:
-  api_gravity: 7.2
-  dead_oil_viscosity_35c_cp: 14000.0
-  dead_oil_density_kg_m3: 1020.0
-  formation_volume_factor_bo: 1.04
-  # Walther Viscosity Equation Constants: log10(log10(v + 0.7)) = A - B*log10(T)
+  api_gravity: 18.0
+  specific_gravity: 0.9465
+  dead_oil_viscosity_47c_cp: 2400.0
+  dead_oil_viscosity_52c_cp: 1200.0
+  dead_oil_density_kg_m3: 946.5
+  formation_volume_factor_bo: 1.05
   walther_a: 9.854
   walther_b: 3.521
 
@@ -29,7 +34,7 @@ css_thermal:
   default_steam_quality: 0.80
   default_steam_temp_c: 260.0
   latent_heat_vaporization_j_kg: 1650000.0
-  max_allowable_injection_pressure_psi: 2150.0
+  max_allowable_injection_pressure_bar: 125.0
   min_soak_days: 3.0
   max_soak_days: 21.0
 
@@ -41,5 +46,6 @@ srp_mechanical:
   max_allowable_spm: 7.5
   min_stroke_length_inch: 64.0
   max_stroke_length_inch: 144.0
-  rod_floating_margin_threshold_lbs: 300.0
+  min_rod_float_margin_index: 1.000
   goodman_safety_factor: 0.85
+  gearbox_rating_in_lbs: 456000.0

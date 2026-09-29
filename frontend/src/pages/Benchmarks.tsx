@@ -39,109 +39,37 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
     }
   };
 
-  // Fallback data matching official Petro-Twin benchmark verification
-  const baselineVsOptimized = data?.baseline_vs_optimized || [
-    {
-      metric: 'Net Economic Benefit',
-      baseline_value: 126800,
-      optimized_value: 183600,
-      unit: '$USD / cycle',
-      improvement_pct: 44.8,
-      direction: 'HIGHER_IS_BETTER',
-    },
-    {
-      metric: 'Steam-Oil Ratio (SOR)',
-      baseline_value: 2.10,
-      optimized_value: 1.82,
-      unit: 't steam / bbl oil',
-      improvement_pct: -13.3,
-      direction: 'LOWER_IS_BETTER',
-    },
-    {
-      metric: 'Rod-Floating Incidents',
-      baseline_value: 8,
-      optimized_value: 0,
-      unit: 'events / cycle',
-      improvement_pct: -100.0,
-      direction: 'LOWER_IS_BETTER',
-    },
-    {
-      metric: 'Cumulative Oil Recovery',
-      baseline_value: 1750,
-      optimized_value: 2150,
-      unit: 'bbl / cycle',
-      improvement_pct: 22.9,
-      direction: 'HIGHER_IS_BETTER',
-    },
-    {
-      metric: 'Electrical Energy Intensity',
-      baseline_value: 18.5,
-      optimized_value: 15.2,
-      unit: 'kWh / bbl oil',
-      improvement_pct: -17.8,
-      direction: 'LOWER_IS_BETTER',
-    },
-  ];
+  const baselineVsOptimized = data?.baseline_vs_optimized || [];
+  const ablationStudy = data?.ablation_study || [];
 
-  const ablationStudy = data?.ablation_study || [
-    {
-      architecture: '1. Unconstrained Baseline (Field Heuristic)',
-      net_benefit_usd: 126800,
-      steam_oil_ratio: 2.10,
-      total_float_events: 8,
-      computation_time_s: 0.1,
-      is_safe: false,
-      notes: 'Standard field setpoint; experiences severe viscous rod floating during cold downstroke.',
-    },
-    {
-      architecture: '2. Physics-Only (Marx-Langenheim + Gibbs, No ML Residual)',
-      net_benefit_usd: 165200,
-      steam_oil_ratio: 1.92,
-      total_float_events: 0,
-      computation_time_s: 1.2,
-      is_safe: true,
-      notes: 'Safe and feasible, but conservative; misses near-wellbore thermal bypass patterns.',
-    },
-    {
-      architecture: '3. ML-Only (Pure Surrogate Without Physics Constraints)',
-      net_benefit_usd: 194500,
-      steam_oil_ratio: 1.70,
-      total_float_events: 14,
-      computation_time_s: 0.05,
-      is_safe: false,
-      notes: 'CATASTROPHIC: Recommends 6.5 SPM in 1200 cP oil. Massive rod floating, fatigue buckle, and parting.',
-    },
-    {
-      architecture: '4. Petro-Twin Hybrid (Physics + ML Residual + Pareto Co-Opt)',
-      net_benefit_usd: 183600,
-      steam_oil_ratio: 1.82,
-      total_float_events: 0,
-      computation_time_s: 1.8,
-      is_safe: true,
-      notes: 'WINNER: Strict physics safety gates eliminate floating; hybrid ML unlocks +44.8% net benefit safely.',
-    },
-  ];
+  const netBenefitItem = baselineVsOptimized.find((r) => r.metric.toLowerCase().includes('benefit'));
+  const sorItem = baselineVsOptimized.find((r) => r.metric.toLowerCase().includes('sor') || r.metric.toLowerCase().includes('steam'));
+  const floatItem = baselineVsOptimized.find((r) => r.metric.toLowerCase().includes('float'));
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-industrial-800">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold font-mono text-slate-100 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-cyan-400" />
-              BENCHMARKS & ARCHITECTURAL ABLATION STUDY
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-blue-600" />
+              Benchmarks & Architectural Ablation Study
             </h1>
             <ProvenanceBadge tier="SIMULATED" />
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Empirical validation against unconstrained baseline and comparative ablation of physics, pure ML, and hybrid models.
           </p>
         </div>
 
-        <div className="px-3 py-1.5 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-700 text-xs font-mono font-bold flex items-center gap-2">
-          <Award className="w-4 h-4 text-emerald-400" />
-          <span>+44.8% Net Benefit Gain Verified</span>
+        <div className="px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold flex items-center gap-2 shadow-xs">
+          <Award className="w-4 h-4 text-emerald-600" />
+          <span>
+            {data?.overall_net_benefit_gain_pct
+              ? `+${data.overall_net_benefit_gain_pct.toFixed(1)}% Net Benefit Gain Verified`
+              : 'Benchmark Evaluation Complete'}
+          </span>
         </div>
       </div>
 
@@ -151,17 +79,25 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Net Economic Gain"
-          value="+44.8%"
-          unit="+$56,800 / cycle"
-          delta="Optimized vs Baseline"
+          value={data?.overall_net_benefit_gain_pct ? `+${data.overall_net_benefit_gain_pct.toFixed(1)}%` : '—'}
+          unit={
+            netBenefitItem
+              ? `+$${Math.round(netBenefitItem.optimized_value - netBenefitItem.baseline_value).toLocaleString()} / cycle`
+              : 'Cycle Evaluation'
+          }
+          delta="Joint Optimal vs Heuristic"
           deltaPositive={true}
           provenance="SIMULATED"
         />
 
         <MetricCard
           title="Steam-Oil Ratio (SOR)"
-          value="-13.3%"
-          unit="2.10 → 1.82 t/bbl"
+          value={data?.overall_sor_reduction_pct ? `-${Math.abs(data.overall_sor_reduction_pct).toFixed(1)}%` : '—'}
+          unit={
+            sorItem
+              ? `${sorItem.baseline_value.toFixed(2)} → ${sorItem.optimized_value.toFixed(2)} t/t (mass basis)`
+              : 't steam / t oil (mass basis)'
+          }
           delta="Thermal efficiency gain"
           deltaPositive={true}
           provenance="SIMULATED"
@@ -169,60 +105,60 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
 
         <MetricCard
           title="Rod-Floating Events"
-          value="0 Events"
-          unit="Baseline: 8 Events"
-          delta="100% ELIMINATED"
+          value={floatItem ? `${floatItem.optimized_value} Events` : '0 Events'}
+          unit={floatItem ? `Baseline: ${floatItem.baseline_value} Events` : 'Strict safety gating'}
+          delta="Complete Float Avoidance"
           deltaPositive={true}
           provenance="SIMULATED"
         />
 
         <MetricCard
-          title="Energy Intensity"
-          value="-17.8%"
-          unit="18.5 → 15.2 kWh/bbl"
-          delta="VFD speed shaping savings"
+          title="Ablation Architectures"
+          value={ablationStudy.length > 0 ? `${ablationStudy.length} Modes` : '—'}
+          unit="Baseline, CSS, SRP & Joint"
+          delta="Proves Co-Optimization Value"
           deltaPositive={true}
           provenance="SIMULATED"
         />
       </div>
 
       {/* Section 1: Baseline vs Optimized Verification Table */}
-      <div className="glass-panel p-5 space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            Field Performance Verification: Baseline vs Petro-Twin
+          <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            Benchmark Verification: Baseline vs. Optimized
           </h2>
-          <span className="text-[11px] font-mono text-slate-400">180-Day Simulated Cycle (Jodhpur Sandstone)</span>
+          <span className="text-[11px] text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200 font-medium">180-Day Simulated Cycle (Jodhpur Sandstone)</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead>
-              <tr className="border-b border-industrial-800 text-slate-400 uppercase">
-                <th className="pb-3 font-semibold">Evaluation Metric</th>
-                <th className="pb-3 font-semibold">Baseline Setpoint</th>
-                <th className="pb-3 font-semibold text-emerald-400">Petro-Twin Optimal</th>
-                <th className="pb-3 font-semibold">Engineering Unit</th>
-                <th className="pb-3 font-semibold text-right">Net Improvement</th>
+        <div className="overflow-x-auto border border-slate-200 rounded-lg">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50">
+              <tr className="border-b border-slate-200 text-slate-600 uppercase text-[11px]">
+                <th className="py-2.5 px-3 font-semibold">Evaluation Metric</th>
+                <th className="py-2.5 px-3 font-semibold">Baseline Setpoint</th>
+                <th className="py-2.5 px-3 font-semibold text-emerald-700">Petro-Twin Optimal</th>
+                <th className="py-2.5 px-3 font-semibold">Engineering Unit</th>
+                <th className="py-2.5 px-3 font-semibold text-right">Net Improvement</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-industrial-900 text-slate-300">
+            <tbody className="divide-y divide-slate-100 text-slate-700">
               {baselineVsOptimized.map((row, idx) => (
-                <tr key={idx} className="hover:bg-industrial-900/40">
-                  <td className="py-3 font-medium text-slate-200">{row.metric}</td>
-                  <td className="py-3 text-slate-400">
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="py-2.5 px-3 font-medium text-slate-900">{row.metric}</td>
+                  <td className="py-2.5 px-3 text-slate-600">
                     {typeof row.baseline_value === 'number' && row.baseline_value >= 1000
                       ? row.baseline_value.toLocaleString()
                       : row.baseline_value}
                   </td>
-                  <td className="py-3 text-emerald-400 font-bold">
+                  <td className="py-2.5 px-3 text-emerald-700 font-bold">
                     {typeof row.optimized_value === 'number' && row.optimized_value >= 1000
                       ? row.optimized_value.toLocaleString()
                       : row.optimized_value}
                   </td>
-                  <td className="py-3 text-slate-400">{row.unit}</td>
-                  <td className="py-3 text-right font-bold text-emerald-400">
+                  <td className="py-2.5 px-3 text-slate-500">{row.unit}</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
                     {row.improvement_pct > 0 ? `+${row.improvement_pct.toFixed(1)}%` : `${row.improvement_pct.toFixed(1)}%`}
                   </td>
                 </tr>
@@ -233,32 +169,32 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
       </div>
 
       {/* Section 2: 4-Variant Architectural Ablation Study */}
-      <div className="glass-panel p-5 space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-cyan-400" />
-              4-Variant Architectural Ablation Study
+            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <Layers className="w-4 h-4 text-blue-600" />
+              Ablation Study: Single-Domain vs. Joint Co-Optimization
             </h2>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Proving why pure ML fails in heavy oil artificial lift and why physics-informed hybridization is required.
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Comparative analysis of single-discipline optimization vs. multi-objective joint optimization balancing economics, SOR, and rod-float safety.
             </p>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead>
-              <tr className="border-b border-industrial-800 text-slate-400 uppercase">
-                <th className="pb-3 font-semibold">Model Architecture Variant</th>
-                <th className="pb-3 font-semibold">Net Benefit ($USD)</th>
-                <th className="pb-3 font-semibold">SOR (t/bbl)</th>
-                <th className="pb-3 font-semibold">Float Events</th>
-                <th className="pb-3 font-semibold">Physics Feasibility</th>
-                <th className="pb-3 font-semibold">Engineering Assessment & Notes</th>
+        <div className="overflow-x-auto border border-slate-200 rounded-lg">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50">
+              <tr className="border-b border-slate-200 text-slate-600 uppercase text-[11px]">
+                <th className="py-2.5 px-3 font-semibold">Optimization Variant</th>
+                <th className="py-2.5 px-3 font-semibold">Net Benefit ($USD)</th>
+                <th className="py-2.5 px-3 font-semibold">SOR (t/t)</th>
+                <th className="py-2.5 px-3 font-semibold">Float Events</th>
+                <th className="py-2.5 px-3 font-semibold">Physics Feasibility</th>
+                <th className="py-2.5 px-3 font-semibold">Engineering Assessment & Notes</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-industrial-900 text-slate-300">
+            <tbody className="divide-y divide-slate-100 text-slate-700">
               {ablationStudy.map((item, idx) => {
                 const isWinner = item.architecture.includes('Petro-Twin');
                 const isCatastrophic = item.architecture.includes('ML-Only');
@@ -268,46 +204,46 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
                     key={idx}
                     className={
                       isWinner
-                        ? 'bg-emerald-950/20 font-medium'
+                        ? 'bg-emerald-50/60 font-medium'
                         : isCatastrophic
-                        ? 'bg-rose-950/20'
-                        : 'hover:bg-industrial-900/40'
+                        ? 'bg-rose-50/40'
+                        : 'hover:bg-slate-50/50'
                     }
                   >
-                    <td className="py-3 text-slate-200">
+                    <td className="py-2.5 px-3 text-slate-900">
                       <div className="flex items-center gap-2">
-                        {isWinner && <Award className="w-4 h-4 text-emerald-400 shrink-0" />}
-                        {isCatastrophic && <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />}
-                        <span>{item.architecture}</span>
+                        {isWinner && <Award className="w-4 h-4 text-emerald-600 shrink-0" />}
+                        {isCatastrophic && <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />}
+                        <span className={isWinner ? 'font-bold text-emerald-900' : ''}>{item.architecture}</span>
                       </div>
                     </td>
-                    <td className={`py-3 font-bold ${isWinner ? 'text-emerald-400' : isCatastrophic ? 'text-slate-400 line-through' : 'text-slate-300'}`}>
+                    <td className={`py-2.5 px-3 font-bold ${isWinner ? 'text-emerald-700' : isCatastrophic ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
                       ${item.net_benefit_usd.toLocaleString()}
                     </td>
-                    <td className="py-3">{item.steam_oil_ratio.toFixed(2)}</td>
-                    <td className="py-3">
+                    <td className="py-2.5 px-3">{item.steam_oil_ratio.toFixed(2)}</td>
+                    <td className="py-2.5 px-3">
                       <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
                           item.total_float_events > 0
-                            ? 'bg-rose-950 text-rose-300 border border-rose-700'
-                            : 'bg-emerald-950 text-emerald-300 border border-emerald-700'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         }`}
                       >
                         {item.total_float_events} events
                       </span>
                     </td>
-                    <td className="py-3">
+                    <td className="py-2.5 px-3">
                       <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
                           item.is_safe
-                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                            : 'bg-rose-950 text-rose-400 border border-rose-800'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}
                       >
-                        {item.is_safe ? 'PHYSICALLY SAFE' : 'UNSAFE / INVALID'}
+                        {item.is_safe ? 'Physically Safe' : 'Unsafe / Invalid'}
                       </span>
                     </td>
-                    <td className="py-3 text-[11px] text-slate-400 max-w-xs">{item.notes}</td>
+                    <td className="py-2.5 px-3 text-[11px] text-slate-500 max-w-xs">{item.notes}</td>
                   </tr>
                 );
               })}
@@ -316,15 +252,15 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
         </div>
 
         {/* Callout highlighting why pure ML fails */}
-        <div className="p-4 rounded-lg bg-industrial-950 border border-industrial-800 text-xs font-mono space-y-2">
-          <div className="flex items-center gap-2 text-cyan-300 font-bold uppercase">
-            <ShieldCheck className="w-4 h-4 text-cyan-400" />
-            Key Hackathon Architectural Finding
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+          <div className="flex items-center gap-2 text-slate-900 font-semibold uppercase tracking-wider">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            Key Engineering Architectural Finding
           </div>
-          <p className="text-slate-300 leading-relaxed text-[11px]">
-            Notice that the <strong>ML-Only</strong> model appears to achieve the highest net benefit ($194,500) by blindly cranking the pump to 6.5 SPM.
-            However, it does so by violating fluid mechanics: at 6.5 SPM in 1,200 cP crude, the downstroke shear drag exceeds the rod string weight, causing <strong>14 severe rod floating incidents</strong> and imminent rod parting.
-            <strong> Petro-Twin</strong> eliminates all floating incidents through strict physics safety invariance while capturing +44.8% real economic improvement.
+          <p className="text-slate-600 leading-relaxed text-xs">
+            In our simulated Baghewala-parameter benchmark, <strong>Joint Optimization produces a Pareto-balanced operating strategy across economics, production, steam efficiency, and mechanical risk</strong>.
+            While unconstrained or single-discipline heuristics might superficially maximize individual production figures at the cost of high steam consumption or rod float risk,
+            <strong> Petro-Twin</strong> maintains strict physical safety invariance and positive float margins while optimizing energy intensity and net benefit.
           </p>
         </div>
       </div>

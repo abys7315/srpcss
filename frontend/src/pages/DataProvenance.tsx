@@ -112,75 +112,75 @@ export const DataProvenance: React.FC<Props> = ({ onNavigate: _onNavigate }) => 
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-industrial-800">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold font-mono text-slate-100 flex items-center gap-2">
-              <FileCheck2 className="w-5 h-5 text-cyan-400" />
-              DATA PROVENANCE & SCIENTIFIC AUDIT MANIFEST
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <FileCheck2 className="w-5 h-5 text-blue-600" />
+              Data Provenance & Scientific Audit Manifest
             </h1>
             <ProvenanceBadge tier="PUBLIC_EXTERNAL" />
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Complete transparency and academic citations for all reservoir parameters, engineering formulations, and telemetry sources.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-400 bg-industrial-900 border border-industrial-800 px-3 py-1.5 rounded-lg">
-          <Database className="w-4 h-4 text-cyan-400" />
-          <span>Manifest Version: 1.0.0-PROD</span>
+        <div className="flex items-center gap-2 text-xs text-slate-600 bg-white border border-slate-200 px-3.5 py-1.5 rounded-lg shadow-xs">
+          <Database className="w-4 h-4 text-blue-600" />
+          <span className="font-medium">Manifest v1.0.0</span>
         </div>
       </div>
 
-      {/* Mandatory Oil India Limited Official Disclaimer */}
-      <div className="p-4 rounded-xl bg-cyan-950/40 border border-cyan-800/80 shadow-lg shadow-cyan-950/30 flex items-start gap-3">
-        <ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+      {/* Official Disclaimer */}
+      <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 shadow-xs flex items-start gap-3">
+        <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <h3 className="text-xs font-bold font-mono uppercase text-cyan-200">
-            OFFICIAL OIL INDIA LIMITED COMPLIANCE & HONESTY NOTICE
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-blue-950">
+            Data Fidelity & Scientific Provenance Advisory
           </h3>
-          <p className="text-xs text-slate-300 font-mono leading-relaxed">{defaultDisclaimer}</p>
+          <p className="text-xs text-blue-900/80 leading-relaxed">{defaultDisclaimer}</p>
         </div>
       </div>
 
       {/* 4 Provenance Tiers Breakdown */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-panel p-4 space-y-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold font-mono text-emerald-400 uppercase">REAL</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Real Data</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
           </div>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-xs text-slate-500 leading-relaxed">
             Field laboratory core flood data and published pressure transient tests from literature.
           </p>
         </div>
 
-        <div className="glass-panel p-4 space-y-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold font-mono text-cyan-400 uppercase">PUBLIC_EXTERNAL</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+            <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Literature & Standards</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
           </div>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-xs text-slate-500 leading-relaxed">
             SPE papers, API Spec 11B/11E dimensions, Marx-Langenheim & Boberg-Lantz formulations.
           </p>
         </div>
 
-        <div className="glass-panel p-4 space-y-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold font-mono text-amber-400 uppercase">SIMULATED</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Physics Simulation</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
           </div>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-xs text-slate-500 leading-relaxed">
             Synthetic multi-cycle histories and Gibbs wave dynacard waveforms generated via physics engine.
           </p>
         </div>
 
-        <div className="glass-panel p-4 space-y-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold font-mono text-purple-400 uppercase">ASSUMED</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-400" />
+            <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Field Assumptions</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
           </div>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-xs text-slate-500 leading-relaxed">
             Explicitly documented industrial economic parameters: power tariffs, steam costs, water disposal.
           </p>
         </div>
@@ -188,18 +188,18 @@ export const DataProvenance: React.FC<Props> = ({ onNavigate: _onNavigate }) => 
 
       {/* Filter & Search Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
           {['ALL', 'REAL', 'PUBLIC_EXTERNAL', 'SIMULATED', 'ASSUMED'].map((tier) => (
             <button
               key={tier}
               onClick={() => setSelectedTier(tier)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shadow-xs ${
                 selectedTier === tier
-                  ? 'bg-cyan-950 text-cyan-300 border border-cyan-500 font-bold'
-                  : 'bg-industrial-900 text-slate-400 hover:text-slate-200 border border-industrial-800'
+                  ? 'bg-blue-50 text-blue-700 border border-blue-300 font-semibold'
+                  : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
               }`}
             >
-              {tier}
+              {tier === 'PUBLIC_EXTERNAL' ? 'Literature' : tier.replace(/_/g, ' ')}
             </button>
           ))}
         </div>
@@ -211,39 +211,41 @@ export const DataProvenance: React.FC<Props> = ({ onNavigate: _onNavigate }) => 
             placeholder="Search provenance citations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-industrial-900 border border-industrial-700 text-slate-200 text-xs font-mono rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-cyan-500"
+            className="w-full bg-white border border-slate-300 text-slate-800 text-xs rounded-lg pl-8 pr-3 py-1.5 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
           />
         </div>
       </div>
 
       {/* Provenance Audit Table */}
-      <div className="glass-panel p-5 space-y-4">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead>
-              <tr className="border-b border-industrial-800 text-slate-400 uppercase">
-                <th className="pb-3 font-semibold">Data Parameter / Formulation</th>
-                <th className="pb-3 font-semibold">Provenance Tier</th>
-                <th className="pb-3 font-semibold">Source Citation / Literature Reference</th>
-                <th className="pb-3 font-semibold">Description</th>
-                <th className="pb-3 font-semibold text-right">Audit Status</th>
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+        <div className="overflow-x-auto border border-slate-200 rounded-lg">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50">
+              <tr className="border-b border-slate-200 text-slate-600 uppercase text-[11px]">
+                <th className="py-2.5 px-3 font-semibold">Data Parameter / Formulation</th>
+                <th className="py-2.5 px-3 font-semibold">Provenance Tier</th>
+                <th className="py-2.5 px-3 font-semibold">Source Citation / Literature Reference</th>
+                <th className="py-2.5 px-3 font-semibold">Description</th>
+                <th className="py-2.5 px-3 font-semibold text-right">Audit Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-industrial-900 text-slate-300">
+            <tbody className="divide-y divide-slate-100 text-slate-700">
               {filteredItems.map((item, idx) => (
-                <tr key={idx} className="hover:bg-industrial-900/40">
-                  <td className="py-3 font-medium text-slate-200">{item.name}</td>
-                  <td className="py-3">
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="py-2.5 px-3 font-medium text-slate-900">{item.name}</td>
+                  <td className="py-2.5 px-3">
                     <ProvenanceBadge tier={item.provenance_tier as any} />
                   </td>
-                  <td className="py-3 text-cyan-300 font-mono flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                    <span>{item.source_citation}</span>
+                  <td className="py-2.5 px-3 text-blue-700">
+                    <div className="flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                      <span className="font-medium">{item.source_citation}</span>
+                    </div>
                   </td>
-                  <td className="py-3 text-[11px] text-slate-400 max-w-sm">{item.description}</td>
-                  <td className="py-3 text-right">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
-                      {item.validation_status}
+                  <td className="py-2.5 px-3 text-xs text-slate-500 max-w-sm">{item.description}</td>
+                  <td className="py-2.5 px-3 text-right">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {item.validation_status.replace(/_/g, ' ')}
                     </span>
                   </td>
                 </tr>

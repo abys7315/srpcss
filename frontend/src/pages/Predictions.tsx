@@ -87,6 +87,8 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
     },
   ]);
 
+  const [containmentApplied, setContainmentApplied] = useState<{ [day: number]: boolean }>({});
+
   useEffect(() => {
     loadForecastAndML();
   }, [selectedWellId, selectedPresetCard]);
@@ -150,28 +152,28 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-industrial-800">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold font-mono text-slate-100 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-cyan-400" />
-              AI FORECASTS, DYNACARD DIAGNOSTICS & ANOMALY DETECTION
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-blue-600" />
+              Production Forecasts & Dynacard Diagnostics
             </h1>
             <ProvenanceBadge tier="SIMULATED" />
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Quantile production forecaster ($p_{10}/p_{50}/p_{90}$), Random Forest dynacard classifier, and thermal dissipation anomaly tracker for{' '}
-            <strong className="text-slate-200 font-mono">{selectedWellId}</strong>.
+          <p className="text-xs text-slate-500 mt-1">
+            Quantile production forecaster (p10 / p50 / p90), Random Forest dynacard classifier, and thermal dissipation anomaly tracker for{' '}
+            <strong className="text-slate-900 font-semibold">{selectedWellId}</strong>.
           </p>
         </div>
 
         <button
           onClick={loadForecastAndML}
           disabled={loading}
-          className="flex items-center gap-2 px-3.5 py-1.5 bg-industrial-800 hover:bg-industrial-700 text-slate-200 font-mono text-xs rounded-lg transition-all"
+          className="flex items-center gap-2 px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 shadow-xs transition-all"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>REFRESH ML INFERENCE</span>
+          <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${loading ? 'animate-spin' : ''}`} />
+          <span>Refresh Inference</span>
         </button>
       </div>
 
@@ -201,7 +203,7 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
         <MetricCard
           title="Active Thermal Anomalies"
           value={`${anomalies.length}`}
-          unit="Z-score &gt; 2.0σ"
+          unit="Z-score > 2.0σ"
           delta={anomalies.length > 0 ? 'Residual Divergence Detected' : 'Nominal Thermal Profile'}
           warning={anomalies.length > 0}
           deltaPositive={anomalies.length === 0}
@@ -219,25 +221,25 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
       </div>
 
       {/* Section 1: Quantile Production Forecaster Chart (SVG) */}
-      <div className="glass-panel p-5 space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-xs">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingUp className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-blue-600" />
               Quantile Production Decline Forecast (p10 / p50 / p90 Uncertainty Band)
             </h2>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-500 mt-0.5">
               Probabilistic hybrid physics + gradient boosted residual forecast accounting for reservoir heterogeneity and cooling.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 text-xs font-mono">
-            <span className="flex items-center gap-1.5 text-indigo-300">
-              <span className="w-3 h-2 bg-indigo-500/30 inline-block border border-indigo-400" />
+          <div className="flex items-center gap-3 text-xs">
+            <span className="flex items-center gap-1.5 text-blue-700 font-medium">
+              <span className="w-3 h-2 bg-blue-100 inline-block border border-blue-300 rounded-xs" />
               p10–p90 Band
             </span>
-            <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-              <span className="w-3 h-0.5 bg-emerald-400 inline-block" />
+            <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
+              <span className="w-3 h-0.5 bg-emerald-600 inline-block rounded-xs" />
               p50 Median
             </span>
           </div>
@@ -245,41 +247,41 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
 
         {/* SVG Forecast Graph */}
         <div className="w-full overflow-x-auto">
-          <svg viewBox="0 0 650 250" className="w-full h-64 bg-industrial-950/60 rounded-lg border border-industrial-800">
+          <svg viewBox="0 0 650 250" className="w-full h-64 bg-slate-50 rounded-lg border border-slate-200">
             {/* Grid */}
-            <line x1="50" y1="50" x2="620" y2="50" stroke="#1e293b" strokeDasharray="3 3" />
-            <line x1="50" y1="100" x2="620" y2="100" stroke="#1e293b" strokeDasharray="3 3" />
-            <line x1="50" y1="150" x2="620" y2="150" stroke="#1e293b" strokeDasharray="3 3" />
-            <line x1="50" y1="200" x2="620" y2="200" stroke="#475569" strokeWidth="1.5" />
-            <line x1="50" y1="20" x2="50" y2="200" stroke="#475569" strokeWidth="1.5" />
+            <line x1="50" y1="50" x2="620" y2="50" stroke="#e2e8f0" strokeDasharray="3 3" />
+            <line x1="50" y1="100" x2="620" y2="100" stroke="#e2e8f0" strokeDasharray="3 3" />
+            <line x1="50" y1="150" x2="620" y2="150" stroke="#e2e8f0" strokeDasharray="3 3" />
+            <line x1="50" y1="200" x2="620" y2="200" stroke="#94a3b8" strokeWidth="1.5" />
+            <line x1="50" y1="20" x2="50" y2="200" stroke="#94a3b8" strokeWidth="1.5" />
 
             {/* Axis Labels */}
-            <text x="610" y="220" fill="#94a3b8" fontSize="10" textAnchor="end" fontFamily="monospace">
+            <text x="610" y="220" fill="#64748b" fontSize="10" textAnchor="end" fontFamily="Inter, sans-serif">
               Cycle Production Day →
             </text>
-            <text x="20" y="25" fill="#94a3b8" fontSize="10" transform="rotate(-90 20,25)" fontFamily="monospace">
+            <text x="20" y="25" fill="#64748b" fontSize="10" transform="rotate(-90 20,25)" fontFamily="Inter, sans-serif">
               Oil Rate (bpd) →
             </text>
 
             {/* Y ticks */}
-            <text x="42" y="55" fill="#64748b" fontSize="9" textAnchor="end" fontFamily="monospace">
+            <text x="42" y="55" fill="#64748b" fontSize="9" textAnchor="end" fontFamily="Inter, sans-serif">
               120
             </text>
-            <text x="42" y="105" fill="#64748b" fontSize="9" textAnchor="end" fontFamily="monospace">
+            <text x="42" y="105" fill="#64748b" fontSize="9" textAnchor="end" fontFamily="Inter, sans-serif">
               80
             </text>
-            <text x="42" y="155" fill="#64748b" fontSize="9" textAnchor="end" fontFamily="monospace">
+            <text x="42" y="155" fill="#64748b" fontSize="9" textAnchor="end" fontFamily="Inter, sans-serif">
               40
             </text>
-            <text x="42" y="200" fill="#64748b" fontSize="9" textAnchor="end" fontFamily="monospace">
+            <text x="42" y="200" fill="#64748b" fontSize="9" textAnchor="end" fontFamily="Inter, sans-serif">
               0
             </text>
 
             {/* Shaded p10 - p90 area */}
             <path
               d="M 50 50 Q 150 70 250 110 T 450 160 T 610 180 L 610 190 Q 450 180 250 150 T 150 110 T 50 110 Z"
-              fill="rgba(99, 102, 241, 0.15)"
-              stroke="rgba(129, 140, 248, 0.5)"
+              fill="rgba(37, 99, 235, 0.12)"
+              stroke="rgba(37, 99, 235, 0.4)"
               strokeWidth="1"
             />
 
@@ -287,14 +289,14 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
             <path
               d="M 50 80 Q 150 95 250 130 T 450 170 T 610 185"
               fill="none"
-              stroke="#10b981"
+              stroke="#059669"
               strokeWidth="2.5"
             />
 
-            {/* Economic Cutoff line (15 bpd) */}
-            <line x1="50" y1="181" x2="620" y2="181" stroke="#f43f5e" strokeDasharray="3 3" strokeWidth="1.5" />
-            <text x="610" y="177" fill="#f43f5e" fontSize="9" textAnchor="end" fontFamily="monospace">
-              Economic Cutoff (15 bpd)
+            {/* Economic Cutoff line (8 bpd) */}
+            <line x1="50" y1="181" x2="620" y2="181" stroke="#ef4444" strokeDasharray="3 3" strokeWidth="1.5" />
+            <text x="610" y="177" fill="#ef4444" fontSize="9" textAnchor="end" fontFamily="Inter, sans-serif">
+              Economic Cutoff (8 bpd)
             </text>
           </svg>
         </div>
@@ -303,25 +305,25 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
       {/* Section 2: Dynacard Classifier & Anomaly Detector Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Dynacard Classifier Panel */}
-        <div className="glass-panel p-5 space-y-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <Activity className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-blue-600" />
               Dynacard Pattern Classifier (Random Forest)
             </h2>
-            <span className="text-[10px] font-mono text-slate-400">Trained on 10,000+ Gibbs cards</span>
+            <span className="text-xs text-slate-500">10,000+ Gibbs cards trained</span>
           </div>
 
           {/* Preset Card Archetype Selector */}
-          <div className="flex flex-wrap gap-2 text-xs font-mono">
+          <div className="flex flex-wrap gap-2 text-xs">
             {['NORMAL', 'ROD_FLOATING', 'FLUID_POUND', 'GAS_INTERFERENCE', 'TUBING_LEAK'].map((label) => (
               <button
                 key={label}
                 onClick={() => setSelectedPresetCard(label)}
-                className={`px-2.5 py-1 rounded text-[11px] font-medium transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   selectedPresetCard === label
-                    ? 'bg-cyan-950 text-cyan-300 border border-cyan-500 shadow-sm'
-                    : 'bg-industrial-900 text-slate-400 hover:text-slate-200 border border-industrial-800'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200 font-semibold shadow-xs'
+                    : 'bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200'
                 }`}
               >
                 {label.replace(/_/g, ' ')}
@@ -335,18 +337,18 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
           </div>
 
           {/* Probabilities Distribution */}
-          <div className="space-y-2 text-xs font-mono">
-            <span className="text-[11px] text-slate-400 block font-semibold uppercase">Classification Probabilities:</span>
+          <div className="space-y-2 text-xs">
+            <span className="text-xs text-slate-500 block font-medium uppercase tracking-wider">Classification Probabilities:</span>
             {Object.entries(cardClassification.probabilities).map(([lbl, prob]) => (
               <div key={lbl} className="space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-slate-300">{lbl.replace(/_/g, ' ')}</span>
-                  <span className="text-cyan-400 font-bold">{(prob * 100).toFixed(1)}%</span>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-700 font-medium">{lbl.replace(/_/g, ' ')}</span>
+                  <span className="text-blue-700 font-semibold">{(prob * 100).toFixed(1)}%</span>
                 </div>
-                <div className="w-full bg-industrial-900 h-1.5 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
-                      lbl === cardClassification.predicted_label ? 'bg-cyan-400' : 'bg-slate-700'
+                      lbl === cardClassification.predicted_label ? 'bg-blue-600' : 'bg-slate-300'
                     }`}
                     style={{ width: `${prob * 100}%` }}
                   />
@@ -356,59 +358,63 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
           </div>
 
           {/* Root cause and mitigation */}
-          <div className="p-3 bg-industrial-950/80 rounded-lg border border-industrial-800 text-xs font-mono space-y-1.5">
-            <div className="text-slate-300">
-              <strong className="text-slate-400">Root Cause:</strong> {cardClassification.root_cause}
+          <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1.5 leading-relaxed">
+            <div className="text-slate-700">
+              <strong className="text-slate-900 font-semibold">Root Cause:</strong> {cardClassification.root_cause}
             </div>
-            <div className="text-emerald-400">
-              <strong className="text-slate-400">Mitigation:</strong> {cardClassification.recommended_mitigation}
+            <div className="text-emerald-700 font-medium">
+              <strong className="text-slate-900 font-semibold">Mitigation:</strong> {cardClassification.recommended_mitigation}
             </div>
           </div>
         </div>
 
         {/* Operational Anomaly Detector Panel */}
-        <div className="glass-panel p-5 space-y-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
+            <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-blue-600" />
               Thermal & Operational Anomaly Detector
             </h2>
-            <span className="text-[10px] font-mono text-slate-400">Boberg-Lantz vs Field Discrepancy</span>
+            <span className="text-xs text-slate-500">Boberg-Lantz vs. Field Residuals</span>
           </div>
 
           <div className="space-y-3">
             {anomalies.map((anom, idx) => (
               <div
                 key={idx}
-                className="p-3.5 rounded-lg bg-industrial-950/80 border border-industrial-800 space-y-2 font-mono text-xs"
+                className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-2 text-xs"
               >
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 font-bold text-slate-200">
+                  <span className="flex items-center gap-1.5 font-semibold text-slate-900">
                     <AlertTriangle
-                      className={`w-3.5 h-3.5 ${anom.severity === 'HIGH' ? 'text-rose-400' : 'text-amber-400'}`}
+                      className={`w-3.5 h-3.5 ${anom.severity === 'HIGH' ? 'text-rose-600' : 'text-amber-600'}`}
                     />
                     {anom.type.replace(/_/g, ' ')}
                   </span>
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${
                       anom.severity === 'HIGH'
-                        ? 'bg-rose-950 text-rose-300 border border-rose-700'
-                        : 'bg-amber-950 text-amber-300 border border-amber-700'
+                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
                     }`}
                   >
-                    Day {anom.day} • {anom.severity} (Z={anom.z_score.toFixed(2)})
+                    Day {anom.day} • {anom.severity} (Z = {anom.z_score.toFixed(2)})
                   </span>
                 </div>
 
-                <p className="text-[11px] text-slate-400 leading-relaxed">{anom.description}</p>
+                <p className="text-xs text-slate-600 leading-relaxed">{anom.description}</p>
 
-                <div className="pt-1 flex items-center justify-between text-[11px] text-cyan-300">
-                  <span>Action: {anom.action}</span>
+                <div className="pt-1 flex items-center justify-between text-xs text-blue-700">
+                  <span className="text-slate-700 font-medium">Action: {anom.action}</span>
                   <button
-                    onClick={() => alert(`Executed anomaly containment routine for Day ${anom.day}!`)}
-                    className="px-2 py-0.5 bg-cyan-950 hover:bg-cyan-900 border border-cyan-700 rounded text-cyan-300 text-[10px] transition-all"
+                    onClick={() => setContainmentApplied(prev => ({ ...prev, [anom.day]: true }))}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all border ${
+                      containmentApplied[anom.day]
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-white hover:bg-slate-100 border-slate-300 text-blue-700 shadow-xs'
+                    }`}
                   >
-                    APPLY ACTION
+                    {containmentApplied[anom.day] ? 'Containment Active' : 'Apply Action'}
                   </button>
                 </div>
               </div>
@@ -416,20 +422,20 @@ export const Predictions: React.FC<Props> = ({ selectedWellId }) => {
           </div>
 
           {/* Statistical Monitoring Details */}
-          <div className="p-3 bg-industrial-900 rounded-lg border border-industrial-800 text-xs font-mono space-y-2">
-            <span className="text-[11px] font-bold text-slate-300 uppercase block">Statistical Process Control</span>
-            <div className="space-y-1 text-[11px] text-slate-400">
+          <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2">
+            <span className="text-xs font-semibold text-slate-800 uppercase tracking-wider block">Statistical Process Control</span>
+            <div className="space-y-1.5 text-xs text-slate-600">
               <div className="flex justify-between">
                 <span>Temperature Residual Mean (μ):</span>
-                <span className="text-slate-200">+1.2 °C</span>
+                <span className="text-slate-900 font-semibold">+1.2 °C</span>
               </div>
               <div className="flex justify-between">
                 <span>Residual Std Dev (σ):</span>
-                <span className="text-slate-200">2.4 °C</span>
+                <span className="text-slate-900 font-semibold">2.4 °C</span>
               </div>
               <div className="flex justify-between">
                 <span>Alert Threshold:</span>
-                <span className="text-amber-400">&gt; 3.00 σ (99.7% confidence)</span>
+                <span className="text-amber-800 font-semibold">&gt; 3.00 σ (99.7% confidence)</span>
               </div>
             </div>
           </div>

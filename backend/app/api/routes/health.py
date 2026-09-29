@@ -4,7 +4,7 @@ SIH 2026, PS26120 — Baghewala Heavy Oil Digital Twin.
 """
 
 from fastapi import APIRouter
-from datetime import datetime
+from datetime import datetime, timezone
 from ...schemas.common import APIResponse, ProvenanceEnum
 
 router = APIRouter(tags=["System Health"])
@@ -16,7 +16,7 @@ def health_check():
         "status": "HEALTHY",
         "service": "PETRO-TWIN — Baghewala Heavy Oil Digital Twin",
         "version": "1.0.0",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "components": {
             "physics_twin_engine": "ONLINE",
             "constraint_engine": "ENFORCING",

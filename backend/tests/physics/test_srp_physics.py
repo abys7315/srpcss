@@ -17,6 +17,8 @@ from twin.srp.dynacard import GibbsDynacardModel
 from twin.srp.rod_string import RodStringModel
 from twin.cycle import CSSCycleSimulator, CycleConfig
 
+pytestmark = pytest.mark.unit
+
 def test_higher_viscosity_increases_float_risk_at_fixed_spm():
     """Verify that as viscosity rises, float margin monotonically decreases."""
     detector = RodFloatDetector(submerged_weight_lbs=5800.0)

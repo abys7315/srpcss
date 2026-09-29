@@ -26,6 +26,7 @@ class ConstraintEvaluationResult:
     near_limit_warnings: List[str]
     binding_constraints: List[str]
     suggested_engineer_action: Optional[str]
+    margins: List[Dict[str, Any]] = field(default_factory=list)
     constraint_version: str = "v1.2.0-baghewala"
     provenance: str = "SIMULATED"
 
@@ -45,6 +46,97 @@ class ConstraintEngine:
         self.mech_cfg = mech_cfg or MechanicalConstraintConfig()
         self.prod_cfg = prod_cfg or ProductionConstraintConfig()
         self.version = version
+
+    @property
+    def max_injection_pressure(self) -> float:
+        return self.css_cfg.max_injection_pressure_bar
+
+    @property
+    def max_goodman_ratio(self) -> float:
+        return self.mech_cfg.max_goodman_stress_ratio
+
+    @property
+    def max_goodman_stress_ratio(self) -> float:
+        return self.mech_cfg.max_goodman_stress_ratio
+
+    @property
+    def min_pump_intake_pressure(self) -> float:
+        return self.prod_cfg.min_pump_intake_pressure_bar
+
+    @property
+    def min_pump_intake_pressure_bar(self) -> float:
+        return self.prod_cfg.min_pump_intake_pressure_bar
+
+    @property
+    def min_float_margin(self) -> float:
+        return self.mech_cfg.min_float_margin_index
+
+    @property
+    def min_rod_float_margin_index(self) -> float:
+        return self.mech_cfg.min_float_margin_index
+
+    @property
+    def max_spm(self) -> float:
+        return self.srp_cfg.max_spm
+
+    @property
+    def min_spm(self) -> float:
+        return self.srp_cfg.min_spm
+
+    @property
+    def max_rod_load(self) -> float:
+        return self.srp_cfg.max_polished_rod_load_lbs
+
+    @property
+    def max_polished_rod_load_lbs(self) -> float:
+        return self.srp_cfg.max_polished_rod_load_lbs
+
+    @property
+    def max_torque(self) -> float:
+        return self.srp_cfg.max_gearbox_torque_in_lbs
+
+    @property
+    def max_gearbox_torque(self) -> float:
+        return self.srp_cfg.max_gearbox_torque_in_lbs
+
+    @property
+    def max_gearbox_torque_in_lbs(self) -> float:
+        return self.srp_cfg.max_gearbox_torque_in_lbs
+
+    @property
+    def max_motor_power(self) -> float:
+        return self.srp_cfg.max_motor_power_kw
+
+    @property
+    def max_motor_power_kw(self) -> float:
+        return self.srp_cfg.max_motor_power_kw
+
+    def evaluate(self, **kwargs) -> ConstraintEvaluationResult:
+        """Convenience evaluation method with default fallback values."""
+        if "gearbox_torque_in_lbs" in kwargs:
+            kwargs["peak_gearbox_torque_in_lbs"] = kwargs.pop("gearbox_torque_in_lbs")
+        if "rod_load_lbs" in kwargs:
+            kwargs["peak_polished_rod_load_lbs"] = kwargs.pop("rod_load_lbs")
+
+        defaults = {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 110.0,
+            "steam_temp_celsius": 260.0,
+            "soak_days": 6.0,
+            "spm": 4.5,
+            "stroke_length_inch": 100.0,
+            "peak_polished_rod_load_lbs": 18000.0,
+            "peak_gearbox_torque_in_lbs": 250000.0,
+            "motor_power_kw": 30.0,
+            "float_margin_index": 1.5,
+            "goodman_stress_ratio": 0.65,
+            "pump_intake_pressure_bar": 15.0,
+            "pump_fillage_fraction": 0.85,
+            "oil_rate_bpd": 35.0,
+            "vfd_downstroke_ratio": 1.0
+        }
+        defaults.update(kwargs)
+        return self.evaluate_candidate(**defaults)
 
     def evaluate_candidate(
         self,
@@ -113,6 +205,73 @@ class ConstraintEngine:
         all_violations.extend(v_prod)
         all_warnings.extend(w_prod)
 
+        # Compute Explicit Dynamic Constraint Margins (Section 10)
+        dynamic_margins: List[Dict[str, Any]] = [
+            {
+                "metric": "Rod Float Margin",
+                "actual_value": round(float_margin_index, 3),
+                "limit": round(self.mech_cfg.min_float_margin_index, 3),
+                "unit": "ratio",
+                "margin_pct": round(((float_margin_index - self.mech_cfg.min_float_margin_index) / max(1e-4, self.mech_cfg.min_float_margin_index)) * 100.0, 1),
+                "status": "SAFE" if float_margin_index >= self.mech_cfg.warning_float_margin_index else ("WARNING" if float_margin_index >= self.mech_cfg.min_float_margin_index else "VIOLATED"),
+                "reason": f"Float margin {float_margin_index:.3f} >= {self.mech_cfg.min_float_margin_index:.3f} (no downstroke float)" if float_margin_index >= self.mech_cfg.min_float_margin_index else f"REJECTED: float margin = {float_margin_index:.3f} < {self.mech_cfg.min_float_margin_index:.3f}"
+            },
+            {
+                "metric": "Peak Rod Load",
+                "actual_value": round(peak_polished_rod_load_lbs, 1),
+                "limit": round(self.srp_cfg.max_polished_rod_load_lbs, 1),
+                "unit": "lb",
+                "margin_pct": round(((self.srp_cfg.max_polished_rod_load_lbs - peak_polished_rod_load_lbs) / max(1.0, self.srp_cfg.max_polished_rod_load_lbs)) * 100.0, 1),
+                "status": "SAFE" if peak_polished_rod_load_lbs <= self.srp_cfg.max_polished_rod_load_lbs * 0.85 else ("WARNING" if peak_polished_rod_load_lbs <= self.srp_cfg.max_polished_rod_load_lbs else "VIOLATED"),
+                "reason": f"Peak rod load {peak_polished_rod_load_lbs:,.0f} lb <= allowable {self.srp_cfg.max_polished_rod_load_lbs:,.0f} lb" if peak_polished_rod_load_lbs <= self.srp_cfg.max_polished_rod_load_lbs else f"REJECTED: peak rod load {peak_polished_rod_load_lbs:,.0f} lb > allowable {self.srp_cfg.max_polished_rod_load_lbs:,.0f} lb"
+            },
+            {
+                "metric": "Gearbox Torque",
+                "actual_value": round(peak_gearbox_torque_in_lbs, 1),
+                "limit": round(self.srp_cfg.max_gearbox_torque_in_lbs, 1),
+                "unit": "in-lb",
+                "margin_pct": round(((self.srp_cfg.max_gearbox_torque_in_lbs - peak_gearbox_torque_in_lbs) / max(1.0, self.srp_cfg.max_gearbox_torque_in_lbs)) * 100.0, 1),
+                "status": "SAFE" if peak_gearbox_torque_in_lbs <= self.srp_cfg.max_gearbox_torque_in_lbs * 0.90 else ("WARNING" if peak_gearbox_torque_in_lbs <= self.srp_cfg.max_gearbox_torque_in_lbs else "VIOLATED"),
+                "reason": f"Peak torque {peak_gearbox_torque_in_lbs:,.0f} in-lb <= rating {self.srp_cfg.max_gearbox_torque_in_lbs:,.0f} in-lb" if peak_gearbox_torque_in_lbs <= self.srp_cfg.max_gearbox_torque_in_lbs else f"REJECTED: torque {peak_gearbox_torque_in_lbs:,.0f} in-lb > rating {self.srp_cfg.max_gearbox_torque_in_lbs:,.0f} in-lb"
+            },
+            {
+                "metric": "Motor Power",
+                "actual_value": round(motor_power_kw, 1),
+                "limit": round(self.srp_cfg.max_motor_power_kw, 1),
+                "unit": "kW",
+                "margin_pct": round(((self.srp_cfg.max_motor_power_kw - motor_power_kw) / max(1.0, self.srp_cfg.max_motor_power_kw)) * 100.0, 1),
+                "status": "SAFE" if motor_power_kw <= self.srp_cfg.max_motor_power_kw * 0.90 else ("WARNING" if motor_power_kw <= self.srp_cfg.max_motor_power_kw else "VIOLATED"),
+                "reason": f"Motor power {motor_power_kw:.1f} kW <= rating {self.srp_cfg.max_motor_power_kw:.1f} kW" if motor_power_kw <= self.srp_cfg.max_motor_power_kw else f"REJECTED: motor power {motor_power_kw:.1f} kW > rating {self.srp_cfg.max_motor_power_kw:.1f} kW"
+            },
+            {
+                "metric": "Goodman Stress Index",
+                "actual_value": round(goodman_stress_ratio, 3),
+                "limit": round(self.mech_cfg.max_goodman_stress_ratio, 3),
+                "unit": "ratio",
+                "margin_pct": round(((self.mech_cfg.max_goodman_stress_ratio - goodman_stress_ratio) / max(1e-4, self.mech_cfg.max_goodman_stress_ratio)) * 100.0, 1),
+                "status": "SAFE" if goodman_stress_ratio <= self.mech_cfg.warning_goodman_stress_ratio else ("WARNING" if goodman_stress_ratio <= self.mech_cfg.max_goodman_stress_ratio else "VIOLATED"),
+                "reason": f"Goodman stress ratio {goodman_stress_ratio:.3f} <= {self.mech_cfg.max_goodman_stress_ratio:.3f}" if goodman_stress_ratio <= self.mech_cfg.max_goodman_stress_ratio else f"REJECTED: Goodman stress {goodman_stress_ratio:.3f} > limit {self.mech_cfg.max_goodman_stress_ratio:.3f}"
+            },
+            {
+                "metric": "Injection Pressure",
+                "actual_value": round(injection_pressure_bar, 1),
+                "limit": round(self.css_cfg.max_injection_pressure_bar, 1),
+                "unit": "bar",
+                "margin_pct": round(((self.css_cfg.max_injection_pressure_bar - injection_pressure_bar) / max(1.0, self.css_cfg.max_injection_pressure_bar)) * 100.0, 1),
+                "status": "SAFE" if injection_pressure_bar <= self.css_cfg.max_injection_pressure_bar * 0.92 else ("WARNING" if injection_pressure_bar <= self.css_cfg.max_injection_pressure_bar else "VIOLATED"),
+                "reason": f"Injection pressure {injection_pressure_bar:.1f} bar <= fracture limit {self.css_cfg.max_injection_pressure_bar:.1f} bar" if injection_pressure_bar <= self.css_cfg.max_injection_pressure_bar else f"REJECTED: injection pressure {injection_pressure_bar:.1f} bar > fracture limit {self.css_cfg.max_injection_pressure_bar:.1f} bar"
+            },
+            {
+                "metric": "Pump Intake Pressure",
+                "actual_value": round(pump_intake_pressure_bar, 1),
+                "limit": round(self.prod_cfg.min_pump_intake_pressure_bar, 1),
+                "unit": "bar",
+                "margin_pct": round(((pump_intake_pressure_bar - self.prod_cfg.min_pump_intake_pressure_bar) / max(1.0, self.prod_cfg.min_pump_intake_pressure_bar)) * 100.0, 1),
+                "status": "SAFE" if pump_intake_pressure_bar >= self.prod_cfg.min_pump_intake_pressure_bar * 1.3 else ("WARNING" if pump_intake_pressure_bar >= self.prod_cfg.min_pump_intake_pressure_bar else "VIOLATED"),
+                "reason": f"PIP {pump_intake_pressure_bar:.1f} bar >= min cavitation threshold {self.prod_cfg.min_pump_intake_pressure_bar:.1f} bar" if pump_intake_pressure_bar >= self.prod_cfg.min_pump_intake_pressure_bar else f"REJECTED: PIP {pump_intake_pressure_bar:.1f} bar < min threshold {self.prod_cfg.min_pump_intake_pressure_bar:.1f} bar"
+            }
+        ]
+
         # Classification
         binding = [v["parameter"] for v in all_violations]
         
@@ -144,6 +303,8 @@ class ConstraintEngine:
             near_limit_warnings=all_warnings,
             binding_constraints=binding,
             suggested_engineer_action=action,
+            margins=dynamic_margins,
             constraint_version=self.version,
             provenance="SIMULATED"
         )
+

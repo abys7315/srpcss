@@ -5,12 +5,20 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: true,
     port: 5173,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         secure: false,
+        timeout: 120000,
+        proxyTimeout: 120000,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.warn('[Vite Proxy] Warning: Could not proxy to backend at 127.0.0.1:8000:', err.message);
+          });
+        }
       }
     }
   }

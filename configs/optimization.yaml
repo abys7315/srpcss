@@ -1,32 +1,33 @@
 # Optimization Framework Configuration — SIH 26120
+# Constrained Multi-Objective Coarse-to-Fine Grid Search + Pareto Optimization
+
 algorithm:
-  primary: "nsga2"
-  population_size: 40
-  n_generations: 50
-  crossover_prob: 0.9
-  mutation_prob: 0.1
+  primary: "constrained_pareto"
+  method: "coarse_to_fine_grid_pareto"
   random_seed: 42
 
-bounds:
+decision_variables:
   css:
-    steam_volume_tonnes: [1000.0, 5000.0]
-    injection_rate_tonnes_day: [100.0, 300.0]
-    injection_pressure_psi: [1200.0, 2100.0]
+    steam_volume_tonnes: [1500.0, 4500.0]
+    injection_pressure_bar: [90.0, 125.0]
+    injection_duration_days: [10.0, 25.0]
     soak_duration_days: [3.0, 14.0]
-    cycle_cutoff_rate_bpd: [10.0, 35.0]
+    economic_cutoff_oil_rate_bpd: [5.0, 18.0]
   srp:
     spm: [1.8, 6.5]
-    stroke_length_inch: [74.0, 120.0]
-    downstroke_speed_ratio: [0.4, 1.0]
+    stroke_length_inch: [64.0, 120.0]
+    vfd_downstroke_ratio: [0.5, 1.0]
 
 objectives:
   weights:
-    net_benefit: 0.50
-    sor_minimization: 0.30
-    mechanical_wear: 0.20
+    net_benefit: 0.45
+    oil_recovery: 0.25
+    sor_minimization: 0.15
+    risk_minimization: 0.15
 
 constraints:
   enforce_strict: true
-  penalty_factor: 1e6
-  max_allowable_stress_ratio: 0.85
-  min_rod_float_margin_lbs: 250.0
+  max_allowable_injection_pressure_bar: 125.0
+  min_rod_float_margin_index: 1.000
+  max_goodman_stress_ratio: 0.85
+  max_gearbox_torque_in_lbs: 456000.0

@@ -89,13 +89,13 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold tracking-tight text-slate-100 uppercase font-mono">
-              Digital Twin Simulation Laboratory — {selectedWellId}
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+              Digital Twin Model — {selectedWellId}
             </h1>
             <ProvenanceBadge tier="SIMULATED" size="sm" />
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            First-principles thermal-inflow-rod dynamics twin coupling Marx-Langenheim heat transfer with Gibbs damped wave equations.
+          <p className="text-xs text-slate-500 mt-1">
+            Multiphysics twin coupling reservoir thermal inflow with sucker rod wave dynamics.
           </p>
         </div>
 
@@ -109,19 +109,21 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
       {/* Main Grid: Control Panel + Schematic + Dynacards */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Controls Column (4 cols) */}
-        <div className="lg:col-span-4 glass-panel rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between border-b border-industrial-800 pb-2.5">
-            <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-wider font-mono">
-              Operational Setpoint Controls
+        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-xl p-4 space-y-4 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+            <h3 className="text-sm font-semibold text-slate-900">
+              Operational Controls
             </h3>
-            <span className="text-[11px] font-mono text-cyan-400">Interactive Inputs</span>
+            <span className="text-xs text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 font-medium">
+              Interactive
+            </span>
           </div>
 
           {/* Steam Volume Slider */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-mono">
-              <span className="text-slate-400">Steam Injection:</span>
-              <span className="text-orange-400 font-bold">{steamVolume.toLocaleString()} Tonnes</span>
+              <span className="text-slate-500 font-medium">Steam Injection:</span>
+              <span className="text-orange-700 font-bold">{steamVolume.toLocaleString()} Tonnes</span>
             </div>
             <input
               type="range"
@@ -130,9 +132,9 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
               step="100"
               value={steamVolume}
               onChange={(e) => setSteamVolume(Number(e.target.value))}
-              className="w-full accent-orange-500 bg-industrial-900 cursor-pointer"
+              className="w-full accent-blue-600 cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] font-mono text-slate-500">
+            <div className="flex justify-between text-[10px] font-mono text-slate-400">
               <span>1,000 t</span>
               <span>3,000 t (Nominal)</span>
               <span>5,000 t</span>
@@ -142,8 +144,8 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
           {/* Soak Duration Slider */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-mono">
-              <span className="text-slate-400">Soak Period:</span>
-              <span className="text-slate-200 font-bold">{soakDays} Days</span>
+              <span className="text-slate-500 font-medium">Soak Period:</span>
+              <span className="text-blue-700 font-bold">{soakDays} Days</span>
             </div>
             <input
               type="range"
@@ -152,9 +154,9 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
               step="1"
               value={soakDays}
               onChange={(e) => setSoakDays(Number(e.target.value))}
-              className="w-full accent-cyan-500 bg-industrial-900 cursor-pointer"
+              className="w-full accent-blue-600 cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] font-mono text-slate-500">
+            <div className="flex justify-between text-[10px] font-mono text-slate-400">
               <span>3 d (Min)</span>
               <span>6 d</span>
               <span>14 d (Max)</span>
@@ -164,8 +166,8 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
           {/* Pumping Speed (SPM) Slider */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-mono">
-              <span className="text-slate-400">Pumping Speed:</span>
-              <span className={`font-bold ${spm >= 5.0 ? 'text-amber-400' : 'text-cyan-400'}`}>{spm.toFixed(1)} SPM</span>
+              <span className="text-slate-500 font-medium">Pumping Speed:</span>
+              <span className={`font-bold ${spm >= 5.0 ? 'text-amber-700' : 'text-blue-700'}`}>{spm.toFixed(1)} SPM</span>
             </div>
             <input
               type="range"
@@ -174,9 +176,9 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
               step="0.1"
               value={spm}
               onChange={(e) => setSpm(Number(e.target.value))}
-              className="w-full accent-cyan-500 bg-industrial-900 cursor-pointer"
+              className="w-full accent-blue-600 cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] font-mono text-slate-500">
+            <div className="flex justify-between text-[10px] font-mono text-slate-400">
               <span>1.5 SPM</span>
               <span>4.5 SPM</span>
               <span>6.5 SPM (High Risk)</span>
@@ -186,8 +188,8 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
           {/* VFD Asymmetric Downstroke Ratio Slider */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-mono">
-              <span className="text-slate-400">VFD Downstroke Ratio:</span>
-              <span className={`font-bold ${vfdRatio < 0.85 ? 'text-emerald-400' : 'text-slate-200'}`}>
+              <span className="text-slate-500 font-medium">VFD Downstroke Ratio:</span>
+              <span className={`font-bold ${vfdRatio < 0.85 ? 'text-emerald-700' : 'text-slate-800'}`}>
                 {vfdRatio.toFixed(2)} {vfdRatio < 1.0 ? '(Slow Downstroke)' : '(Symmetric)'}
               </span>
             </div>
@@ -198,9 +200,9 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
               step="0.05"
               value={vfdRatio}
               onChange={(e) => setVfdRatio(Number(e.target.value))}
-              className="w-full accent-emerald-500 bg-industrial-900 cursor-pointer"
+              className="w-full accent-emerald-600 cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] font-mono text-slate-500">
+            <div className="flex justify-between text-[10px] font-mono text-slate-400">
               <span>0.50 (Max Slow)</span>
               <span>0.75 (Recommended)</span>
               <span>1.00 (Standard)</span>
@@ -208,17 +210,17 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
           </div>
 
           {/* Seed Cooling Anomaly Checkbox */}
-          <div className="pt-2 border-t border-industrial-800">
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-mono text-slate-300">
+          <div className="pt-2 border-t border-slate-200">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-mono text-slate-700">
               <input
                 type="checkbox"
                 checked={anomalyDay !== null}
                 onChange={(e) => setAnomalyDay(e.target.checked ? 40 : null)}
-                className="rounded accent-rose-500 bg-industrial-900"
+                className="rounded accent-rose-600"
               />
               <span>Simulate Unmodeled Heat Leak at Day 40</span>
             </label>
-            <p className="text-[10px] text-slate-500 mt-1 font-mono">
+            <p className="text-[10px] text-slate-400 mt-1 font-mono">
               Tests sudden reservoir thermal loss and verifies dynamic rod floating trigger.
             </p>
           </div>
@@ -228,9 +230,9 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
             <button
               onClick={handleRunSimulation}
               disabled={loading}
-              className="flex-1 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-slate-950 font-bold text-xs font-mono transition flex items-center justify-center gap-2 shadow-lg shadow-cyan-950/50"
+              className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs font-mono transition flex items-center justify-center gap-2 shadow-xs"
             >
-              <Play className="w-4 h-4 fill-slate-950" />
+              <Play className="w-4 h-4 fill-white" />
               {loading ? 'Simulating Physics...' : 'Run Simulation'}
             </button>
             <button
@@ -242,7 +244,7 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
                 setAnomalyDay(null);
                 runSim(3000, 6, 4.5, 1.0, null);
               }}
-              className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-industrial-700"
+              className="p-2 rounded-lg bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-300 shadow-xs"
               title="Reset Controls"
             >
               <RotateCcw className="w-4 h-4" />
@@ -265,17 +267,17 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
         {/* Dynacard Player Column (5 cols) */}
         <div className="lg:col-span-5 space-y-3">
           {/* Dynacard Phase Selector */}
-          <div className="flex items-center justify-between glass-panel rounded-lg p-1.5 px-3">
-            <span className="text-[11px] font-mono text-slate-400 font-semibold uppercase">Card Stage:</span>
+          <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-2 px-3 shadow-xs">
+            <span className="text-[11px] font-mono text-slate-500 font-semibold uppercase">Card Stage:</span>
             <div className="flex gap-1">
               {(['day_10', 'day_60', 'final'] as const).map((phase) => (
                 <button
                   key={phase}
                   onClick={() => setSelectedCardPhase(phase)}
-                  className={`px-2.5 py-1 rounded text-[11px] font-mono font-medium transition ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium transition ${
                     selectedCardPhase === phase
-                      ? 'bg-cyan-950 text-cyan-300 border border-cyan-700'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200 font-semibold shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
                   {phase === 'day_10' ? 'Early (Day 10)' : phase === 'day_60' ? 'Mid (Day 60)' : 'Cutoff / Final'}
@@ -298,7 +300,7 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
             title="Total Oil Produced"
             value={simResult.kpis.total_oil_produced_bbl.toLocaleString()}
             unit="BBL"
-            icon={<Droplets className="w-4 h-4 text-emerald-400" />}
+            icon={<Droplets className="w-4 h-4 text-emerald-600" />}
             provenance="SIMULATED"
           />
           <MetricCard
@@ -307,14 +309,14 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
             unit="t/t"
             subtitle="Industry target < 3.5"
             warning={simResult.kpis.steam_oil_ratio > 3.5}
-            icon={<Gauge className="w-4 h-4 text-orange-400" />}
+            icon={<Gauge className="w-4 h-4 text-orange-600" />}
             provenance="SIMULATED"
           />
           <MetricCard
             title="Net Economic Benefit"
             value={`$${simResult.kpis.net_economic_benefit_usd.toLocaleString()}`}
             subtitle="After fuel, power & opex"
-            icon={<Flame className="w-4 h-4 text-cyan-400" />}
+            icon={<Flame className="w-4 h-4 text-amber-600" />}
             provenance="SIMULATED"
           />
           <MetricCard
@@ -333,14 +335,14 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
             unit="Goodman"
             subtitle="Allowable ≤ 100%"
             warning={simResult.kpis.max_goodman_stress_ratio > 0.85}
-            icon={<ShieldCheck className="w-4 h-4 text-sky-400" />}
+            icon={<ShieldCheck className="w-4 h-4 text-blue-600" />}
             provenance="SIMULATED"
           />
           <MetricCard
             title="Electricity Intensity"
             value={simResult.kpis.electrical_energy_kwh_per_bbl.toFixed(2)}
             unit="kWh/bbl"
-            icon={<Zap className="w-4 h-4 text-amber-400" />}
+            icon={<Zap className="w-4 h-4 text-amber-600" />}
             provenance="SIMULATED"
           />
         </div>
@@ -348,15 +350,15 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
 
       {/* Constraints Gate Audit */}
       {simResult && (
-        <div className="glass-panel rounded-xl p-4">
-          <div className="flex items-center justify-between border-b border-industrial-800 pb-2 mb-3">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-semibold text-slate-100 uppercase tracking-wider font-mono">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono">
                 Hard Physical & Mechanical Safety Gate
               </h3>
               <StatusBadge status={simResult.constraints.status} />
             </div>
-            <span className="text-xs font-mono text-slate-400">
+            <span className="text-xs font-mono text-slate-500">
               Impassable Gatekeeper: Infeasible states cannot be executed
             </span>
           </div>
@@ -364,22 +366,22 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId }) => {
           <div className="space-y-2 text-xs font-mono">
             {simResult.constraints.violations.length > 0 ? (
               simResult.constraints.violations.map((v, i) => (
-                <div key={i} className="p-2 rounded bg-rose-950/40 border border-rose-600/50 text-rose-300 flex items-center justify-between">
+                <div key={i} className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between shadow-xs">
                   <span>❌ VIOLATION: {v.message}</span>
-                  <span className="font-bold uppercase text-[10px] bg-rose-900 px-2 py-0.5 rounded">
+                  <span className="font-bold uppercase text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded border border-rose-200">
                     {v.severity}
                   </span>
                 </div>
               ))
             ) : (
-              <div className="p-2 rounded bg-emerald-950/40 border border-emerald-600/50 text-emerald-300 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4" />
+              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-2 shadow-xs">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 <span>All physical and structural safety constraints strictly satisfied.</span>
               </div>
             )}
 
             {simResult.constraints.near_limit_warnings.map((w, i) => (
-              <div key={i} className="p-2 rounded bg-amber-950/40 border border-amber-600/50 text-amber-300">
+              <div key={i} className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 shadow-xs">
                 ⚠️ WARNING: {w}
               </div>
             ))}

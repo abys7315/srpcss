@@ -175,6 +175,7 @@ export interface OptimizationResult {
   delta_summary: Record<string, any>;
   confidence_score: number;
   recommendation_mode: RecommendationMode;
+  confidence_breakdown?: Record<string, any>;
   explanation: string;
   contributing_factors: string[];
   constraints_checked: Array<Record<string, any>>;

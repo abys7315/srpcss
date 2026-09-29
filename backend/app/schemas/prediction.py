@@ -30,25 +30,35 @@ class QuantileForecastResponse(BaseModel):
     p50_cumulative_oil_bbl: float
     confidence_score: float
     recommendation_mode: RecommendationModeEnum
+    days: List[int] = Field(default_factory=list)
+    p10: List[float] = Field(default_factory=list)
+    p50: List[float] = Field(default_factory=list)
+    p90: List[float] = Field(default_factory=list)
+    cumulative_p50_bbl: float = 0.0
     provenance: ProvenanceEnum = ProvenanceEnum.SIMULATED
 
 class DynacardClassifyRequest(BaseModel):
-    surface_position_inch: List[float]
-    surface_load_lbs: List[float]
+    well_id: Optional[str] = "BGW-01"
+    card_type: Optional[str] = "NORMAL"
+    surface_position_inch: Optional[List[float]] = None
+    surface_load_lbs: Optional[List[float]] = None
     stroke_length_inch: float = 100.0
     spm: float = 4.5
 
 class DynacardClassifyResponse(BaseModel):
-    predicted_label: str # "NORMAL", "ROD_FLOATING", "FLUID_POUND", "GAS_INTERFERENCE", "OVERLOAD"
+    predicted_label: str  # "NORMAL", "ROD_FLOATING", "FLUID_POUND", "GAS_INTERFERENCE", "OVERLOAD"
     class_probabilities: Dict[str, float]
+    probabilities: Dict[str, float] = Field(default_factory=dict)
     confidence: float
     is_anomaly: bool
     diagnostic_insight: str
+    root_cause: str = ""
+    recommended_mitigation: str = ""
     provenance: ProvenanceEnum = ProvenanceEnum.SIMULATED
 
 class AnomalyDetectRequest(BaseModel):
     well_id: str = "BGW-01"
-    daily_temperatures_c: List[float]
+    daily_temperatures_c: Optional[List[float]] = None
     expected_temperatures_c: Optional[List[float]] = None
 
 class AnomalyPointDTO(BaseModel):
@@ -63,6 +73,7 @@ class AnomalyDetectResponse(BaseModel):
     well_id: str
     anomalies_detected_count: int
     anomaly_points: List[AnomalyPointDTO]
+    anomalies: List[Dict[str, Any]] = Field(default_factory=list)
     overall_anomaly_flag: bool
     insight: str
     provenance: ProvenanceEnum = ProvenanceEnum.SIMULATED

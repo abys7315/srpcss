@@ -12,6 +12,7 @@ PROVENANCE: SIMULATED.
 
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
+import numpy as np
 
 from .objective import CandidateEvaluator
 from .pareto import ParetoSolutionPoint
@@ -136,26 +137,26 @@ class WhatIfSimulator:
                 cooling_anomaly_severity_pct=cooling_anomaly_severity_pct
             )
 
-            # Check constraint violations for display
-            con_eval = self.constraints.evaluate_candidate(
-                steam_volume_tonnes=sol.steam_volume_tonnes,
-                injection_pressure_bar=125.0,
-                steam_temp_celsius=260.0,
-                soak_days=sol.soak_days,
-                spm=sol.spm,
-                stroke_length_inch=sol.stroke_length_inch,
-                peak_polished_rod_load_lbs=16000.0,
-                peak_gearbox_torque_in_lbs=280000.0,
-                motor_power_kw=25.0,
-                float_margin_index=sol.min_float_margin_index,
-                goodman_stress_ratio=0.65,
-                pump_intake_pressure_bar=45.0,
-                pump_fillage_fraction=0.85,
-                oil_rate_bpd=50.0,
-                vfd_downstroke_ratio=sol.vfd_downstroke_ratio
-            )
+            v_msgs = sol.constraint_violations
 
-            v_msgs = [v["message"] for v in con_eval.violations]
+            # Derive actual confidence via ConfidenceEstimator
+            d_steam = abs(sol.steam_volume_tonnes - 3000.0) / 2000.0
+            d_spm = abs(sol.spm - 4.5) / 3.0
+            d_vfd = abs(sol.vfd_downstroke_ratio - 1.0) / 0.5
+            dist_to_training = float(np.clip(0.08 + 0.25 * ((d_steam + d_spm + d_vfd) / 3.0) + (cooling_anomaly_severity_pct / 100.0) * 0.45, 0.05, 0.95))
+            pred_spread = float(np.clip(0.08 + 0.15 * dist_to_training, 0.05, 0.45))
+            data_quality = 0.96 if cooling_anomaly_severity_pct == 0 else max(0.40, 0.96 - (cooling_anomaly_severity_pct / 100.0) * 0.50)
+            physics_valid = (sol.status != "INFEASIBLE") and (500.0 <= sol.steam_volume_tonnes <= 6000.0) and (1.0 <= sol.spm <= 8.5)
+            min_margin = max(0.02, sol.min_float_margin_index - 1.0) if sol.min_float_margin_index >= 1.0 else 0.0
+
+            conf_rep = self.conf_estimator.compute_confidence(
+                prediction_spread_pct=round(pred_spread, 3),
+                validation_error_pct=0.08,
+                distance_to_training_distribution=round(dist_to_training, 3),
+                data_quality_score=round(data_quality, 2),
+                are_physics_inputs_in_range=physics_valid,
+                min_constraint_margin_pct=round(min_margin, 3)
+            )
 
             cards.append(ScenarioCard(
                 scenario_id=sid,
@@ -174,8 +175,8 @@ class WhatIfSimulator:
                 min_float_margin_index=sol.min_float_margin_index,
                 is_rod_floating=(sol.min_float_margin_index < 1.0),
                 failure_risk_probability=round(sol.failure_risk_probability, 3),
-                constraint_status=con_eval.status,
-                confidence_score=0.85 if con_eval.is_feasible else 0.40,
+                constraint_status=sol.status,
+                confidence_score=round(conf_rep.overall_confidence_score, 2),
                 violations_summary=v_msgs,
                 provenance="SIMULATED"
             ))

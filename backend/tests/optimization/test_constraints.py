@@ -13,15 +13,30 @@ Verifies:
 import pytest
 
 from constraints.constraint_engine import ConstraintEngine
+from core.config import canonical_config
 
+@pytest.mark.unit
+def test_constraint_engine_uses_canonical_config():
+    """Verify ConstraintEngine strictly consumes canonical safety configuration."""
+    engine = ConstraintEngine()
+    assert engine.max_injection_pressure == canonical_config.safety_limits.max_allowable_injection_pressure_bar
+    assert engine.max_goodman_stress_ratio == canonical_config.safety_limits.max_goodman_stress_ratio
+    assert engine.min_pump_intake_pressure == canonical_config.safety_limits.min_pump_intake_pressure_bar
+    assert engine.min_float_margin == canonical_config.safety_limits.min_rod_float_margin_index
+    assert engine.max_spm == canonical_config.safety_limits.max_allowable_spm
+    assert engine.min_spm == canonical_config.safety_limits.min_allowable_spm
+    assert engine.max_gearbox_torque == canonical_config.safety_limits.max_gearbox_torque_in_lbs
+    assert engine.max_motor_power == canonical_config.srp.motor_rating_kw
+
+@pytest.mark.unit
 def test_unsafe_injection_pressure_rejected():
     """Verify that injection pressure above fracture limit is marked INFEASIBLE."""
     engine = ConstraintEngine()
     
-    # 155 bar > max allowable 145 bar
+    # 135 bar > max allowable canonical 125 bar
     res = engine.evaluate_candidate(
         steam_volume_tonnes=3000.0,
-        injection_pressure_bar=155.0, # VIOLATION!
+        injection_pressure_bar=135.0, # VIOLATION!
         steam_temp_celsius=260.0,
         soak_days=6.0,
         spm=4.5,
@@ -41,6 +56,7 @@ def test_unsafe_injection_pressure_rejected():
     assert "injection_pressure_bar" in res.binding_constraints
     assert any("fracture limit" in v["message"] for v in res.violations)
 
+@pytest.mark.unit
 def test_rod_floating_strictly_rejected():
     """Verify that M_float < 1.0 cannot be marked FEASIBLE or RECOMMENDED."""
     engine = ConstraintEngine()
@@ -48,7 +64,7 @@ def test_rod_floating_strictly_rejected():
     # M_float = 0.78 < 1.0 (Active rod float!)
     res = engine.evaluate_candidate(
         steam_volume_tonnes=3000.0,
-        injection_pressure_bar=125.0,
+        injection_pressure_bar=120.0,
         steam_temp_celsius=260.0,
         soak_days=6.0,
         spm=5.5,
@@ -69,13 +85,14 @@ def test_rod_floating_strictly_rejected():
     assert "Active rod floating detected" in res.violations[0]["message"]
     assert "Reduce SPM" in res.suggested_engineer_action
 
+@pytest.mark.unit
 def test_goodman_stress_overload_rejected():
-    """Verify that rod fatigue ratio > 1.0 is rejected."""
+    """Verify that rod fatigue ratio exceeding canonical 0.85 is rejected."""
     engine = ConstraintEngine()
     
     res = engine.evaluate_candidate(
         steam_volume_tonnes=3000.0,
-        injection_pressure_bar=125.0,
+        injection_pressure_bar=120.0,
         steam_temp_celsius=260.0,
         soak_days=6.0,
         spm=4.5,
@@ -84,7 +101,7 @@ def test_goodman_stress_overload_rejected():
         peak_gearbox_torque_in_lbs=250000.0,
         motor_power_kw=25.0,
         float_margin_index=1.50,
-        goodman_stress_ratio=1.12, # VIOLATION!
+        goodman_stress_ratio=0.92, # VIOLATION of canonical 0.85 limit!
         pump_intake_pressure_bar=45.0,
         pump_fillage_fraction=0.85,
         oil_rate_bpd=50.0
@@ -93,13 +110,14 @@ def test_goodman_stress_overload_rejected():
     assert res.status == "INFEASIBLE"
     assert "goodman_stress_ratio" in res.binding_constraints
 
+@pytest.mark.unit
 def test_safe_configuration_marked_feasible():
     """Verify normal compliant operating point is marked FEASIBLE."""
     engine = ConstraintEngine()
     
     res = engine.evaluate_candidate(
         steam_volume_tonnes=3000.0,
-        injection_pressure_bar=125.0,
+        injection_pressure_bar=110.0,
         steam_temp_celsius=260.0,
         soak_days=6.0,
         spm=4.0,
@@ -118,14 +136,15 @@ def test_safe_configuration_marked_feasible():
     assert res.is_feasible
     assert len(res.violations) == 0
 
+@pytest.mark.unit
 def test_near_limit_warning_generation():
-    """Verify parameter within 10-15% of limit triggers NEAR_LIMIT status."""
+    """Verify parameter within 8-10% of limit triggers NEAR_LIMIT status."""
     engine = ConstraintEngine()
     
-    # Injection pressure at 138 bar (close to 145 bar limit)
+    # Injection pressure at 118 bar (within 8% of 125 bar limit: 125 * 0.92 = 115)
     res = engine.evaluate_candidate(
         steam_volume_tonnes=3000.0,
-        injection_pressure_bar=138.0, # Near limit
+        injection_pressure_bar=118.0, # Near limit
         steam_temp_celsius=260.0,
         soak_days=6.0,
         spm=4.0,

@@ -7,15 +7,20 @@ PROVENANCE: ASSUMED (API Spec 11E Pumping Units).
 from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple, Optional
 
+try:
+    from core.config import canonical_config
+except ImportError:
+    from ..core.config import canonical_config
+
 @dataclass
 class SRPConstraintConfig:
-    min_spm: float = 1.2
-    max_spm: float = 7.0
-    min_stroke_length_inch: float = 54.0
-    max_stroke_length_inch: float = 144.0
+    min_spm: float = canonical_config.safety_limits.min_allowable_spm          # Canonical: 1.5
+    max_spm: float = canonical_config.safety_limits.max_allowable_spm          # Canonical: 7.5
+    min_stroke_length_inch: float = canonical_config.safety_limits.min_stroke_length_inch  # Canonical: 64.0
+    max_stroke_length_inch: float = canonical_config.safety_limits.max_stroke_length_inch  # Canonical: 144.0
     max_polished_rod_load_lbs: float = 24000.0     # API Pumping unit structural rating (e.g. C-456-256-100)
-    max_gearbox_torque_in_lbs: float = 456000.0    # API Spec 11E Size 456 Gearbox torque limit
-    max_motor_power_kw: float = 45.0               # Prime mover nameplate rating
+    max_gearbox_torque_in_lbs: float = canonical_config.safety_limits.max_gearbox_torque_in_lbs    # Canonical: 456,000.0 in-lbs
+    max_motor_power_kw: float = canonical_config.srp.motor_rating_kw               # Canonical: 45.0 kW
     min_vfd_downstroke_ratio: float = 0.25
     max_vfd_downstroke_ratio: float = 1.50
 

@@ -22,6 +22,8 @@ from ml.confidence.estimator import ConfidenceEstimator
 from ml.anomaly_detection.detector import OperationalAnomalyDetector
 from ml.drift.monitor import ModelDriftMonitor
 
+pytestmark = pytest.mark.unit
+
 def test_residual_corrector_fit_and_predict():
     """Verify that hybrid residual model learns bias and corrects baseline."""
     corrector = HybridResidualCorrector()
@@ -147,3 +149,158 @@ def test_anomaly_detector_rapid_cooling():
     assert r_cooling.is_anomaly
     assert r_cooling.anomaly_severity == "CRITICAL"
     assert "temperature_c" in r_cooling.flagged_channels
+
+def test_model_registry_governance_and_lineage():
+    """Verify ModelRegistry SHA-256 lineage, champion promotion, rejection, and rollback (Rule 31)."""
+    from ml.registry.model_registry import ModelRegistry, compute_sha256
+
+    reg = ModelRegistry()
+    
+    # 1. Champion verification and real SHA-256 hash
+    champ = reg.get_champion("residual_corrector")
+    assert champ is not None
+    assert champ.status == "CHAMPION"
+    assert len(champ.dataset_hash) == 64, f"Hash must be real SHA-256: {champ.dataset_hash}"
+    assert len(champ.config_hash) == 64
+    assert champ.training_data_hash == champ.dataset_hash
+
+    # 2. Register Challenger with real SHA-256
+    chal_hash = compute_sha256("baghewala_field_feedback_run_2026_09")
+    chal = reg.register_challenger(
+        model_name="residual_corrector",
+        version="v1.1.0-chal",
+        metrics={"train_mae": 1.10, "validation_mae": 1.45},
+        training_data_hash=chal_hash
+    )
+    assert chal.status == "CHALLENGER"
+    assert chal.dataset_hash == chal_hash
+
+    # 3. Promote Challenger to Champion
+    promoted = reg.promote_challenger_to_champion("residual_corrector", "v1.1.0-chal")
+    assert promoted is True
+    active_champ = reg.get_champion("residual_corrector")
+    assert active_champ.version == "v1.1.0-chal"
+    assert champ.status == "ARCHIVED"
+
+    # 4. Rollback Champion to Previous Archived Model
+    rolled_back = reg.rollback_champion("residual_corrector")
+    assert rolled_back is True
+    reverted_champ = reg.get_champion("residual_corrector")
+    assert reverted_champ.version == "v1.0.0-sim"
+    assert active_champ.status == "ROLLED_BACK"
+
+    # 5. Reject Challenger
+    chal2 = reg.register_challenger(
+        model_name="residual_corrector",
+        version="v1.2.0-bad",
+        metrics={"train_mae": 1.95, "validation_mae": 2.85},
+        training_data_hash=compute_sha256("corrupt_dataset")
+    )
+    rejected = reg.reject_challenger("residual_corrector", "v1.2.0-bad", reason="Validation MAE degraded")
+    assert rejected is True
+    assert chal2.status == "REJECTED"
+
+def test_confidence_estimator_state_specific_degradation():
+    """Verify that severe OOD and anomaly states measurably degrade confidence (Rule P1)."""
+    estimator = ConfidenceEstimator()
+
+    # Normal operating state
+    c_normal = estimator.compute_confidence(
+        prediction_spread_pct=0.10,
+        validation_error_pct=0.04,
+        distance_to_training_distribution=0.05,
+        data_quality_score=0.98,
+        are_physics_inputs_in_range=True,
+        min_constraint_margin_pct=0.25
+    )
+
+    # Severe OOD state (elevated spread, high distribution distance, elevated error)
+    c_ood = estimator.compute_confidence(
+        prediction_spread_pct=0.42,
+        validation_error_pct=0.22,
+        distance_to_training_distribution=0.85,
+        data_quality_score=0.80,
+        are_physics_inputs_in_range=True,
+        min_constraint_margin_pct=0.08
+    )
+
+    assert c_ood.overall_confidence_score < c_normal.overall_confidence_score
+    assert c_ood.sub_scores["training_distribution_distance"] < c_normal.sub_scores["training_distribution_distance"]
+    assert c_ood.sub_scores["prediction_uncertainty"] < c_normal.sub_scores["prediction_uncertainty"]
+
+def test_model_registry_actual_file_hashing_and_synthetic_label():
+    """Verify actual file SHA-256 computation and transparent synthetic labeling."""
+    from ml.registry.model_registry import ModelRegistry, sha256_file
+    from pathlib import Path
+
+    reg = ModelRegistry()
+    champ = reg.get_champion("residual_corrector")
+    assert champ is not None
+    assert champ.artifact_type == "SYNTHETIC_REGISTRY_IDENTIFIER"
+    assert champ.model_artifact_sha256 is None  # Truthful: no physical serialized model file on disk
+    assert champ.model_sha256 is None          # Deprecated alias returns None when no physical artifact exists
+    assert len(champ.registry_fingerprint) == 64
+    assert len(champ.dataset_sha256) == 64
+    assert len(champ.config_sha256) == 64
+
+    # Verify sha256_file on real config file if present
+    cfg_path = Path("configs/field.yaml")
+    if not cfg_path.is_file():
+        cfg_path = Path(__file__).resolve().parents[3] / "configs" / "field.yaml"
+    if cfg_path.is_file():
+        h = sha256_file(cfg_path)
+        assert len(h) == 64
+        assert h == champ.config_sha256
+
+def test_canonical_baghewala_configuration_invariance():
+    """Verify configs/field.yaml has canonical Baghewala reservoir values (18.0 API, 47C)."""
+    import yaml
+    from pathlib import Path
+    cfg_path = Path("configs/field.yaml")
+    if not cfg_path.is_file():
+        cfg_path = Path(__file__).resolve().parents[3] / "configs" / "field.yaml"
+    
+    with open(cfg_path, "r") as f:
+        data = yaml.safe_load(f)
+
+    assert data["fluid"]["api_gravity"] == 18.0
+    assert data["reservoir"]["initial_temperature_c"] == 47.0
+    assert data["fluid"]["dead_oil_viscosity_52c_cp"] == 1200.0
+
+def test_sha256_verification_edge_cases():
+    """Verify SHA-256 verification behaviors: matching, mismatching, missing artifact, no physical artifact."""
+    import tempfile
+    from ml.registry.model_registry import sha256_file, ModelRegistry
+    from pathlib import Path
+
+    # 1. Matching hash on real physical bytes
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write("CANONICAL_MODEL_DATA_BYTES")
+        temp_path = Path(f.name)
+
+    try:
+        h1 = sha256_file(temp_path)
+        assert len(h1) == 64
+
+        # 2. Mismatching hash when bytes change
+        with open(temp_path, "w") as f:
+            f.write("TAMPERED_DATA_BYTES")
+        h2 = sha256_file(temp_path)
+        assert h1 != h2
+
+        # 3. Missing artifact raises FileNotFoundError
+        non_existent = temp_path.parent / "non_existent_file_98765.bin"
+        with pytest.raises(FileNotFoundError):
+            sha256_file(non_existent)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+
+    # 4. No physical artifact truthful disclosure
+    reg = ModelRegistry()
+    champ = reg.get_champion("residual_corrector")
+    assert champ.model_artifact_sha256 is None
+    assert champ.artifact_type == "SYNTHETIC_REGISTRY_IDENTIFIER"
+    assert len(champ.registry_fingerprint) == 64
+
+

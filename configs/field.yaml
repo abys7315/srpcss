@@ -1,0 +1,97 @@
+# Canonical Baghewala Heavy Oil Field Configuration — SIH 2026 PS26120
+# Single Source of Truth for Reservoir, Fluid, CSS, SRP, Economics, and Safety Limits.
+
+field:
+  name: "Baghewala"
+  basin: "Bikaner-Nagaur Basin"
+  state: "Rajasthan, India"
+  formation: "Jodhpur Sandstone"
+  operator_reference: "Oil India Limited (OIL)"
+  provenance: "SIMULATED_AND_ASSUMED"
+  disclaimer: "Demonstration / simulated data calibrated to published Baghewala literature. Operational deployment requires OIL field validation."
+
+reservoir:
+  depth_m: 1050.0
+  initial_pressure_bar: 65.0
+  initial_temperature_c: 47.0
+  net_pay_thickness_m: 14.0
+  porosity: 0.28
+  permeability_md: 250.0
+  drainage_area_acres: 40.0
+  skin_factor: 1.5
+  rock_heat_capacity_j_kg_k: 920.0
+  rock_volumetric_heat_capacity_j_m3_k: 2.3e6
+  rock_density_kg_m3: 2400.0
+  overburden_conductivity_w_m_k: 1.8
+  overburden_volumetric_heat_capacity_j_m3_k: 2.2e6
+  fracture_gradient_bar_per_m: 0.163 # ~0.72 psi/ft = ~171 bar at 1050m
+
+fluid:
+  api_gravity: 18.0
+  specific_gravity: 0.9465
+  dead_oil_density_kg_m3: 946.5
+  dead_oil_viscosity_47c_cp: 2400.0
+  dead_oil_viscosity_52c_cp: 1200.0
+  dead_oil_viscosity_150c_cp: 42.0
+  formation_volume_factor_bo: 1.05
+  andrade_viscosity:
+    a: 0.0001556
+    b: 4850.0
+  walther_viscosity:
+    a: 9.854
+    b: 3.521
+
+css:
+  default_steam_volume_tonnes: 3000.0
+  default_injection_duration_days: 15.0
+  default_injection_pressure_bar: 125.0
+  default_steam_temp_c: 260.0
+  default_steam_quality_wellhead: 0.80
+  wellbore_heat_loss_quality_drop: 0.08
+  default_soak_days: 6.0
+  default_production_cutoff_oil_rate_bpd: 8.0
+  latent_heat_steam_j_kg: 1650000.0
+  water_specific_heat_j_kg_k: 4200.0
+  oil_specific_heat_j_kg_k: 2100.0
+
+srp:
+  pump_depth_m: 980.0
+  tubing_od_inch: 3.5
+  tubing_id_inch: 2.992
+  casing_od_inch: 7.0
+  casing_id_inch: 6.184
+  avg_rod_od_inch: 0.8125 # 7/8" and 3/4" tapered string
+  rod_density_kg_m3: 7850.0
+  youngs_modulus_gpa: 200.0
+  steel_speed_of_sound_m_s: 5000.0
+  standard_stroke_length_inch: 100.0
+  standard_spm: 4.5
+  standard_vfd_downstroke_ratio: 1.0
+  pump_bore_inch: 2.25
+  gearbox_rating_in_lbs: 456000.0
+  motor_rating_kw: 45.0
+  submerged_rod_weight_lbs: 5800.0
+
+economics:
+  crude_oil_benchmark_usd_bbl: 75.0
+  heavy_oil_discount_usd_bbl: 18.0
+  effective_oil_price_usd_bbl: 57.0
+  steam_generation_cost_per_tonne_usd: 28.50
+  electricity_cost_per_kwh_usd: 0.11
+  water_disposal_cost_per_bbl_usd: 1.20
+  routine_wellhead_opex_per_day_usd: 85.0
+  srp_workover_cost_per_incident_usd: 35000.0
+  target_sor_mass_ratio: 3.5
+  sor_penalty_per_unit_excess_usd: 12000.0
+
+safety_limits:
+  max_allowable_injection_pressure_bar: 125.0
+  min_bottomhole_temperature_c: 47.0
+  min_allowable_spm: 1.5
+  max_allowable_spm: 7.5
+  min_stroke_length_inch: 64.0
+  max_stroke_length_inch: 144.0
+  min_rod_float_margin_index: 1.000
+  max_goodman_stress_ratio: 0.85
+  max_gearbox_torque_in_lbs: 456000.0
+  min_pump_intake_pressure_bar: 3.0

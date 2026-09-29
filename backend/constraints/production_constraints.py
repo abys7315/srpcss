@@ -7,9 +7,14 @@ PROVENANCE: ASSUMED.
 from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple, Optional
 
+try:
+    from core.config import canonical_config
+except ImportError:
+    from ..core.config import canonical_config
+
 @dataclass
 class ProductionConstraintConfig:
-    min_pump_intake_pressure_bar: float = 2.0  # Prevents pump gas lock / cavitation
+    min_pump_intake_pressure_bar: float = canonical_config.safety_limits.min_pump_intake_pressure_bar  # Canonical: 3.0 bar
     min_pump_fillage_fraction: float = 0.40    # Prevents violent fluid pound damage
     min_economic_oil_rate_bpd: float = 5.0     # Production cut-off threshold
 

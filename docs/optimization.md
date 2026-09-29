@@ -36,6 +36,9 @@ Optimizing CSS and SRP operations in heavy oil wells involves trade-offs between
 ---
 
 ## 4. Algorithmic Approach
-- **Genetic / Evolutionary Algorithm**: NSGA-II (via `pymoo`) generates the non-dominated Pareto front trade-off curve between Net Benefit and SOR.
-- **Bayesian Optimization**: (via `Optuna`) used for fast surrogate tuning when evaluating costly physical simulator runs.
-- **Infeasibility Rejection**: Any candidate solution violating mechanical or reservoir safety boundaries is discarded or assigned an infinite penalty.
+- **Constrained Multi-Objective Coarse-to-Fine Grid Search + Pareto Optimization**:
+  - **Stage 1 (Coarse Search)**: Discretizes the 8-dimensional decision space across valid operating ranges to capture global trade-offs.
+  - **Stage 2 (Fine Search Refinement)**: Explores local perturbations around the top non-dominated Pareto candidates to optimize lifting efficiency while strictly obeying the float margin limit.
+  - **Pareto Extraction**: Computes non-dominated fronts balancing Net Economic Benefit ($f_1$), Steam-to-Oil Ratio ($f_2$), Energy Intensity ($f_3$), and Equipment Risk ($f_4$).
+- **Strict Infeasibility Rejection**: Hard constraint gating executes *before* Pareto ranking. Any candidate violating formation fracture pressure (>125 bar), rod floating limit ($M_{\text{float}} < 1.0$), Goodman fatigue limit ($R_{\text{Goodman}} > 0.85$), or gearbox torque (>456,000 in-lbs) is strictly rejected and never enters candidate ranking.
+

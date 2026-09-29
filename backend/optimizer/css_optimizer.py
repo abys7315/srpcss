@@ -20,12 +20,14 @@ class CSSOptimizer:
         self,
         well_id: str,
         current_cfg: Dict[str, Any],
-        fixed_spm: float = 4.5
+        fixed_spm: float = 3.0
     ) -> OptimizationRunResult:
-        """Optimizes CSS while holding SRP parameters fixed."""
+        """Optimizes CSS thermal parameters while holding SRP parameters strictly fixed at safe conventional rate."""
         cfg = dict(current_cfg)
         cfg["spm"] = fixed_spm
-        cfg["vfd_downstroke_ratio"] = 1.0 # No dynamic VFD
-        res = self.joint_opt.optimize_well(well_id=well_id, current_cfg=cfg)
-        res.optimization_mode = "CSS_ONLY"
-        return res
+        cfg["vfd_downstroke_ratio"] = 1.0 # Conventional unshaped downstroke
+        return self.joint_opt.optimize_well(
+            well_id=well_id,
+            current_cfg=cfg,
+            mode="CSS_ONLY"
+        )

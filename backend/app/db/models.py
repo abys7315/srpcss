@@ -4,8 +4,11 @@ SIH 2026, PS26120 — Baghewala Heavy Oil Digital Twin.
 """
 
 from sqlalchemy import Column, String, Integer, Float, Boolean, Text, DateTime
-from datetime import datetime
+from datetime import datetime, timezone
 from .database import Base
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 class WellModel(Base):
     __tablename__ = "wells"
@@ -45,7 +48,7 @@ class WellModel(Base):
     economic_cutoff_oil_rate_bpd = Column(Float, default=7.0)
 
     provenance = Column(String(32), default="SIMULATED")
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
 class FeedbackModel(Base):
     __tablename__ = "feedbacks"
@@ -61,7 +64,7 @@ class FeedbackModel(Base):
     residual_error_bpd = Column(Float, nullable=False)
     operator_notes = Column(Text, nullable=True)
     is_drift_detected = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class RecalibrationLogModel(Base):
     __tablename__ = "recalibration_logs"
@@ -76,7 +79,7 @@ class RecalibrationLogModel(Base):
     post_mae = Column(Float, nullable=False)
     reduction_pct = Column(Float, nullable=False)
     explanation = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class OptimizationLogModel(Base):
     __tablename__ = "optimization_runs"
@@ -94,4 +97,29 @@ class OptimizationLogModel(Base):
     steam_oil_ratio = Column(Float, nullable=True)
     confidence_score = Column(Float, nullable=True)
     recommendation_mode = Column(String(32), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+
+class ApprovalLogModel(Base):
+    __tablename__ = "approval_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    recommendation_id = Column(String(64), index=True, nullable=False)
+    well_id = Column(String(32), index=True, nullable=False)
+    approved_by = Column(String(64), default="Lead Operations Engineer")
+    decision = Column(String(32), nullable=False)       # "APPROVED", "REJECTED"
+    decision_reason = Column(Text, nullable=True)
+    approved_setpoint = Column(Text, nullable=False)    # JSON string
+    previous_setpoint = Column(Text, nullable=False)    # JSON string
+    created_at = Column(DateTime, default=utc_now)
+
+class WellAuditLogModel(Base):
+    __tablename__ = "well_audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    well_id = Column(String(32), index=True, nullable=False)
+    event_type = Column(String(64), nullable=False)     # "SETPOINT_APPLIED", "OPERATOR_APPROVAL", "OPERATOR_REJECTION"
+    actor = Column(String(64), default="Engineer")
+    description = Column(Text, nullable=False)
+    details = Column(Text, nullable=True)               # JSON string of state diff
+    created_at = Column(DateTime, default=utc_now)
+

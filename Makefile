@@ -43,7 +43,7 @@ format:
 	cd frontend && npm run format || true
 
 dev-backend:
-	cd backend && uvicorn app.main:app --reload --port 8000
+	python run_backend.py
 
 dev-frontend:
 	cd frontend && npm run dev

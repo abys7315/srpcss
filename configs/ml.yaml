@@ -1,19 +1,22 @@
 # Machine Learning & AI Model Configuration — SIH 26120
+# Accurate specifications of scikit-learn models used in Petro-Twin
+
 model_registry:
   base_dir: "backend/ml/registry/artifacts"
   active_version: "v1.0.0-sim"
 
 residual_model:
-  type: "xgboost"
-  n_estimators: 100
-  learning_rate: 0.05
+  type: "hist_gradient_boosting" # HistGradientBoostingRegressor
+  max_iter: 100
+  learning_rate: 0.08
   max_depth: 4
-  subsample: 0.8
+  random_state: 42
 
 dynacard_classifier:
-  type: "cnn1d"
-  input_dimension: 200
-  num_classes: 6
+  type: "random_forest"          # RandomForestClassifier
+  n_estimators: 100
+  max_depth: 6
+  random_state: 42
   classes:
     - "NORMAL"
     - "ROD_FLOATING"
@@ -21,6 +24,18 @@ dynacard_classifier:
     - "GAS_INTERFERENCE"
     - "PARTED_ROD"
     - "HIGH_FLUID_DRAG"
+
+production_forecaster:
+  type: "quantile_gradient_boosting" # GradientBoostingRegressor(loss='quantile')
+  quantiles: [0.10, 0.50, 0.90]
+  n_estimators: 60
+  max_depth: 3
+  random_state: 42
+
+anomaly_detector:
+  type: "isolation_forest"       # IsolationForest
+  contamination: 0.05
+  random_state: 42
 
 confidence:
   conformal_alpha: 0.10
@@ -31,3 +46,6 @@ drift:
   psi_threshold: 0.25
   ks_pvalue_threshold: 0.05
   monitoring_window_days: 30
+
+feedback:
+  minimum_validation_improvement_pct: 20.0

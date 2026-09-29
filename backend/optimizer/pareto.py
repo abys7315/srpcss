@@ -10,7 +10,7 @@ Finds the Pareto-optimal frontier balancing:
 PROVENANCE: SIMULATED.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Dict, Any, Tuple
 import numpy as np
 
@@ -23,6 +23,8 @@ class ParetoSolutionPoint:
     stroke_length_inch: float
     vfd_downstroke_ratio: float
     economic_cutoff_bpd: float
+    injection_pressure_bar: float
+    injection_duration_days: float
     
     # Objective metrics
     cumulative_oil_bbl: float
@@ -32,11 +34,20 @@ class ParetoSolutionPoint:
     failure_risk_probability: float
     min_float_margin_index: float
     
+    # Physics and constraint telemetry (candidate-specific)
+    peak_polished_rod_load_lbs: float = 0.0
+    peak_gearbox_torque_in_lbs: float = 0.0
+    motor_power_kw: float = 0.0
+    goodman_stress_ratio: float = 0.0
+    pump_intake_pressure_bar: float = 0.0
+    pump_fillage_pct: float = 100.0
+    constraint_violations: List[str] = field(default_factory=list)
+
     # Status & Pareto Rank
-    pareto_rank: int
-    is_non_dominated: bool
-    status: str                         # "FEASIBLE", "NEAR_LIMIT", "INFEASIBLE"
-    composite_score: float              # Weighted objective score
+    pareto_rank: int = 1
+    is_non_dominated: bool = False
+    status: str = "FEASIBLE"             # "FEASIBLE", "NEAR_LIMIT", "INFEASIBLE"
+    composite_score: float = 0.0         # Weighted objective score
     provenance: str = "SIMULATED"
 
 def compute_pareto_front(

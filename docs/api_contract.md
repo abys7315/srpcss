@@ -87,10 +87,10 @@ Returns well static properties and completion metadata.
   "well_name": "Baghewala-01",
   "field_name": "Baghewala",
   "formation": "Jodhpur Sandstone",
-  "api_gravity": 7.5,
+  "api_gravity": 18.0,
   "reservoir_depth_m": 1050.0,
-  "reservoir_temperature_c": 35.0,
-  "initial_viscosity_cp": 12000.0,
+  "reservoir_temperature_c": 47.0,
+  "initial_viscosity_cp": 2400.0,
   "casing_od_inch": 7.0,
   "tubing_od_inch": 3.5,
   "rod_string_grade": "Grade D",
@@ -98,7 +98,7 @@ Returns well static properties and completion metadata.
   "pump_bore_inch": 2.25,
   "provenance": {
     "provenance_type": "ASSUMED",
-    "source_description": "Standard Baghewala reference well definition"
+    "source_description": "Canonical Baghewala reference well definition (configs/field.yaml)"
   }
 }
 ```

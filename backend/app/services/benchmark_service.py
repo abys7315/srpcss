@@ -27,29 +27,43 @@ class BenchmarkService:
                 data = json.load(f)
 
             b_data = data.get("baseline_vs_optimized", {})
+            b_net = float(b_data.get("baseline_mean_net_benefit_usd", 0.0))
+            o_net = float(b_data.get("optimized_mean_net_benefit_usd", 0.0))
+            calc_net_gain = ((o_net - b_net) / max(1.0, abs(b_net))) * 100.0 if b_net else 0.0
+            net_gain_pct = round(float(b_data.get("net_benefit_gain_pct", calc_net_gain)), 1)
+
+            b_sor = float(b_data.get("baseline_mean_sor", 0.0))
+            o_sor = float(b_data.get("optimized_mean_sor", 0.0))
+            calc_sor_red = ((b_sor - o_sor) / max(0.01, b_sor)) * 100.0 if b_sor else 0.0
+            sor_red_pct = round(float(b_data.get("sor_reduction_pct", calc_sor_red)), 1)
+
+            b_floats = float(b_data.get("baseline_float_events_count", 0))
+            o_floats = float(b_data.get("optimized_float_events_count", 0))
+            float_red_pct = -100.0 if b_floats > 0 and o_floats == 0 else (((o_floats - b_floats) / max(1.0, b_floats)) * 100.0)
+
             base_comp = [
                 BaselineComparisonDTO(
                     metric="Net Economic Benefit",
-                    baseline_value=float(b_data.get("baseline_mean_net_benefit_usd", 248673.0)),
-                    optimized_value=float(b_data.get("optimized_mean_net_benefit_usd", 137287.0)),
+                    baseline_value=b_net,
+                    optimized_value=o_net,
                     unit="USD",
-                    improvement_pct=float(b_data.get("net_benefit_gain_pct", 44.8)),
+                    improvement_pct=net_gain_pct,
                     direction="INCREASE_IS_BETTER"
                 ),
                 BaselineComparisonDTO(
                     metric="Steam-to-Oil Ratio (SOR)",
-                    baseline_value=float(b_data.get("baseline_mean_sor", 3.38)),
-                    optimized_value=float(b_data.get("optimized_mean_sor", 2.93)),
+                    baseline_value=b_sor,
+                    optimized_value=o_sor,
                     unit="t/t",
-                    improvement_pct=float(b_data.get("sor_reduction_pct", -13.3)),
+                    improvement_pct=sor_red_pct,
                     direction="DECREASE_IS_BETTER"
                 ),
                 BaselineComparisonDTO(
                     metric="Rod Floating Incidents",
-                    baseline_value=float(b_data.get("baseline_float_events_count", 8)),
-                    optimized_value=float(b_data.get("optimized_float_events_count", 0)),
+                    baseline_value=b_floats,
+                    optimized_value=o_floats,
                     unit="events",
-                    improvement_pct=-100.0,
+                    improvement_pct=round(float_red_pct, 1),
                     direction="DECREASE_IS_BETTER"
                 )
             ]
@@ -61,30 +75,57 @@ class BenchmarkService:
                     architecture=name.replace("_", " "),
                     net_benefit_usd=float(item.get("net_benefit_usd", 0.0)),
                     steam_oil_ratio=float(item.get("sor", 0.0)),
-                    total_float_events=0 if item.get("float_margin", 1.0) >= 1.0 else 4,
-                    computation_time_s=1.2,
+                    total_float_events=int(item.get("total_float_events", 0 if item.get("float_margin", 1.0) >= 1.0 else 2)),
+                    computation_time_s=float(item.get("computation_time_s", 0.0)),
                     is_safe=bool(item.get("float_margin", 1.0) >= 1.0),
                     notes=item.get("description", "")
                 ))
 
+            # Dynamic crude oil price sensitivity curve points
             sens_dict = data.get("sensitivity_analysis", {}).get("crude_oil_price_usd_bbl", {})
             oil_sens = []
             for k, val in sens_dict.items():
-                mult = float(k.replace("$", "").replace("/bbl", "").strip())
+                if isinstance(val, dict):
+                    mult = float(val.get("multiplier", k.replace("$", "").replace("/bbl", "").strip()))
+                    nb = float(val.get("net_benefit_usd", 0.0))
+                    rec_bbl = float(val.get("oil_recovery_bbl", 0.0))
+                    sor_val = float(val.get("sor", 0.0))
+                else:
+                    mult = float(k.replace("$", "").replace("/bbl", "").strip())
+                    nb = float(val)
+                    rec_bbl = float(ablation_dict.get("Joint_Co_Optimization", {}).get("oil_bbl", 0.0))
+                    sor_val = float(ablation_dict.get("Joint_Co_Optimization", {}).get("sor", 0.0))
                 oil_sens.append(SensitivityCurvePointDTO(
                     multiplier=mult,
-                    net_benefit_usd=float(val),
-                    oil_recovery_bbl=5600.0,
-                    sor=2.9
+                    net_benefit_usd=nb,
+                    oil_recovery_bbl=rec_bbl,
+                    sor=sor_val
                 ))
 
-            # Default steam cost sensitivity points
-            steam_sens = [
-                SensitivityCurvePointDTO(multiplier=20.0, net_benefit_usd=168000.0, oil_recovery_bbl=5600.0, sor=2.9),
-                SensitivityCurvePointDTO(multiplier=28.5, net_benefit_usd=137288.0, oil_recovery_bbl=5600.0, sor=2.9),
-                SensitivityCurvePointDTO(multiplier=35.0, net_benefit_usd=113000.0, oil_recovery_bbl=5600.0, sor=2.9),
-                SensitivityCurvePointDTO(multiplier=45.0, net_benefit_usd=82000.0, oil_recovery_bbl=5600.0, sor=2.9),
-            ]
+            # Dynamic steam cost sensitivity curve points
+            steam_dict = data.get("sensitivity_analysis", {}).get("steam_cost_usd_tonne", {})
+            steam_sens = []
+            for k, val in steam_dict.items():
+                if isinstance(val, dict):
+                    mult = float(val.get("multiplier", k.replace("$", "").replace("/tonne", "").strip()))
+                    nb = float(val.get("net_benefit_usd", 0.0))
+                    rec_bbl = float(val.get("oil_recovery_bbl", 0.0))
+                    sor_val = float(val.get("sor", 0.0))
+                else:
+                    mult = float(k.replace("$", "").replace("/tonne", "").strip())
+                    nb = float(val)
+                    rec_bbl = float(ablation_dict.get("Joint_Co_Optimization", {}).get("oil_bbl", 0.0))
+                    sor_val = float(ablation_dict.get("Joint_Co_Optimization", {}).get("sor", 0.0))
+                steam_sens.append(SensitivityCurvePointDTO(
+                    multiplier=mult,
+                    net_benefit_usd=nb,
+                    oil_recovery_bbl=rec_bbl,
+                    sor=sor_val
+                ))
+
+            gain_pct = float(b_data.get("net_benefit_gain_pct", 0.0))
+            sor_red_pct = float(b_data.get("sor_reduction_pct", 0.0))
+            floats_elim = max(0, int(b_data.get("baseline_float_events_count", 0)) - int(b_data.get("optimized_float_events_count", 0)))
 
             return BenchmarkSummaryResponse(
                 benchmark_name=data.get("benchmark_title", "Baghewala Benchmark"),
@@ -93,23 +134,22 @@ class BenchmarkService:
                 ablation_study=ablation,
                 oil_price_sensitivity=oil_sens,
                 steam_cost_sensitivity=steam_sens,
-                overall_net_benefit_gain_pct=44.8,
-                overall_sor_reduction_pct=13.3,
-                float_events_eliminated=8,
+                overall_net_benefit_gain_pct=gain_pct,
+                overall_sor_reduction_pct=sor_red_pct,
+                float_events_eliminated=floats_elim,
                 provenance=ProvenanceEnum.SIMULATED
             )
         else:
             return BenchmarkSummaryResponse(
-                benchmark_name="Baghewala Benchmark (Default)",
-                execution_timestamp="2026-09-28T12:50:00Z",
-                baseline_vs_optimized=[
-                    BaselineComparisonDTO(metric="Net Economic Benefit", baseline_value=122408.0, optimized_value=177242.0, unit="USD", improvement_pct=44.8, direction="INCREASE_IS_BETTER")
-                ],
+                benchmark_name="Benchmark Unavailable (Run scripts/run_benchmark.py)",
+                execution_timestamp="UNAVAILABLE",
+                baseline_vs_optimized=[],
                 ablation_study=[],
                 oil_price_sensitivity=[],
                 steam_cost_sensitivity=[],
-                overall_net_benefit_gain_pct=44.8,
-                overall_sor_reduction_pct=13.3,
-                float_events_eliminated=8,
+                overall_net_benefit_gain_pct=0.0,
+                overall_sor_reduction_pct=0.0,
+                float_events_eliminated=0,
                 provenance=ProvenanceEnum.SIMULATED
             )
+

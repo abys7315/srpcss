@@ -9,18 +9,21 @@ export default {
     extend: {
       colors: {
         industrial: {
-          950: '#070b12',
-          900: '#0c1322',
-          850: '#111b2e',
-          800: '#17233c',
-          700: '#223254',
-          600: '#344970',
-          accent: '#06b6d4',
-          accentHover: '#0891b2',
+          950: '#f8fafc',
+          900: '#ffffff',
+          850: '#f1f5f9',
+          800: '#e2e8f0',
+          700: '#cbd5e1',
+          600: '#94a3b8',
+          accent: '#2563eb',
+          accentHover: '#1d4ed8',
+          petroleum: '#059669',
+          steel: '#0284c7',
+          steelHover: '#0369a1',
           warning: '#f59e0b',
           danger: '#ef4444',
           success: '#10b981',
-          steam: '#f97316'
+          steam: '#ea580c'
         }
       },
       fontFamily: {

@@ -9,39 +9,46 @@ export const StatusBadge: React.FC<Props> = ({ status }) => {
   const getStyle = () => {
     switch (status) {
       case 'FEASIBLE':
-        return 'bg-emerald-950/80 text-emerald-400 border-emerald-500/50 shadow-emerald-950/50';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'NEAR_LIMIT':
-        return 'bg-amber-950/80 text-amber-400 border-amber-500/50 shadow-amber-950/50';
+        return 'bg-amber-50 text-amber-800 border-amber-200';
       case 'INFEASIBLE':
       case 'HIGH_RISK':
-        return 'bg-rose-950/80 text-rose-400 border-rose-500/50 shadow-rose-950/50 animate-pulse';
+        return 'bg-rose-50 text-rose-700 border-rose-200';
       case 'NO_FEASIBLE_SOLUTION':
       case 'NO_IMPROVEMENT_FOUND':
-        return 'bg-slate-900 text-slate-300 border-slate-700';
+        return 'bg-slate-100 text-slate-700 border-slate-200';
       case 'LOW_CONFIDENCE':
       default:
-        return 'bg-yellow-950/80 text-yellow-300 border-yellow-600/40';
+        return 'bg-yellow-50 text-yellow-800 border-yellow-200';
     }
   };
 
   const getDotStyle = () => {
     switch (status) {
       case 'FEASIBLE':
-        return 'bg-emerald-400';
+        return 'bg-emerald-500';
       case 'NEAR_LIMIT':
-        return 'bg-amber-400';
+        return 'bg-amber-500';
       case 'INFEASIBLE':
       case 'HIGH_RISK':
-        return 'bg-rose-400';
+        return 'bg-rose-500';
       default:
         return 'bg-slate-400';
     }
   };
 
+  const formatStatus = (s: string) => {
+    return s
+      .split('_')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium border shadow-sm ${getStyle()}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border shadow-xs ${getStyle()}`}>
       <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${getDotStyle()}`} />
-      {status.replace(/_/g, ' ')}
+      {formatStatus(status)}
     </span>
   );
 };

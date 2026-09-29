@@ -1,7 +1,8 @@
 """
-Wellbore Heat Transfer and Tubing Thermal Losses.
+Canonical Model for: Steam Injection Phase Downhole Heat Loss and Delivered Steam Quality.
+Calculates radial heat loss from the steam injection tubing string through the annulus to the casing and surrounding geothermal rock.
 
-PROVENANCE: ASSUMED.
+PROVENANCE: ASSUMED (Ramey-Willhite analytical steam heat transfer formulation).
 """
 
 from dataclasses import dataclass

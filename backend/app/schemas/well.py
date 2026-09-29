@@ -46,10 +46,60 @@ class WellSummaryDTO(BaseModel):
 class WellDetailDTO(WellSummaryDTO):
     casing_od_inch: float = 7.0
     tubing_od_inch: float = 3.5
-    pump_depth_m: float = 1000.0
+    pump_depth_m: float = 980.0
     rod_string_description: str = "API Grade D Taper 76 (1.00\", 0.875\", 0.750\")"
     surface_unit_description: str = "API C-456-256-100 Conventional Beam Unit"
-    max_allowable_injection_pressure_bar: float = 145.0
+    max_allowable_injection_pressure_bar: float = 125.0
     reservoir_permeability_md: float = 250.0
     reservoir_porosity: float = 0.28
     asphaltene_content_pct: float = 14.5
+
+class RecommendationApprovalRequest(BaseModel):
+    well_id: str
+    approved_by: str = "Lead Operations Engineer"
+    decision: str = "APPROVED"          # "APPROVED" or "REJECTED"
+    decision_reason: str = "Approved by operations team for field execution."
+    setpoint: Dict[str, Any] = Field(default_factory=dict)
+    approved_setpoint: Optional[Dict[str, Any]] = None
+
+class RecommendationApprovalResponse(BaseModel):
+    recommendation_id: str
+    well_id: str
+    decision: str
+    approved_by: str
+    timestamp: str
+    message: str
+    audit_id: int = 1
+    provenance: ProvenanceEnum = ProvenanceEnum.SIMULATED
+
+class SetpointUpdateRequest(BaseModel):
+    well_id: Optional[str] = None
+    setpoint: Dict[str, Any] = Field(default_factory=dict)
+    actor: str = "Operations Engineer"
+    reason: str = "Applying approved digital-twin optimal setpoint."
+    spm: Optional[float] = None
+    stroke_length_inch: Optional[float] = None
+    vfd_downstroke_ratio: Optional[float] = None
+    steam_volume_tonnes: Optional[float] = None
+    soak_duration_days: Optional[float] = None
+    applied_by: Optional[str] = None
+
+class SetpointUpdateResponse(BaseModel):
+    well_id: str
+    applied_setpoint: Dict[str, Any]
+    previous_setpoint: Dict[str, Any]
+    applied_status: str = "APPLIED_SUCCESS"
+    status: str = "APPLIED"
+    message: str
+    provenance: ProvenanceEnum = ProvenanceEnum.SIMULATED
+
+
+class AuditRecordDTO(BaseModel):
+    id: int
+    well_id: str
+    event_type: str
+    actor: str
+    description: str
+    details: Optional[Dict[str, Any]] = None
+    created_at: str
+

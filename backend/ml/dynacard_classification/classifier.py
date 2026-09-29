@@ -60,7 +60,8 @@ class DynacardClassifier:
         load_range = pprl - mprl
         
         # 1. Area:
-        area = float(np.trapz(ld, pos))
+        trapz_fn = getattr(np, "trapezoid", getattr(np, "trapz", None))
+        area = float(trapz_fn(ld, pos))
         norm_area = abs(area) / (stroke * pprl)
         
         # 2. Min load ratio (near zero or negative -> rod float!):

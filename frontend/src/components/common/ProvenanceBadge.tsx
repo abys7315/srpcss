@@ -10,26 +10,40 @@ export const ProvenanceBadge: React.FC<Props> = ({ tier = 'SIMULATED', size = 's
   const getBadgeStyle = () => {
     switch (tier) {
       case 'REAL':
-        return 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'PUBLIC_EXTERNAL':
-        return 'bg-blue-950/80 text-blue-300 border-blue-500/40';
+        return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'SIMULATED':
-        return 'bg-purple-950/80 text-purple-300 border-purple-500/40';
+        return 'bg-slate-100 text-slate-700 border-slate-200';
       case 'ASSUMED':
       default:
-        return 'bg-amber-950/80 text-amber-300 border-amber-500/40';
+        return 'bg-amber-50 text-amber-800 border-amber-200';
     }
   };
 
-  const pad = size === 'sm' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs';
+  const getLabel = () => {
+    switch (tier) {
+      case 'REAL':
+        return 'Real Data';
+      case 'PUBLIC_EXTERNAL':
+        return 'Literature / SPE';
+      case 'SIMULATED':
+        return 'Physics Sim';
+      case 'ASSUMED':
+      default:
+        return 'Field Assumption';
+    }
+  };
+
+  const pad = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs';
 
   return (
     <span
-      className={`inline-flex items-center font-mono font-medium rounded border uppercase tracking-wider ${pad} ${getBadgeStyle()}`}
-      title={`Data Provenance Tier: ${tier}`}
+      className={`inline-flex items-center font-medium rounded-full border ${pad} ${getBadgeStyle()}`}
+      title={`Data Provenance: ${tier}`}
     >
-      <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-current opacity-70" />
-      {tier}
+      <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-current opacity-80" />
+      {getLabel()}
     </span>
   );
 };

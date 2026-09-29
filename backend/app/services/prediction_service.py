@@ -78,40 +78,89 @@ class PredictionService:
 
         rmode = RecommendationModeEnum(conf_res.recommendation_mode) if conf_res.recommendation_mode in RecommendationModeEnum._value2member_map_ else RecommendationModeEnum.ENGINEER_ADVISORY
 
+        days_list = [pt.day for pt in quantile_pts]
+        p10_list = [pt.p10 for pt in quantile_pts]
+        p50_list = [pt.p50 for pt in quantile_pts]
+        p90_list = [pt.p90 for pt in quantile_pts]
+
         return QuantileForecastResponse(
             well_id=req.well_id,
             horizon_days=req.horizon_days,
             forecast=quantile_pts,
+            days=days_list,
+            p10=p10_list,
+            p50=p50_list,
+            p90=p90_list,
             p50_cumulative_oil_bbl=round(total_p50, 1),
+            cumulative_p50_bbl=round(total_p50, 1),
             confidence_score=round(conf_res.overall_confidence_score, 2),
             recommendation_mode=rmode,
             provenance=ProvenanceEnum.SIMULATED
         )
 
     def classify_dynacard(self, req: DynacardClassifyRequest) -> DynacardClassifyResponse:
+        positions = req.surface_position_inch
+        loads = req.surface_load_lbs
+
+        if not positions or not loads:
+            card_type = (req.card_type or "NORMAL").upper()
+            theta = np.linspace(0, 2 * np.pi, 50)
+            stroke = req.stroke_length_inch
+            positions = [round(float(stroke * (1 - np.cos(t)) / 2.0), 1) for t in theta]
+            if "FLOAT" in card_type:
+                loads = [round(float(14000.0 + 3500.0 * np.sin(t) - (4500.0 if np.sin(t) < 0 else 0)), 1) for t in theta]
+            elif "POUND" in card_type:
+                loads = [round(float(16000.0 + 5000.0 * np.sin(t) - (6000.0 if np.pi < t < 1.5 * np.pi else 0)), 1) for t in theta]
+            elif "GAS" in card_type:
+                loads = [round(float(15000.0 + 4000.0 * np.sin(t - 0.5)), 1) for t in theta]
+            elif "OVERLOAD" in card_type:
+                loads = [round(float(22000.0 + 6000.0 * np.sin(t)), 1) for t in theta]
+            else:
+                loads = [round(float(16500.0 + 4500.0 * np.sin(t)), 1) for t in theta]
+
         res = self.dynacard_clf.classify_card(
-            positions=req.surface_position_inch,
-            loads=req.surface_load_lbs
+            positions=positions,
+            loads=loads
         )
+
+        class_probs = {k: round(v, 3) for k, v in res.class_probabilities.items()}
+
+        mitigations = {
+            "ROD_FLOATING": "Engage VFD downstroke ratio R_down <= 0.80 and reduce SPM to avoid slack line.",
+            "FLUID_POUND": "Lower SPM or reduce pumping time to allow pump barrel to fill completely.",
+            "GAS_INTERFERENCE": "Increase pump intake submergence or set up gas anchor separation.",
+            "OVERLOAD": "Reduce stroke length or SPM to stay below 80% Goodman fatigue allowable stress.",
+            "NORMAL": "Operating within safe mechanical boundaries. Maintain current setpoints."
+        }
 
         return DynacardClassifyResponse(
             predicted_label=res.predicted_class,
-            class_probabilities={k: round(v, 3) for k, v in res.class_probabilities.items()},
+            class_probabilities=class_probs,
+            probabilities=class_probs,
             confidence=round(res.confidence_score, 2),
             is_anomaly=(res.predicted_class != "NORMAL"),
             diagnostic_insight=res.diagnostic_explanation,
+            root_cause=f"{res.predicted_class} pattern identified from surface load dynamics.",
+            recommended_mitigation=mitigations.get(res.predicted_class, "Maintain standard engineering surveillance."),
             provenance=ProvenanceEnum.SIMULATED
         )
 
     def detect_anomalies(self, req: AnomalyDetectRequest) -> AnomalyDetectResponse:
         temps = req.daily_temperatures_c
+        if not temps:
+            # Generate simulated bottomhole temperature history with cooling event around day 35
+            temps = [
+                float(round(47.0 + (125.0 - 47.0) * np.exp(-d / 45.0) - (18.0 if 32 <= d <= 44 else 0.0), 1))
+                for d in range(1, 61)
+            ]
+
         pts: List[AnomalyPointDTO] = []
         anomaly_count = 0
         latest_report = None
 
         for idx, t in enumerate(temps):
             day_num = idx + 1
-            hist = temps[:idx+1]
+            hist = temps[:idx + 1]
             rep = self.anomaly_detector.evaluate_point(
                 oil_rate_bpd=35.0,
                 temperature_c=t,
@@ -133,11 +182,23 @@ class PredictionService:
                 anomaly_type=rep.anomaly_severity if is_anom else "NORMAL"
             ))
 
+        formatted_anomalies = [
+            {
+                "day": p.day,
+                "title": f"Thermal Inflow Anomaly — Day {p.day}",
+                "severity": "CRITICAL" if abs(p.z_score) > 2.5 else "WARNING",
+                "description": f"Bottomhole temperature dropped to {p.observed_value}°C (Expected {p.expected_value}°C, z-score {p.z_score:+.2f}).",
+                "action": "Engage VFD downstroke shaping (R_down <= 0.80) to maintain float margin M_float >= 1.0."
+            }
+            for p in pts if p.is_anomaly
+        ]
+
         return AnomalyDetectResponse(
             well_id=req.well_id,
             anomalies_detected_count=anomaly_count,
             anomaly_points=pts,
+            anomalies=formatted_anomalies,
             overall_anomaly_flag=(anomaly_count > 0),
-            insight=latest_report.root_cause_explanation if latest_report else "All normal",
+            insight=latest_report.root_cause_explanation if latest_report else "Thermal trajectory within expected bounds.",
             provenance=ProvenanceEnum.SIMULATED
         )

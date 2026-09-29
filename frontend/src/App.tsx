@@ -24,6 +24,8 @@ export const App: React.FC = () => {
   const [wells, setWells] = useState<WellSummary[]>([]);
   const [_loading, setLoading] = useState<boolean>(true);
 
+  const [apiAvailable, setApiAvailable] = useState<boolean>(true);
+
   useEffect(() => {
     loadWells();
   }, []);
@@ -33,30 +35,32 @@ export const App: React.FC = () => {
       setLoading(true);
       const list = await apiClient.getWells();
       setWells(list);
+      setApiAvailable(true);
       if (list && list.length > 0 && !list.find((w) => w.well_id === selectedWellId)) {
         setSelectedWellId(list[0].well_id);
       }
     } catch (e) {
       console.error('Failed to load initial wells list:', e);
-      // Fallback 10 wells if backend is not yet started
+      setApiAvailable(false);
+      // Fallback 10 demo wells strictly labeled as SIMULATED DEMO DATA using canonical Baghewala configuration
       const fallbackWells: WellSummary[] = Array.from({ length: 10 }, (_, i) => {
         const id = `BGW-${(i + 1).toString().padStart(2, '0')}`;
         return {
           well_id: id,
-          well_name: `Baghewala Heavy Oil Well ${i + 1}`,
+          well_name: `[DEMO] Baghewala Well ${i + 1}`,
           field_name: 'Baghewala Field',
           formation: 'Jodhpur Sandstone',
-          crude_api: 18.2,
-          depth_m: 980 + i * 15,
-          current_cycle_number: 3,
+          crude_api: 18.0,
+          depth_m: 1050.0,
+          current_cycle_number: 1,
           cycle_phase: 'PRODUCTION',
           status: i === 0 ? 'INFEASIBLE' : i === 2 ? 'NEAR_LIMIT' : 'FEASIBLE',
           telemetry: {
             current_day_in_cycle: 45,
-            current_temperature_c: 135,
-            current_viscosity_cp: 1200,
-            current_oil_rate_bpd: 54.2,
-            current_water_cut_pct: 58.0,
+            current_temperature_c: 75.0,
+            current_viscosity_cp: 450.0,
+            current_oil_rate_bpd: 28.5,
+            current_water_cut_pct: 60.0,
             current_float_margin_index: i === 0 ? 0.92 : 1.18,
             current_goodman_stress_ratio: 0.68,
             current_gearbox_load_pct: 62.5,
@@ -64,14 +68,14 @@ export const App: React.FC = () => {
             latest_dynacard_label: i === 0 ? 'ROD_FLOATING' : 'NORMAL',
           },
           operating_parameters: {
-            steam_volume_tonnes: 3000,
-            injection_pressure_bar: 105,
-            steam_temp_celsius: 310,
-            soak_duration_days: 6,
+            steam_volume_tonnes: 3000.0,
+            injection_pressure_bar: 125.0,
+            steam_temp_celsius: 260.0,
+            soak_duration_days: 6.0,
             spm: 4.5,
-            stroke_length_inch: 100,
+            stroke_length_inch: 100.0,
             vfd_downstroke_ratio: 1.0,
-            economic_cutoff_oil_rate_bpd: 15.0,
+            economic_cutoff_oil_rate_bpd: 8.0,
           },
           provenance: 'SIMULATED',
         };
@@ -128,7 +132,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-industrial-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
       {/* Top Navigation */}
       <Navbar
         wells={wells}
@@ -137,11 +141,48 @@ export const App: React.FC = () => {
         activeAlertCount={activeAlertCount}
       />
 
+      {/* DRONA-style Sub-header Telemetry Ribbon */}
+      <div className="bg-white border-b border-slate-200 px-4 lg:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-500 shadow-xs">
+        <div className="flex flex-wrap items-center gap-3 lg:gap-5">
+          <span>Well <strong className="text-slate-900 font-semibold">{selectedWellId}</strong></span>
+          <span className="text-slate-300">·</span>
+          <span>Depth <strong className="text-slate-900 font-semibold">1,050 m TVD</strong></span>
+          <span className="text-slate-300">·</span>
+          <span>Viscosity <strong className="text-slate-900 font-semibold">450–1,200 cP</strong></span>
+          <span className="text-slate-300">·</span>
+          <span>Lift Unit <strong className="text-slate-900 font-semibold">API C-456 Beam + Sucker Rod</strong></span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+            10 Hz Telemetry
+          </span>
+        </div>
+      </div>
+
+      {/* Backend Offline Demo Banner */}
+      {!apiAvailable && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs font-mono text-amber-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-[10px] font-bold text-amber-900">
+              SIMULATED DEMO DATA
+            </span>
+            <span>BACKEND DATA UNAVAILABLE — Displaying simulated Baghewala demo dataset (API offline).</span>
+          </div>
+          <button
+            onClick={loadWells}
+            className="text-[11px] underline hover:text-amber-900 font-semibold"
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
+
       {/* Main Body with Sidebar + Content */}
       <div className="flex-1 flex overflow-hidden">
         <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-16">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-16 bg-slate-50">
           <div className="max-w-7xl mx-auto">{renderActivePage()}</div>
         </main>
       </div>

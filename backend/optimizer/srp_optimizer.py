@@ -23,13 +23,12 @@ class SRPOptimizer:
         fixed_steam_tonnes: float = 3000.0,
         cooling_anomaly_day: Optional[int] = None
     ) -> OptimizationRunResult:
-        """Optimizes SRP lifting parameters given existing thermal conditions."""
+        """Optimizes SRP lifting parameters given fixed thermal conditions."""
         cfg = dict(current_cfg)
         cfg["steam_volume_tonnes"] = fixed_steam_tonnes
-        res = self.joint_opt.optimize_well(
+        return self.joint_opt.optimize_well(
             well_id=well_id,
             current_cfg=cfg,
+            mode="SRP_ONLY",
             cooling_anomaly_day=cooling_anomaly_day
         )
-        res.optimization_mode = "SRP_ONLY"
-        return res

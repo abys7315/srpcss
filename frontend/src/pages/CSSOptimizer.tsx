@@ -18,9 +18,9 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
   const [loading, setLoading] = useState<boolean>(false);
 
   // Sliders for CSS parameter study
-  const [steamVolume, setSteamVolume] = useState<number>(3200);
+  const [steamVolume, setSteamVolume] = useState<number>(3000);
   const [soakDays, setSoakDays] = useState<number>(6);
-  const [cutoffBpd, setCutoffBpd] = useState<number>(15.0);
+  const [cutoffBpd, setCutoffBpd] = useState<number>(8.0);
 
   useEffect(() => {
     loadData();
@@ -38,9 +38,9 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
       }
       const opt = await apiClient.optimizeCSS({
         well_id: selectedWellId,
-        steam_volume_tonnes: w.operating_parameters?.steam_volume_tonnes || 3200,
+        steam_volume_tonnes: w.operating_parameters?.steam_volume_tonnes || 3000,
         soak_duration_days: w.operating_parameters?.soak_duration_days || 6,
-        cutoff_bpd: w.operating_parameters?.economic_cutoff_oil_rate_bpd || 15.0,
+        cutoff_bpd: w.operating_parameters?.economic_cutoff_oil_rate_bpd || 8.0,
       });
       setResult(opt);
     } catch (e) {
@@ -72,7 +72,7 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
   // Marx-Langenheim / Boberg-Lantz theoretical heating radius proxy for display
   const heatingRadiusMeters = (steamVolume / 250).toFixed(1);
   const heatedTempC = Math.min(240, 70 + (steamVolume / 4000) * 150).toFixed(0);
-  const heatedViscosityCp = Math.max(8.0, 1200 * Math.exp(-0.025 * (parseFloat(heatedTempC) - 52))).toFixed(1);
+  const heatedViscosityCp = Math.max(8.0, 2400 * Math.exp(-0.025 * (parseFloat(heatedTempC) - 47))).toFixed(1);
 
   // Synthetic sensitivity curve points: [Steam Tonnes, SOR, Recovery bbl]
   const sensitivityCurve = [
@@ -88,35 +88,35 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-industrial-800">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold font-mono text-slate-100 flex items-center gap-2">
-              <Flame className="w-5 h-5 text-amber-500" />
-              CYCLIC STEAM STIMULATION (CSS) THERMAL OPTIMIZER
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
+              <Flame className="w-5 h-5 text-orange-600" />
+              Cyclic Steam Stimulation (CSS) Optimizer
             </h1>
             <ProvenanceBadge tier={result?.provenance || 'SIMULATED'} />
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Marx-Langenheim steam chest growth & Boberg-Lantz thermal dissipation modeling for{' '}
-            <strong className="text-slate-200 font-mono">{selectedWellId} ({well?.well_name || 'Baghewala'})</strong>.
+          <p className="text-xs text-slate-500 mt-1">
+            Thermal reservoir model, steam chest growth, and soak duration optimization for well{' '}
+            <strong className="text-slate-900 font-semibold">{selectedWellId} ({well?.well_name || 'Baghewala'})</strong>.
           </p>
         </div>
 
         <button
           onClick={handleRunCSS}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-500 hover:from-amber-500 hover:to-orange-400 text-slate-950 font-mono text-xs font-bold rounded-lg shadow-lg shadow-amber-950/50 transition-all disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg shadow-xs transition-all disabled:opacity-50"
         >
           {loading ? (
             <>
-              <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-              <span>COMPUTING THERMAL EOR...</span>
+              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Computing Thermal Simulation...</span>
             </>
           ) : (
             <>
-              <Play className="w-3.5 h-3.5 fill-slate-950" />
-              <span>OPTIMIZE CSS SLOW LOOP</span>
+              <Play className="w-3.5 h-3.5 fill-white" />
+              <span>Optimize Steam Parameters</span>
             </>
           )}
         </button>
@@ -136,19 +136,19 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
         />
 
         <MetricCard
-          title="Estimated Heating Radius (R_h)"
+          title="Thermal Heating Radius"
           value={`${heatingRadiusMeters} m`}
           unit="Radial thermal zone"
-          delta="Reservoir thickness: 12 m"
+          delta="Reservoir thickness: 14 m"
           deltaPositive={true}
           provenance="SIMULATED"
         />
 
         <MetricCard
-          title="Peak Heated Temperature"
+          title="Bottomhole Temperature"
           value={`${heatedTempC} °C`}
           unit={`Viscosity: ${heatedViscosityCp} cP`}
-          delta="Cold reservoir: 52 °C (1200 cP)"
+          delta="Initial temp: 47 °C (2,400 cP)"
           deltaPositive={true}
           provenance="SIMULATED"
         />
@@ -156,7 +156,7 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
         <MetricCard
           title="Steam-Oil Ratio (SOR)"
           value={rec ? rec.steam_oil_ratio.toFixed(2) : '1.82'}
-          unit="t steam / bbl oil"
+          unit="t steam / t oil"
           delta="-13.3% vs unconstrained"
           deltaPositive={true}
           provenance="SIMULATED"
@@ -166,17 +166,17 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
       {/* Controls & Physics Invariance */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Controls Slider Panel */}
-        <div className="glass-panel p-5 space-y-4">
-          <h2 className="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-            <Thermometer className="w-4 h-4 text-amber-500" />
-            CSS Thermal Parameters
+        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-xs">
+          <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+            <Thermometer className="w-4 h-4 text-orange-600" />
+            Steam Cycle Controls
           </h2>
 
-          <div className="space-y-4 text-xs font-mono">
+          <div className="space-y-4 text-xs">
             <div>
-              <div className="flex justify-between text-slate-400 mb-1">
+              <div className="flex justify-between text-slate-600 mb-1">
                 <span>Steam Volume:</span>
-                <span className="text-amber-400 font-bold">{steamVolume} Tonnes</span>
+                <span className="text-blue-700 font-semibold">{steamVolume} Tonnes</span>
               </div>
               <input
                 type="range"
@@ -185,18 +185,18 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
                 step="100"
                 value={steamVolume}
                 onChange={(e) => setSteamVolume(parseInt(e.target.value))}
-                className="w-full accent-amber-500 cursor-pointer"
+                className="w-full accent-blue-600 cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-slate-500 mt-0.5">
+              <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
                 <span>1,000 t (Underheated)</span>
-                <span>5,000 t (Thermal Waste)</span>
+                <span>5,000 t (Over-injection)</span>
               </div>
             </div>
 
             <div>
-              <div className="flex justify-between text-slate-400 mb-1">
+              <div className="flex justify-between text-slate-600 mb-1">
                 <span>Soak Duration:</span>
-                <span className="text-amber-400 font-bold">{soakDays} Days</span>
+                <span className="text-blue-700 font-semibold">{soakDays} Days</span>
               </div>
               <input
                 type="range"
@@ -205,18 +205,18 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
                 step="1"
                 value={soakDays}
                 onChange={(e) => setSoakDays(parseInt(e.target.value))}
-                className="w-full accent-amber-500 cursor-pointer"
+                className="w-full accent-blue-600 cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-slate-500 mt-0.5">
+              <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
                 <span>2 Days (Channeling)</span>
-                <span>14 Days (Overcooling)</span>
+                <span>14 Days (Heat Dissipation)</span>
               </div>
             </div>
 
             <div>
-              <div className="flex justify-between text-slate-400 mb-1">
+              <div className="flex justify-between text-slate-600 mb-1">
                 <span>Economic Cutoff Rate:</span>
-                <span className="text-cyan-400 font-bold">{cutoffBpd.toFixed(1)} bpd</span>
+                <span className="text-blue-700 font-semibold">{cutoffBpd.toFixed(1)} bpd</span>
               </div>
               <input
                 type="range"
@@ -225,62 +225,62 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
                 step="1"
                 value={cutoffBpd}
                 onChange={(e) => setCutoffBpd(parseFloat(e.target.value))}
-                className="w-full accent-cyan-400 cursor-pointer"
+                className="w-full accent-blue-600 cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-slate-500 mt-0.5">
-                <span>5 bpd (Prolonged Cycle)</span>
+              <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                <span>5 bpd (Extended Cycle)</span>
                 <span>30 bpd (Early Resoaking)</span>
               </div>
             </div>
           </div>
 
           {/* Hard Constraints Box */}
-          <div className="p-3 bg-industrial-950/80 rounded-lg border border-industrial-800 space-y-2 text-xs font-mono">
-            <span className="text-[11px] font-bold text-slate-300 block uppercase">
-              Impassable Thermal Safety Gates
+          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2 text-xs">
+            <span className="text-xs font-semibold text-slate-900 block">
+              Thermal Safety Limits
             </span>
-            <div className="space-y-1.5 text-[11px]">
-              <div className="flex items-center justify-between text-slate-400">
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between text-slate-600">
                 <span>Max Injection Pressure:</span>
-                <span className="text-emerald-400">105 bar (Limit &lt; 125 bar)</span>
+                <span className="text-emerald-700 font-semibold">125 bar (Fracture limit: 171 bar)</span>
               </div>
-              <div className="flex items-center justify-between text-slate-400">
+              <div className="flex items-center justify-between text-slate-600">
                 <span>Steam Temperature:</span>
-                <span className="text-emerald-400">310 °C at 100 bar</span>
+                <span className="text-slate-800 font-medium">260 °C at 125 bar</span>
               </div>
-              <div className="flex items-center justify-between text-slate-400">
-                <span>Fracture Gradient Check:</span>
-                <span className="text-emerald-400">SAFE (0.138 bar/m)</span>
+              <div className="flex items-center justify-between text-slate-600">
+                <span>Fracture Gradient Margin:</span>
+                <span className="text-emerald-700 font-semibold">Safe (0.163 bar/m)</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* SOR vs Steam Curve SVG */}
-        <div className="lg:col-span-2 glass-panel p-5 space-y-4">
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-5 space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <Gauge className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+              <Gauge className="w-4 h-4 text-blue-600" />
               Thermal Efficiency Curve: Steam-Oil Ratio (SOR) vs Injected Steam
             </h2>
-            <span className="text-[10px] font-mono text-slate-400">Boberg-Lantz Analytical Curve</span>
+            <span className="text-xs text-slate-500">Boberg-Lantz Model</span>
           </div>
 
           <div className="w-full overflow-x-auto">
-            <svg viewBox="0 0 500 240" className="w-full h-60 bg-industrial-950/60 rounded-lg border border-industrial-800">
+            <svg viewBox="0 0 500 240" className="w-full h-60 bg-slate-50 rounded-lg border border-slate-200">
               {/* Grid Lines */}
-              <line x1="50" y1="50" x2="470" y2="50" stroke="#1e293b" strokeDasharray="3 3" />
-              <line x1="50" y1="110" x2="470" y2="110" stroke="#1e293b" strokeDasharray="3 3" />
-              <line x1="50" y1="170" x2="470" y2="170" stroke="#1e293b" strokeDasharray="3 3" />
+              <line x1="50" y1="50" x2="470" y2="50" stroke="#e2e8f0" strokeDasharray="3 3" />
+              <line x1="50" y1="110" x2="470" y2="110" stroke="#e2e8f0" strokeDasharray="3 3" />
+              <line x1="50" y1="170" x2="470" y2="170" stroke="#e2e8f0" strokeDasharray="3 3" />
 
               {/* Axes */}
-              <line x1="50" y1="200" x2="480" y2="200" stroke="#475569" strokeWidth="1.5" />
-              <line x1="50" y1="200" x2="50" y2="20" stroke="#475569" strokeWidth="1.5" />
+              <line x1="50" y1="200" x2="480" y2="200" stroke="#94a3b8" strokeWidth="1.5" />
+              <line x1="50" y1="200" x2="50" y2="20" stroke="#94a3b8" strokeWidth="1.5" />
 
-              <text x="470" y="220" fill="#94a3b8" fontSize="10" textAnchor="end" fontFamily="monospace">
+              <text x="470" y="220" fill="#64748b" fontSize="11" textAnchor="end" fontFamily="Inter, sans-serif">
                 Steam Volume (Tonnes) →
               </text>
-              <text x="20" y="25" fill="#94a3b8" fontSize="10" transform="rotate(-90 20,25)" fontFamily="monospace">
+              <text x="20" y="25" fill="#64748b" fontSize="11" transform="rotate(-90 20,25)" fontFamily="Inter, sans-serif">
                 SOR (t/bbl) →
               </text>
 
@@ -288,7 +288,7 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
               <path
                 d="M 80 180 Q 150 140 220 125 T 320 120 T 400 160 T 450 190"
                 fill="none"
-                stroke="#f59e0b"
+                stroke="#d97706"
                 strokeWidth="2.5"
               />
 
@@ -304,13 +304,13 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
                       cx={x}
                       cy={y}
                       r={isOpt ? '6' : '3.5'}
-                      fill={isOpt ? '#10b981' : '#f59e0b'}
-                      stroke="#0f172a"
+                      fill={isOpt ? '#059669' : '#d97706'}
+                      stroke="#ffffff"
                       strokeWidth="1.5"
                     />
                     {isOpt && (
-                      <text x={x - 20} y={y - 12} fill="#10b981" fontSize="9" fontFamily="monospace" fontWeight="bold">
-                        MIN SOR (1.82)
+                      <text x={x - 20} y={y - 12} fill="#059669" fontSize="10" fontFamily="Inter, sans-serif" fontWeight="600">
+                        Min SOR (1.82)
                       </text>
                     )}
                   </g>
@@ -323,30 +323,31 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
                 y1="30"
                 x2={50 + ((steamVolume - 1000) / 3500) * 400}
                 y2="200"
-                stroke="#22d3ee"
+                stroke="#2563eb"
                 strokeDasharray="2 2"
                 strokeWidth="1.5"
               />
               <text
                 x={50 + ((steamVolume - 1000) / 3500) * 400 + 4}
                 y="40"
-                fill="#22d3ee"
+                fill="#2563eb"
                 fontSize="9"
                 fontFamily="monospace"
+                fontWeight="bold"
               >
                 Selected: {steamVolume} t
               </text>
             </svg>
           </div>
 
-          <div className="p-3 bg-industrial-900 rounded-lg border border-industrial-800 text-xs text-slate-400 font-mono flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-slate-300">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 font-mono flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-slate-800 font-medium">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               Optimal Cycle Duration: <strong>155 Production Days + 22 Days Injection/Soak</strong>
             </span>
             <button
               onClick={() => onNavigate && onNavigate('joint-optimizer')}
-              className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 underline"
+              className="text-blue-600 hover:text-blue-800 flex items-center gap-1 underline font-semibold"
             >
               Feed into Joint Pareto Optimizer <ArrowRight className="w-3.5 h-3.5" />
             </button>

@@ -24,6 +24,15 @@ class EnergyKPIs:
     cost_per_barrel_usd: float
     provenance: str = "SIMULATED"
 
+def compute_canonical_sor(steam_mass_tonnes: float, cumulative_oil_bbl: float, oil_tonnes_per_bbl: float = 0.160) -> float:
+    """
+    Centralized canonical mass-basis Steam-Oil Ratio (SOR) calculation.
+    Units: tonnes steam / tonnes oil (t steam / t oil).
+    Baghewala 18 API crude ~ 1010 kg/m3 (~0.160 tonnes/bbl).
+    """
+    oil_tonnes = max(0.1, cumulative_oil_bbl * oil_tonnes_per_bbl)
+    return round(float(steam_mass_tonnes / oil_tonnes), 2)
+
 class FieldEnergyAccounting:
     """Combines steam generator fuel energy and SRP pumping electrical energy."""
 
@@ -54,8 +63,8 @@ class FieldEnergyAccounting:
         oil_tonnes = max(0.1, cumulative_oil_bbl * 0.160)
         
         # Steam-to-Oil Ratio (SOR):
-        # tonnes steam / tonne oil
-        sor_wt = steam_mass_tonnes / oil_tonnes
+        # tonnes steam / tonne oil (canonical mass basis)
+        sor_wt = compute_canonical_sor(steam_mass_tonnes, cumulative_oil_bbl, 0.160)
         # bbl steam CWE / bbl oil (1 tonne water ~ 6.29 bbl):
         sor_vol = (steam_mass_tonnes * 6.29) / max(0.1, cumulative_oil_bbl)
 

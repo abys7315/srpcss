@@ -9,7 +9,13 @@ from typing import List
 
 from ...db.database import get_db
 from ...services.well_service import WellService
-from ...schemas.well import WellSummaryDTO, WellDetailDTO
+from ...schemas.well import (
+    WellSummaryDTO,
+    WellDetailDTO,
+    SetpointUpdateRequest,
+    SetpointUpdateResponse,
+    AuditRecordDTO
+)
 from ...schemas.common import APIResponse, ProvenanceEnum
 
 router = APIRouter(prefix="/wells", tags=["Wells"])
@@ -39,3 +45,33 @@ def get_well(well_id: str, db: Session = Depends(get_db)):
         provenance=ProvenanceEnum.SIMULATED,
         data=well
     )
+
+@router.post("/{well_id}/setpoint", response_model=APIResponse[SetpointUpdateResponse])
+def update_well_setpoint(well_id: str, req: SetpointUpdateRequest, db: Session = Depends(get_db)):
+    """Applies approved setpoint to the digital twin and wellbore state."""
+    try:
+        service = WellService(db)
+        res = service.update_setpoint(well_id, req)
+        return APIResponse(
+            success=True,
+            message=res.message,
+            provenance=ProvenanceEnum.SIMULATED,
+            data=res
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{well_id}/audit", response_model=APIResponse[List[AuditRecordDTO]])
+def get_well_audit_trail(well_id: str, db: Session = Depends(get_db)):
+    """Returns chronological digital twin audit trail for a well."""
+    try:
+        service = WellService(db)
+        records = service.get_audit_trail(well_id)
+        return APIResponse(
+            success=True,
+            message=f"Retrieved {len(records)} audit records for {well_id}.",
+            provenance=ProvenanceEnum.SIMULATED,
+            data=records
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

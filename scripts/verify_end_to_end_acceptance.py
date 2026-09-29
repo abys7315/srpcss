@@ -206,19 +206,37 @@ def run_21_step_acceptance():
     print_step(14, "System explains why (explainability & confidence)", f"Mode={opt_data['recommendation_mode']} | Confidence={opt_data['confidence_score']*100:.1f}% | Factors={len(opt_data.get('contributing_factors', []))}")
 
     # -------------------------------------------------------------------------
-    # Step 15: Operator approves or rejects.
+    # Step 15: Operator approves or rejects via official API (Rule 26, Rule 39).
     # -------------------------------------------------------------------------
-    decision = "APPROVED"
-    assert decision == "APPROVED"
-    print_step(15, "Operator approves optimal setpoint", f"Plan {rec['solution_id']} approved for implementation")
+    res_app = client.post(f"/api/v1/recommendations/{rec['solution_id']}/approve", json={
+        "well_id": well_id,
+        "decision_reason": "Engineering sign-off for optimal steam & lift setpoint",
+        "approved_by": "Chief Operations Engineer",
+        "approved_setpoint": rec
+    })
+    assert res_app.status_code == 200
+    app_data = res_app.json()["data"]
+    assert app_data["decision"] == "APPROVED"
+    print_step(15, "Formal API recommendation approval", f"Plan {rec['solution_id']} approved by Chief Operations Engineer (Audit ID: {app_data['audit_id']})")
 
     # -------------------------------------------------------------------------
-    # Step 16: The approved plan is applied to the simulated well.
+    # Step 16: The approved plan is applied to the digital twin state.
     # -------------------------------------------------------------------------
     setpoint_steam = rec["steam_volume_tonnes"]
     setpoint_spm = rec["spm"]
     setpoint_vfd = rec["vfd_downstroke_ratio"]
-    print_step(16, "Approved plan applied to well digital twin", f"Setpoints: Steam={setpoint_steam:.0f}t, SPM={setpoint_spm:.1f}, VFD={setpoint_vfd:.2f}x")
+    res_set = client.post(f"/api/v1/wells/{well_id}/setpoint", json={
+        "spm": setpoint_spm,
+        "stroke_length_inch": rec["stroke_length_inch"],
+        "vfd_downstroke_ratio": setpoint_vfd,
+        "steam_volume_tonnes": setpoint_steam,
+        "soak_duration_days": rec["soak_days"],
+        "applied_by": "Chief Operations Engineer"
+    })
+    assert res_set.status_code == 200
+    res_audit = client.get(f"/api/v1/wells/{well_id}/audit")
+    assert res_audit.status_code == 200
+    print_step(16, "Approved plan applied to well digital twin", f"Setpoints: Steam={setpoint_steam:.0f}t, SPM={setpoint_spm:.1f}, VFD={setpoint_vfd:.2f}x | Audit Log Verified")
 
     # -------------------------------------------------------------------------
     # Step 17: Actual simulated outcome is recorded.
@@ -246,8 +264,9 @@ def run_21_step_acceptance():
     # Step 18: Predicted vs actual is displayed.
     # -------------------------------------------------------------------------
     pred_oil = rec["cumulative_oil_bbl"]
-    delta_oil = act_oil - pred_oil
-    print_step(18, "Predicted vs actual tracked", f"Pred={pred_oil:,.0f} bbl vs Act={act_oil:,.0f} bbl (Discrepancy: {delta_oil:+.0f} bbl, inside confidence band)")
+    rel_err = abs(act_oil - pred_oil) / pred_oil
+    assert rel_err < 0.20, f"Simulated outcome must closely track recommendation (rel_err={rel_err:.1%})"
+    print_step(18, "Predicted vs actual tracked", f"Pred={pred_oil:,.0f} bbl vs Act={act_oil:,.0f} bbl (Error: {rel_err*100:.1f}%, inside physics band)")
 
     # -------------------------------------------------------------------------
     # Step 19: Drift/error is evaluated and attributed.
@@ -275,8 +294,9 @@ def run_21_step_acceptance():
     })
     assert recal_res.status_code == 200
     recal_data = recal_res.json()["data"]
-    assert recal_data["status"] == "SUCCESS"
+    assert recal_data["status"] in ["SUCCESS", "PROMOTED_CHAMPION"]
     print_step(20, "Online model recalibration executed", f"Model updated {recal_data['previous_model_version']} -> {recal_data['new_model_version']} ({recal_data['sample_points_used']} points)")
+
 
     # -------------------------------------------------------------------------
     # Step 21: Subsequent prediction shows measurable improvement (>20% drop).

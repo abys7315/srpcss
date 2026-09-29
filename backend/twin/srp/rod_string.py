@@ -8,8 +8,10 @@ PROVENANCE: ASSUMED (API Spec 11B / RP 11L standard petroleum artificial lift eq
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import numpy as np
+
+from core.config import canonical_config
 
 @dataclass
 class RodSection:
@@ -23,9 +25,12 @@ class RodStressReport:
     peak_rod_stress_psi: float
     min_rod_stress_psi: float
     allowable_stress_psi: float
-    goodman_stress_ratio: float      # peak_stress / allowable_stress (< 1.0 is safe)
+    goodman_stress_ratio: float      # peak_stress / allowable_stress (<= 0.85 is safe)
     is_stress_safe: bool
     top_rod_diameter_inch: float
+    alternating_stress_psi: float = 0.0
+    mean_stress_psi: float = 0.0
+    fatigue_method: str = "Goodman-inspired fatigue screening"
     provenance: str = "SIMULATED"
 
 class RodStringModel:
@@ -82,26 +87,58 @@ class RodStringModel:
     def evaluate_goodman_stress(
         self,
         peak_polished_rod_load_lbs: float,
-        min_polished_rod_load_lbs: float
+        min_polished_rod_load_lbs: float,
+        canonical_goodman_limit: Optional[float] = None
     ) -> RodStressReport:
         """
-        Modified Goodman Diagram evaluation for API Grade D sucker rods:
-        sigma_all = (UTS / 1.75 + 0.5625 * sigma_min) * S_f
+        Goodman-inspired fatigue screening for sucker rods.
+        
+        Calculates alternating and mean stresses:
+        sigma_a = (sigma_max - sigma_min) / 2
+        sigma_m = (sigma_max + sigma_min) / 2
+        
+        For tensile min stress (sigma_min >= 0):
+          sigma_all = (UTS / 1.75 + 0.5625 * sigma_min) * S_f
+        For compressive min stress (sigma_min < 0):
+          sigma_all = (UTS / 1.75) * S_f
+          
+        Stress ratio evaluates peak-to-allowable and alternating fatigue amplitude.
         """
-        area = self.top_section_area_sq_in
+        limit = canonical_goodman_limit if canonical_goodman_limit is not None else float(
+            canonical_config.safety_limits.max_goodman_stress_ratio
+        )
+        area = max(self.top_section_area_sq_in, 0.01)
         sigma_peak = peak_polished_rod_load_lbs / area
-        sigma_min = max(0.0, min_polished_rod_load_lbs / area)
+        sigma_min_actual = min_polished_rod_load_lbs / area
         
-        # API Modified Goodman Allowable Stress:
-        sigma_allowable = (self.uts_psi / 1.75 + 0.5625 * sigma_min) * self.service_factor
-        stress_ratio = sigma_peak / max(sigma_allowable, 1.0)
+        sigma_a = (sigma_peak - sigma_min_actual) / 2.0
+        sigma_m = (sigma_peak + sigma_min_actual) / 2.0
         
+        # Base endurance limit under zero mean stress
+        endurance_limit = (self.uts_psi / 1.75) * self.service_factor
+        
+        # Modified Goodman allowable tensile stress
+        if sigma_min_actual >= 0:
+            sigma_allowable = (self.uts_psi / 1.75 + 0.5625 * sigma_min_actual) * self.service_factor
+        else:
+            sigma_allowable = endurance_limit
+            
+        stress_ratio_peak = sigma_peak / max(sigma_allowable, 1.0)
+        stress_ratio_alt = sigma_a / max(endurance_limit, 1.0) if endurance_limit > 0 else 0.0
+        stress_ratio = max(stress_ratio_peak, stress_ratio_alt)
+        
+        if peak_polished_rod_load_lbs <= 0.0 and min_polished_rod_load_lbs <= 0.0:
+            stress_ratio = 0.0
+            
         return RodStressReport(
             peak_rod_stress_psi=round(sigma_peak, 1),
-            min_rod_stress_psi=round(sigma_min, 1),
+            min_rod_stress_psi=round(sigma_min_actual, 1),
             allowable_stress_psi=round(sigma_allowable, 1),
             goodman_stress_ratio=round(stress_ratio, 3),
-            is_stress_safe=(stress_ratio <= 1.0),
+            is_stress_safe=(stress_ratio <= limit),
             top_rod_diameter_inch=self.sections[0].diameter_inch,
+            alternating_stress_psi=round(sigma_a, 1),
+            mean_stress_psi=round(sigma_m, 1),
+            fatigue_method="Goodman-inspired fatigue screening",
             provenance="SIMULATED"
         )

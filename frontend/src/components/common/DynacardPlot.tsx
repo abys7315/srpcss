@@ -16,7 +16,7 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
 }) => {
   if (!card || !card.surface_position_inch || card.surface_position_inch.length === 0) {
     return (
-      <div className="glass-panel rounded-xl p-4 flex items-center justify-center h-64 text-slate-500 font-mono text-xs">
+      <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-center h-64 text-slate-400 font-mono text-xs">
         No dynacard telemetry loaded
       </div>
     );
@@ -48,22 +48,22 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
   const isPound = card.diagnostic_card_label === 'FLUID_POUND';
 
   return (
-    <div className="glass-panel rounded-xl p-4 flex flex-col items-center">
+    <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col items-center shadow-xs">
       {/* Card Header */}
       <div className="w-full flex items-center justify-between mb-2">
         <div>
-          <h4 className="text-xs font-semibold text-slate-200 tracking-wider uppercase">{title}</h4>
-          <span className="text-[11px] font-mono text-slate-400">
+          <h4 className="text-xs font-bold text-slate-800 tracking-wider uppercase">{title}</h4>
+          <span className="text-[11px] font-mono text-slate-500">
             Stroke: {card.stroke_length_inch.toFixed(0)}" | Speed: {card.spm.toFixed(1)} SPM
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold border ${
+          <span className={`px-2 py-0.5 rounded text-xs font-mono font-semibold border ${
             isFloating
-              ? 'bg-rose-950/80 text-rose-400 border-rose-500/50 animate-pulse'
+              ? 'bg-rose-50 text-rose-700 border-rose-200'
               : isPound
-              ? 'bg-amber-950/80 text-amber-400 border-amber-500/50'
-              : 'bg-emerald-950/80 text-emerald-400 border-emerald-500/50'
+              ? 'bg-amber-50 text-amber-800 border-amber-200'
+              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
           }`}>
             {card.diagnostic_card_label}
           </span>
@@ -84,14 +84,14 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
                   y1={yPos}
                   x2={padding.left + plotWidth}
                   y2={yPos}
-                  stroke="#1e293b"
+                  stroke="#e2e8f0"
                   strokeDasharray="3 3"
                 />
                 <text
                   x={padding.left - 8}
                   y={yPos + 4}
                   textAnchor="end"
-                  className="fill-slate-500 text-[10px] font-mono"
+                  className="fill-slate-400 text-[10px] font-mono font-medium"
                 >
                   {(yVal / 1000).toFixed(1)}k
                 </text>
@@ -109,14 +109,14 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
                   y1={padding.top}
                   x2={xPos}
                   y2={padding.top + plotHeight}
-                  stroke="#1e293b"
+                  stroke="#e2e8f0"
                   strokeDasharray="3 3"
                 />
                 <text
                   x={xPos}
                   y={padding.top + plotHeight + 16}
                   textAnchor="middle"
-                  className="fill-slate-500 text-[10px] font-mono"
+                  className="fill-slate-400 text-[10px] font-mono font-medium"
                 >
                   {xVal.toFixed(0)}"
                 </text>
@@ -130,7 +130,7 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
             y1={padding.top + plotHeight}
             x2={padding.left + plotWidth}
             y2={padding.top + plotHeight}
-            stroke="#475569"
+            stroke="#94a3b8"
             strokeWidth="1.5"
           />
           <line
@@ -138,7 +138,7 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
             y1={padding.top}
             x2={padding.left}
             y2={padding.top + plotHeight}
-            stroke="#475569"
+            stroke="#94a3b8"
             strokeWidth="1.5"
           />
 
@@ -158,8 +158,8 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
           {/* Downhole Card */}
           <path
             d={downholePath}
-            fill="rgba(56, 189, 248, 0.08)"
-            stroke="#38bdf8"
+            fill="rgba(2, 132, 199, 0.05)"
+            stroke="#0284c7"
             strokeWidth="1.8"
             strokeDasharray="5 3"
           />
@@ -167,9 +167,9 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
           {/* Surface Card */}
           <path
             d={surfacePath}
-            fill={isFloating ? "rgba(244, 63, 94, 0.12)" : "rgba(6, 182, 212, 0.15)"}
-            stroke={isFloating ? "#f43f5e" : "#06b6d4"}
-            strokeWidth="2.5"
+            fill={isFloating ? "rgba(239, 68, 68, 0.08)" : "rgba(37, 99, 235, 0.08)"}
+            stroke={isFloating ? "#dc2626" : "#2563eb"}
+            strokeWidth="2.2"
           />
 
           {/* Peak Load marker */}
@@ -178,7 +178,7 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
             y1={scaleY(card.peak_polished_rod_load_lbs)}
             x2={padding.left + plotWidth}
             y2={scaleY(card.peak_polished_rod_load_lbs)}
-            stroke="#f59e0b"
+            stroke="#d97706"
             strokeWidth="1"
             strokeDasharray="2 2"
           />
@@ -186,7 +186,7 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
             x={padding.left + plotWidth - 4}
             y={scaleY(card.peak_polished_rod_load_lbs) - 4}
             textAnchor="end"
-            className="fill-amber-400 text-[10px] font-mono"
+            className="fill-amber-700 text-[10px] font-mono font-semibold"
           >
             PPRL: {card.peak_polished_rod_load_lbs.toLocaleString()} lbs
           </text>
@@ -194,18 +194,18 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
       </div>
 
       {/* Card Legend & KPIs */}
-      <div className="w-full flex items-center justify-between text-xs pt-2 border-t border-slate-800 font-mono mt-1">
+      <div className="w-full flex items-center justify-between text-xs pt-2 border-t border-slate-200 font-mono mt-1">
         <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5 text-cyan-400 font-medium">
-            <span className="w-2.5 h-0.5 bg-cyan-400 inline-block" />
+          <span className="flex items-center gap-1.5 text-blue-700 font-semibold">
+            <span className="w-2.5 h-0.5 bg-blue-600 inline-block" />
             Surface Card
           </span>
-          <span className="flex items-center gap-1.5 text-sky-400">
-            <span className="w-2.5 h-0.5 border-t border-dashed border-sky-400 inline-block" />
+          <span className="flex items-center gap-1.5 text-sky-700 font-medium">
+            <span className="w-2.5 h-0.5 border-t border-dashed border-sky-600 inline-block" />
             Pump Card
           </span>
         </div>
-        <div className="text-slate-400 text-[11px] flex gap-3">
+        <div className="text-slate-500 text-[11px] flex gap-3">
           <span>Torque: {(card.peak_gearbox_torque_in_lbs / 1000).toFixed(0)}k in-lb</span>
           <span>Load Range: {card.load_range_lbs.toLocaleString()} lbs</span>
         </div>

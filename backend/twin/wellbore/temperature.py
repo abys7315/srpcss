@@ -1,7 +1,8 @@
 """
-Wellbore Temperature Gradient and Fluid Cooling.
+Canonical Model for: Production Phase Fluid Ascent Thermal Gradient (Fluid Cooling).
+Calculates heavy crude cooling as produced fluids travel up the tubing string from bottomhole to surface.
 
-PROVENANCE: ASSUMED.
+PROVENANCE: ASSUMED (Empirical heat transfer model calibrated to Baghewala geothermal gradient).
 """
 
 from dataclasses import dataclass
@@ -21,13 +22,16 @@ class WellboreTemperatureModel:
         self,
         bottomhole_temp_c: float,
         liquid_rate_m3_d: float,
-        depth_m: float = 1050.0
+        depth_m: float = 1050.0,
+        surface_ambient_c: float = 32.0
     ) -> float:
         """
         At high production rates, fluid reaches surface hotter.
-        At low rates, fluid loses heat to geothermal formation and approaches ambient (~35-40C).
+        At low rates, fluid loses heat to geothermal formation and approaches surface ambient (~32-35C).
+        Note: Reservoir initial temp is 47.0C; near-surface ground datum is 35.0C.
         """
-        res_delta = max(0.0, bottomhole_temp_c - 35.0)
+        near_surface_datum_c = 35.0
+        res_delta = max(0.0, bottomhole_temp_c - near_surface_datum_c)
         retention_fraction = min(0.85, 0.35 + 0.50 * (liquid_rate_m3_d / 30.0))
-        surface_temp = 32.0 + res_delta * retention_fraction
+        surface_temp = surface_ambient_c + res_delta * retention_fraction
         return round(float(surface_temp), 1)

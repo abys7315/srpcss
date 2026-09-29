@@ -12,15 +12,83 @@ import type {
   ProvenanceManifest
 } from './types';
 
+// Support VITE_API_URL, VITE_API_BASE_URL, relative /api/v1 (Vite dev proxy), and direct fallbacks
+const resolveApiUrl = (rawUrl?: string): string => {
+  if (!rawUrl) return '/api/v1';
+  const trimmed = rawUrl.replace(/\/+$/, '');
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+};
+
+const rawEnvUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
+const PRIMARY_BASE_URL = rawEnvUrl ? resolveApiUrl(rawEnvUrl) : '/api/v1';
+const DIRECT_BACKEND_URL = 'http://127.0.0.1:8000/api/v1';
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: PRIMARY_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 120000,
 });
 
+// Automatic failover to direct backend URL if proxy encounters network error
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (
+      (!error.response || error.code === 'ERR_NETWORK' || error.response?.status === 502 || error.response?.status === 504) &&
+      !originalRequest._retry &&
+      api.defaults.baseURL !== DIRECT_BACKEND_URL
+    ) {
+      originalRequest._retry = true;
+      originalRequest.baseURL = DIRECT_BACKEND_URL;
+      api.defaults.baseURL = DIRECT_BACKEND_URL;
+      console.warn(`[API Proxy Failover] Retrying request directly against ${DIRECT_BACKEND_URL}`);
+      return api(originalRequest);
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const apiClient = {
-  // Health
+  // Health & Connection Status
+  checkConnection: async (): Promise<{ connected: boolean; version?: string; service?: string }> => {
+    // 1. Try through the active base URL (e.g. Vite dev proxy /api/v1 or configured env)
+    try {
+      const res = await api.get('/health', { timeout: 3000 });
+      if (res.data?.status === 'HEALTHY' || res.status === 200) {
+        return {
+          connected: true,
+          version: res.data?.version || '1.0.0',
+          service: res.data?.service || 'PETRO-TWIN Backend'
+        };
+      }
+    } catch {
+      // 2. Try direct fallback targets if proxy fails
+      const fallbackTargets = [
+        'http://127.0.0.1:8000/api/v1',
+        'http://localhost:8000/api/v1'
+      ];
+      for (const target of fallbackTargets) {
+        try {
+          const directRes = await axios.get(`${target}/health`, { timeout: 2500 });
+          if (directRes.data?.status === 'HEALTHY' || directRes.status === 200) {
+            api.defaults.baseURL = target;
+            return {
+              connected: true,
+              version: directRes.data?.version || '1.0.0',
+              service: directRes.data?.service || 'PETRO-TWIN Backend'
+            };
+          }
+        } catch {
+          // Continue to next fallback
+        }
+      }
+    }
+    return { connected: false };
+  },
+
   getHealth: async () => {
     const res = await api.get('/health');
     return res.data;
@@ -103,6 +171,27 @@ export const apiClient = {
     return res.data.data;
   },
 
+  // Governance & Approvals
+  approveRecommendation: async (recId: string, params: { well_id: string; decision_reason?: string; approved_by?: string; approved_setpoint?: any }) => {
+    const res = await api.post<APIResponse<any>>(`/recommendations/${recId}/approve`, params);
+    return res.data.data;
+  },
+
+  rejectRecommendation: async (recId: string, params: { well_id: string; decision_reason: string; approved_by?: string }) => {
+    const res = await api.post<APIResponse<any>>(`/recommendations/${recId}/reject`, params);
+    return res.data.data;
+  },
+
+  updateSetpoint: async (wellId: string, params: { spm: number; stroke_length_inch: number; vfd_downstroke_ratio: number; steam_volume_tonnes: number; soak_duration_days: number; applied_by?: string }) => {
+    const res = await api.post<APIResponse<any>>(`/wells/${wellId}/setpoint`, params);
+    return res.data.data;
+  },
+
+  getWellAudit: async (wellId: string) => {
+    const res = await api.get<APIResponse<any>>(`/wells/${wellId}/audit`);
+    return res.data.data;
+  },
+
   // Benchmarks
   getBenchmarks: async (): Promise<BenchmarkData> => {
     const res = await api.get<APIResponse<BenchmarkData>>('/benchmarks');
@@ -115,3 +204,4 @@ export const apiClient = {
     return res.data.data;
   },
 };
+

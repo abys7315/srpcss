@@ -159,7 +159,8 @@ class SimulationService:
                 violations=con_res.violations,
                 near_limit_warnings=con_res.near_limit_warnings,
                 binding_constraints=con_res.binding_constraints,
-                suggested_engineer_action=con_res.suggested_engineer_action
+                suggested_engineer_action=con_res.suggested_engineer_action,
+                margins=con_res.margins
             ),
             dynacards=dynacards_map,
             timeseries=ts_dto,

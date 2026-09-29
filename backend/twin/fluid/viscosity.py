@@ -12,6 +12,7 @@ PROVENANCE: ASSUMED (calibrated to published literature for Rajasthan heavy crud
 """
 
 from dataclasses import dataclass
+import math
 import numpy as np
 
 @dataclass(frozen=True)
@@ -40,6 +41,11 @@ class AndradeViscosityModel:
         Returns:
             Viscosity in centipoise (cP)
         """
+        if isinstance(temp_celsius, (int, float)):
+            temp_k = max(float(temp_celsius) + 273.15, 200.0) # Guard against absolute zero
+            raw_visc = self.params.A * math.exp(self.params.B / temp_k)
+            return float(min(max(raw_visc, self.params.min_viscosity_cp), self.params.max_viscosity_cp))
+
         temp_k = np.maximum(temp_celsius + 273.15, 200.0) # Guard against absolute zero
         raw_visc = self.params.A * np.exp(self.params.B / temp_k)
         return np.clip(raw_visc, self.params.min_viscosity_cp, self.params.max_viscosity_cp)
