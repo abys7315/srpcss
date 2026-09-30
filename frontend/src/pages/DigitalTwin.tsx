@@ -35,13 +35,13 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
 
   // Operating parameters state
-  const [steamVolume, setSteamVolume] = useState<number>(2500);
-  const [injPressure, setInjPressure] = useState<number>(90);
-  const [injDays, setInjDays] = useState<number>(4);
-  const [soakDays, setSoakDays] = useState<number>(5);
-  const [spm, setSpm] = useState<number>(4.2);
-  const [strokeLength, setStrokeLength] = useState<number>(86);
-  const [vfdRatio, setVfdRatio] = useState<number>(0.85);
+  const [steamVolume, setSteamVolume] = useState<number>(3000);
+  const [injPressure, setInjPressure] = useState<number>(125);
+  const [injDays, setInjDays] = useState<number>(15);
+  const [soakDays, setSoakDays] = useState<number>(6);
+  const [spm, setSpm] = useState<number>(4.5);
+  const [strokeLength, setStrokeLength] = useState<number>(100);
+  const [vfdRatio, setVfdRatio] = useState<number>(1.0);
   const [wellheadPressure, setWellheadPressure] = useState<number>(5.0);
 
   // Real-Time vs Static Simulation Mode (initially baseline static, converts to live real-time stream on click/use)
@@ -78,27 +78,24 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
       const w = await apiClient.getWell(selectedWellId);
       setWell(w);
       if (w.operating_parameters) {
-        setSteamVolume(w.operating_parameters.steam_volume_tonnes || 2500);
-        setSoakDays(w.operating_parameters.soak_duration_days || 5);
-        setSpm(w.operating_parameters.spm || 4.2);
-        setVfdRatio(w.operating_parameters.vfd_downstroke_ratio || 0.85);
+        setSteamVolume(w.operating_parameters.steam_volume_tonnes || 3000);
+        setSoakDays(w.operating_parameters.soak_duration_days || 6);
+        setSpm(w.operating_parameters.spm || 4.5);
+        setVfdRatio(w.operating_parameters.vfd_downstroke_ratio || 1.0);
       }
       // Fire simulation and optimization in parallel, but don't block the page on optimization
       const simPromise = apiClient.simulateCycle({
         well_id: selectedWellId,
         cycle_number: 1,
-        steam_volume_tonnes: w.operating_parameters?.steam_volume_tonnes || 2500,
-        injection_duration_days: 4.0,
-        injection_pressure_bar: 90.0,
-        steam_temp_celsius: 260.0,
-        soak_duration_days: w.operating_parameters?.soak_duration_days || 5,
-        production_duration_days: 180.0,
+        steam_volume_tonnes: w.operating_parameters?.steam_volume_tonnes || 3000,
+        injection_duration_days: 15.0,
+        injection_pressure_bar: 125.0,
+        soak_duration_days: w.operating_parameters?.soak_duration_days || 6,
+        production_duration_days: 90.0,
         economic_cutoff_oil_rate_bpd: 7.0,
-        spm: w.operating_parameters?.spm || 4.2,
-        stroke_length_inch: 86.0,
-        vfd_downstroke_ratio: w.operating_parameters?.vfd_downstroke_ratio || 0.85,
-        cooling_anomaly_day: null,
-        cooling_anomaly_severity_pct: 0.0,
+        spm: w.operating_parameters?.spm || 4.5,
+        stroke_length_inch: 100.0,
+        vfd_downstroke_ratio: w.operating_parameters?.vfd_downstroke_ratio || 1.0,
       });
       // Fire optimization in the background — don't block the page
       apiClient.optimizeJoint({ well_id: selectedWellId })
@@ -125,17 +122,14 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
         well_id: selectedWellId,
         cycle_number: 1,
         steam_volume_tonnes: steamVolume,
-        injection_duration_days: injDays,
+        injection_duration_days: Math.max(5, injDays),
         injection_pressure_bar: injPressure,
-        steam_temp_celsius: 260.0,
         soak_duration_days: soakDays,
-        production_duration_days: 180.0,
+        production_duration_days: 90.0,
         economic_cutoff_oil_rate_bpd: 7.0,
         spm: spm,
         stroke_length_inch: strokeLength,
         vfd_downstroke_ratio: vfdRatio,
-        cooling_anomaly_day: null,
-        cooling_anomaly_severity_pct: 0.0,
       });
       setSimResult(res);
       setIsEditModalOpen(false);

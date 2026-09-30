@@ -36,13 +36,13 @@ export const CSSOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) =>
         setSoakDays(w.operating_parameters.soak_duration_days);
         setCutoffBpd(w.operating_parameters.economic_cutoff_oil_rate_bpd);
       }
-      const opt = await apiClient.optimizeCSS({
+      // Run CSS optimization in background — don't block page
+      apiClient.optimizeCSS({
         well_id: selectedWellId,
         steam_volume_tonnes: w.operating_parameters?.steam_volume_tonnes || 3000,
         soak_duration_days: w.operating_parameters?.soak_duration_days || 6,
         cutoff_bpd: w.operating_parameters?.economic_cutoff_oil_rate_bpd || 8.0,
-      });
-      setResult(opt);
+      }).then(setResult).catch(() => {/* optimization result is optional on load */});
     } catch (e) {
       console.error('Failed to load CSS optimizer data:', e);
     } finally {

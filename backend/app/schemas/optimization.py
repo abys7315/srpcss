@@ -117,6 +117,6 @@ class OptimizationResponse(BaseModel):
     evaluations: int = 0
     seed: int = 0
     srp_policy: str = "fixed"
-    algorithm: str = "NSGA-II (pymoo), pop 24, 12 generations"
+    algorithm: str = "NSGA-II (pymoo), pop 12, 6 generations"
     evaluated_points: List[ParetoSolutionDTO] = Field(default_factory=list)
     provenance: ProvenanceEnum = ProvenanceEnum.SIMULATED

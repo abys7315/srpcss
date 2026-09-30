@@ -137,7 +137,7 @@ class JointOptimizer:
 
     def __init__(self, constraint_engine: Optional[ConstraintEngine] = None,
                  confidence_estimator: Optional[ConfidenceEstimator] = None,
-                 pop_size: int = 24, n_gen: int = 12):
+                 pop_size: int = 12, n_gen: int = 6):
         self.constraints = constraint_engine or ConstraintEngine()
         self.conf_estimator = confidence_estimator or ConfidenceEstimator()
         self.evaluator = CandidateEvaluator(self.constraints)

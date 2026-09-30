@@ -71,22 +71,22 @@ export const Economics: React.FC<Props> = ({ selectedWellId, onNavigate }) => {
         setBaselineWaterBbl(water);
       }
 
-      // Fetch joint optimization
-      const optRes = await apiClient.optimizeJoint({
+      // Fetch joint optimization in background — don't block page on it
+      apiClient.optimizeJoint({
         well_id: selectedWellId,
         weight_net_benefit: 0.50,
         weight_sor: 0.20,
         weight_energy: 0.20,
         weight_failure_risk: 0.10,
-      });
-
-      const rec = optRes?.recommended_configuration;
-      if (rec) {
-        setOptimizedOilBbl(rec.cumulative_oil_bbl || 5120);
-        setOptimizedSteamT(rec.steam_volume_tonnes || 2400);
-        setOptimizedKwh(Math.round(baselineKwh * (rec.spm / 5.0) * (rec.vfd_downstroke_ratio || 0.85)));
-        setOptimizedWaterBbl(Math.round(baselineWaterBbl * 0.90));
-      }
+      }).then((optRes) => {
+        const rec = optRes?.recommended_configuration;
+        if (rec) {
+          setOptimizedOilBbl(rec.cumulative_oil_bbl || 5120);
+          setOptimizedSteamT(rec.steam_volume_tonnes || 2400);
+          setOptimizedKwh(Math.round((baseSim?.kpis?.total_electricity_kwh || 18500) * (rec.spm / 5.0) * (rec.vfd_downstroke_ratio || 0.85)));
+          setOptimizedWaterBbl(Math.round((baseSim?.kpis?.total_water_produced_bbl || 15000) * 0.90));
+        }
+      }).catch(() => {/* optimization is optional — page still works without it */});
     } catch (e) {
       console.error('Failed to load well economics data:', e);
     } finally {

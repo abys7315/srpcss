@@ -42,14 +42,14 @@ export const SRPOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate: _onN
       setWell(w);
       const activeSpm = w.operating_parameters?.spm || 4.5;
       const activeStroke = w.operating_parameters?.stroke_length_inch || 100;
-      const activeVfd = w.operating_parameters?.vfd_downstroke_ratio || 0.85;
+      const activeVfd = w.operating_parameters?.vfd_downstroke_ratio || 1.0;
 
       setSpm(activeSpm);
       setStrokeLength(activeStroke);
       setVfdRatio(activeVfd);
 
-      // Run simulation to compute true physics-derived dynacard
-      const sim = await apiClient.simulateCycle({
+      // Run simulation and optimization in parallel
+      const simPromise = apiClient.simulateCycle({
         well_id: selectedWellId,
         spm: activeSpm,
         stroke_length_inch: activeStroke,
@@ -57,15 +57,17 @@ export const SRPOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate: _onN
         steam_volume_tonnes: w.operating_parameters?.steam_volume_tonnes || 3000,
         soak_duration_days: w.operating_parameters?.soak_duration_days || 6,
       });
-      setSimResult(sim);
 
-      const opt = await apiClient.optimizeSRP({
+      // Optimization runs in background
+      apiClient.optimizeSRP({
         well_id: selectedWellId,
         spm: activeSpm,
         stroke_length_inch: activeStroke,
         vfd_downstroke_ratio: activeVfd,
-      });
-      setResult(opt);
+      }).then(setResult).catch(() => {/* optional */});
+
+      const sim = await simPromise;
+      setSimResult(sim);
     } catch (e) {
       console.error('Failed to load SRP optimizer data:', e);
     } finally {
@@ -76,23 +78,24 @@ export const SRPOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate: _onN
   const handleRunSRP = async () => {
     try {
       setLoading(true);
-      const sim = await apiClient.simulateCycle({
-        well_id: selectedWellId,
-        spm,
-        stroke_length_inch: strokeLength,
-        vfd_downstroke_ratio: vfdRatio,
-        steam_volume_tonnes: well?.operating_parameters?.steam_volume_tonnes || 3000,
-        soak_duration_days: well?.operating_parameters?.soak_duration_days || 6,
-      });
+      const [sim, opt] = await Promise.all([
+        apiClient.simulateCycle({
+          well_id: selectedWellId,
+          spm,
+          stroke_length_inch: strokeLength,
+          vfd_downstroke_ratio: vfdRatio,
+          steam_volume_tonnes: well?.operating_parameters?.steam_volume_tonnes || 3000,
+          soak_duration_days: well?.operating_parameters?.soak_duration_days || 6,
+        }),
+        apiClient.optimizeSRP({
+          well_id: selectedWellId,
+          spm,
+          stroke_length_inch: strokeLength,
+          vfd_downstroke_ratio: vfdRatio,
+        }).catch(() => null),
+      ]);
       setSimResult(sim);
-
-      const opt = await apiClient.optimizeSRP({
-        well_id: selectedWellId,
-        spm,
-        stroke_length_inch: strokeLength,
-        vfd_downstroke_ratio: vfdRatio,
-      });
-      setResult(opt);
+      if (opt) setResult(opt);
     } catch (e) {
       console.error('SRP optimization failed:', e);
     } finally {
