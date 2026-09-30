@@ -5,6 +5,21 @@ This document defines the stable REST API contract for the **SIH 26120 Digital T
 Base URL: `http://localhost:8000/api/v1`  
 Health check is accessible at `/health` and `/api/v1/health`.
 
+### Field data and thermal calibration
+
+`POST /telemetry/ingest` stores daily observations with a required, auditable `source_label`.
+The response provenance is `USER_SUPPLIED`: persistence is not field-data validation.
+
+```json
+{"well_id":"BGW-01","source_label":"gauge export 2026-09","observations":[{"day":1,"oil_rate_bpd":42.6,"temperature_c":81.2}]}
+```
+
+`GET /telemetry/{well_id}` lists observations. `DELETE /telemetry/{well_id}` clears them (optionally by `source_label`).
+
+`POST /calibrate/thermal` fits the thermal-loss scalar κ to the first 70% of chronologically ordered observations, then scores only the remaining 30%. The service applies κ only when the holdout improves by at least 10% and the fit is not on a search bound. It returns `INSUFFICIENT_DATA`, `REJECTED_NO_IMPROVEMENT`, `REJECTED_AT_BOUND`, or `ACCEPTED` in `data.status`; an accepted result is applied only when `data.applied` is true. `GET` and `DELETE /calibrate/thermal/{well_id}` read or reset active calibration.
+
+`GET /stream/{well_id}?speed=10` returns Server-Sent Events: a `start` event, daily twin rows, then `done`. Rows include an observed oil rate and residual if an observation exists for that day.
+
 ---
 
 ## 1. Standard Enums & Error Formats

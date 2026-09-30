@@ -1,131 +1,3575 @@
 {
-  "benchmark_title": "Petro-Twin Physics-Informed Simulation Benchmark Report",
-  "timestamp": "2026-09-29T23:27:58.026125+00:00",
-  "execution_time_seconds": 494.7,
-  "disclaimer": "All numbers are simulation results across synthetic wells. They do not represent measured Baghewala field data.",
+  "benchmark_title": "Simulated benchmark: 10 synthetic wells x 3 cooling scenarios",
+  "timestamp": "2026-09-30T00:27:27.875019+00:00",
+  "execution_time_seconds": 101.6,
+  "protocol": {
+    "baseline_policy": "HEURISTIC_FIXED_SCHEDULE (benchmarks/baseline/standard_cycles.json)",
+    "wells": [
+      "BGW-01",
+      "BGW-02",
+      "BGW-03",
+      "BGW-04",
+      "BGW-05",
+      "BGW-06",
+      "BGW-07",
+      "BGW-08",
+      "BGW-09",
+      "BGW-10"
+    ],
+    "scenarios": [
+      "none",
+      "20pct_day35",
+      "35pct_day35"
+    ],
+    "runs_per_row": 30,
+    "planning": "Optimizers plan on the nominal scenario; plans are evaluated under all scenarios.",
+    "optimizer": "NSGA-II (pymoo), pop 24, 12 generations, seed 42",
+    "float_days": "Production days with minimum float margin < 1.0"
+  },
+  "disclaimer": "Simulation results on synthetic wells. Not measured Baghewala field data.",
   "baseline_vs_optimized": {
+    "optimized_row": "Joint_Plus_Adaptive",
     "wells_evaluated": [
       "BGW-01",
       "BGW-02",
       "BGW-03",
       "BGW-04",
-      "BGW-05"
+      "BGW-05",
+      "BGW-06",
+      "BGW-07",
+      "BGW-08",
+      "BGW-09",
+      "BGW-10"
     ],
-    "baseline_mean_net_benefit_usd": 284487.0,
-    "optimized_mean_net_benefit_usd": 549286.1,
-    "net_benefit_gain_pct": 93.1,
-    "baseline_mean_sor": 2.6,
-    "optimized_mean_sor": 2.4,
-    "sor_reduction_pct": 7.7,
-    "baseline_actual_float_events": 0,
-    "optimized_actual_float_events": 0,
-    "baseline_float_events_count": 0,
-    "optimized_float_events_count": 0
+    "baseline_mean_net_benefit_usd": 196073.0,
+    "baseline_std_net_benefit_usd": 422.0,
+    "optimized_mean_net_benefit_usd": 515472.0,
+    "optimized_std_net_benefit_usd": 28607.0,
+    "net_benefit_gain_pct": 162.9,
+    "baseline_mean_sor": 3.41,
+    "optimized_mean_sor": 2.25,
+    "sor_reduction_pct": 34.0,
+    "baseline_actual_float_events": 0.0,
+    "optimized_actual_float_events": 0.0,
+    "baseline_float_events_count": 0.0,
+    "optimized_float_events_count": 0.0
   },
   "ablation_study": {
-    "Baseline_Historical": {
-      "net_benefit_usd": 285037.0,
-      "sor": 2.62,
-      "oil_bbl": 7150.9,
-      "float_margin": 2.596,
-      "total_float_events": 0,
-      "computation_time_s": 0.019,
-      "description": "Fixed schedule: 3000t steam, 5.2 SPM, unshaped downstroke (Simulated Baseline Policy)"
+    "Baseline_Fixed_Schedule": {
+      "description": "HEURISTIC_FIXED_SCHEDULE: fixed steam schedule and constant SPM (the baseline)",
+      "n_runs": 30,
+      "net_benefit_usd": 196073.0,
+      "net_benefit_std_usd": 422.0,
+      "delta_vs_baseline_usd": 0.0,
+      "delta_vs_baseline_std_usd": 0.0,
+      "oil_bbl": 5500.7,
+      "oil_std_bbl": 0.0,
+      "sor": 3.41,
+      "sor_std": 0.0,
+      "float_days": 0.0,
+      "float_days_std": 0.0,
+      "float_margin": 3.109,
+      "kwh_per_bbl": 0.84,
+      "infeasible_runs": 0,
+      "computation_time_s": 0.0
     },
     "CSS_Only_Optimization": {
-      "net_benefit_usd": 164154.0,
-      "sor": 2.28,
-      "oil_bbl": 4125.5,
-      "float_margin": 4.246,
-      "total_float_events": 0,
-      "computation_time_s": 59.181,
-      "description": "Optimized steam & soak with safe conventional 3.0 SPM lift"
+      "description": "NSGA-II on CSS variables; SRP held at baseline (fixed SPM)",
+      "n_runs": 30,
+      "net_benefit_usd": 226138.0,
+      "net_benefit_std_usd": 5823.0,
+      "delta_vs_baseline_usd": 30064.0,
+      "delta_vs_baseline_std_usd": 5547.0,
+      "oil_bbl": 5395.4,
+      "oil_std_bbl": 84.3,
+      "sor": 2.0,
+      "sor_std": 0.15,
+      "float_days": 0.0,
+      "float_days_std": 0.0,
+      "float_margin": 2.461,
+      "kwh_per_bbl": 1.36,
+      "infeasible_runs": 0,
+      "computation_time_s": 13.08
     },
     "SRP_Only_Optimization": {
-      "net_benefit_usd": 430640.0,
-      "sor": 1.9,
-      "oil_bbl": 9845.5,
-      "float_margin": 1.86,
-      "total_float_events": 0,
-      "computation_time_s": 109.431,
-      "description": "Optimized SPM & VFD with fixed 3000t steam"
+      "description": "NSGA-II on fixed SPM, stroke, VFD ratio; CSS held at baseline",
+      "n_runs": 30,
+      "net_benefit_usd": 377142.0,
+      "net_benefit_std_usd": 21707.0,
+      "delta_vs_baseline_usd": 181068.0,
+      "delta_vs_baseline_std_usd": 21395.0,
+      "oil_bbl": 9008.4,
+      "oil_std_bbl": 369.2,
+      "sor": 2.08,
+      "sor_std": 0.09,
+      "float_days": 0.0,
+      "float_days_std": 0.0,
+      "float_margin": 1.192,
+      "kwh_per_bbl": 2.97,
+      "infeasible_runs": 0,
+      "computation_time_s": 14.13
+    },
+    "SRP_Adaptive_Only": {
+      "description": "NSGA-II on adaptive-controller parameters; CSS held at baseline",
+      "n_runs": 30,
+      "net_benefit_usd": 400840.0,
+      "net_benefit_std_usd": 19035.0,
+      "delta_vs_baseline_usd": 204767.0,
+      "delta_vs_baseline_std_usd": 18765.0,
+      "oil_bbl": 9294.6,
+      "oil_std_bbl": 355.1,
+      "sor": 2.02,
+      "sor_std": 0.08,
+      "float_days": 0.0,
+      "float_days_std": 0.0,
+      "float_margin": 1.773,
+      "kwh_per_bbl": 1.31,
+      "infeasible_runs": 0,
+      "computation_time_s": 25.44
     },
     "Joint_Co_Optimization": {
-      "net_benefit_usd": 543437.0,
-      "sor": 2.06,
-      "oil_bbl": 12573.5,
-      "float_margin": 2.318,
-      "total_float_events": 0,
-      "computation_time_s": 103.003,
-      "description": "Simultaneous co-optimization of CSS thermal schedule & SRP dynamic lift"
+      "description": "NSGA-II on CSS + fixed SRP variables",
+      "n_runs": 30,
+      "net_benefit_usd": 475674.0,
+      "net_benefit_std_usd": 32050.0,
+      "delta_vs_baseline_usd": 279600.0,
+      "delta_vs_baseline_std_usd": 31748.0,
+      "oil_bbl": 11468.5,
+      "oil_std_bbl": 623.6,
+      "sor": 2.32,
+      "sor_std": 0.1,
+      "float_days": 0.0,
+      "float_days_std": 0.0,
+      "float_margin": 1.188,
+      "kwh_per_bbl": 1.99,
+      "infeasible_runs": 0,
+      "computation_time_s": 14.83
+    },
+    "Joint_Plus_Adaptive": {
+      "description": "NSGA-II on CSS + adaptive-controller parameters",
+      "n_runs": 30,
+      "net_benefit_usd": 515472.0,
+      "net_benefit_std_usd": 28607.0,
+      "delta_vs_baseline_usd": 319399.0,
+      "delta_vs_baseline_std_usd": 28296.0,
+      "oil_bbl": 12171.9,
+      "oil_std_bbl": 553.9,
+      "sor": 2.25,
+      "sor_std": 0.1,
+      "float_days": 0.0,
+      "float_days_std": 0.0,
+      "float_margin": 1.695,
+      "kwh_per_bbl": 1.4,
+      "infeasible_runs": 0,
+      "computation_time_s": 26.33
+    },
+    "Heuristic_Aggressive_Lift": {
+      "description": "HEURISTIC_AGGRESSIVE_LIFT: reference only, not the baseline",
+      "n_runs": 30,
+      "net_benefit_usd": 334185.0,
+      "net_benefit_std_usd": 12781.0,
+      "delta_vs_baseline_usd": 138112.0,
+      "delta_vs_baseline_std_usd": 12464.0,
+      "oil_bbl": 8330.4,
+      "oil_std_bbl": 238.3,
+      "sor": 2.63,
+      "sor_std": 0.08,
+      "float_days": 0.0,
+      "float_days_std": 0.0,
+      "float_margin": 1.468,
+      "kwh_per_bbl": 1.47,
+      "infeasible_runs": 0,
+      "computation_time_s": 0.0
     }
   },
-  "timing_provenance": {
-    "timing_methodology": "Measured single-pass runtime in seconds using time.perf_counter().",
-    "cache_state": "Mixed: baseline runs direct forward simulation; optimizers execute in warm Python runtime.",
-    "measured_runtimes_s": {
-      "baseline_simulation": 0.019,
-      "css_only_optimization": 59.181,
-      "srp_only_optimization": 109.431,
-      "joint_optimization": 103.003
+  "per_well": [
+    {
+      "well": "BGW-01",
+      "rows": {
+        "Baseline_Fixed_Schedule": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "soak_duration_days": 7.0,
+            "production_duration_days": 90.0,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 196839.73,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 4.162,
+              "kwh_per_bbl": 0.74,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 195925.62,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.58,
+              "kwh_per_bbl": 0.81,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 195789.97,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.268,
+              "kwh_per_bbl": 0.86,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Heuristic_Aggressive_Lift": {
+          "plan": {
+            "steam_volume_tonnes": 3500.0,
+            "injection_pressure_bar": 134.4,
+            "soak_duration_days": 5.0,
+            "production_duration_days": 75.0,
+            "spm": 6.5,
+            "stroke_length_inch": 120.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 354365.85,
+              "oil_bbl": 8707.1,
+              "sor": 2.51,
+              "float_days": 0,
+              "min_float_margin": 1.702,
+              "kwh_per_bbl": 1.26,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 342301.54,
+              "oil_bbl": 8482.9,
+              "sor": 2.58,
+              "float_days": 0,
+              "min_float_margin": 1.562,
+              "kwh_per_bbl": 1.4,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 333221.46,
+              "oil_bbl": 8313.9,
+              "sor": 2.63,
+              "float_days": 0,
+              "min_float_margin": 1.487,
+              "kwh_per_bbl": 1.5,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "CSS_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 1559.8,
+            "injection_pressure_bar": 67.5,
+            "injection_duration_days": 12.95,
+            "soak_duration_days": 3.41,
+            "economic_cutoff_bpd": 4.52,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 236129.63,
+              "oil_bbl": 5488.4,
+              "sor": 1.78,
+              "float_days": 0,
+              "min_float_margin": 2.777,
+              "kwh_per_bbl": 1.3,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 230505.0,
+              "oil_bbl": 5384.6,
+              "sor": 1.81,
+              "float_days": 0,
+              "min_float_margin": 2.581,
+              "kwh_per_bbl": 1.4,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 224697.52,
+              "oil_bbl": 5292.7,
+              "sor": 1.84,
+              "float_days": 0,
+              "min_float_margin": 2.485,
+              "kwh_per_bbl": 1.48,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 7.19,
+            "stroke_length_inch": 128.1,
+            "vfd_downstroke_ratio": 0.938,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 416527.68,
+              "oil_bbl": 9654.4,
+              "sor": 1.94,
+              "float_days": 0,
+              "min_float_margin": 1.3,
+              "kwh_per_bbl": 2.7,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 389944.06,
+              "oil_bbl": 9311.4,
+              "sor": 2.01,
+              "float_days": 0,
+              "min_float_margin": 1.231,
+              "kwh_per_bbl": 2.92,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 377313.35,
+              "oil_bbl": 9101.2,
+              "sor": 2.06,
+              "float_days": 0,
+              "min_float_margin": 1.192,
+              "kwh_per_bbl": 3.07,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Adaptive_Only": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 4.0,
+            "stroke_length_inch": 143.9,
+            "vfd_downstroke_ratio": 0.995,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.363,
+            "srp_min_fillage": 0.896,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 432851.06,
+              "oil_bbl": 9890.9,
+              "sor": 1.9,
+              "float_days": 0,
+              "min_float_margin": 1.829,
+              "kwh_per_bbl": 1.34,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 415888.22,
+              "oil_bbl": 9575.1,
+              "sor": 1.96,
+              "float_days": 0,
+              "min_float_margin": 1.863,
+              "kwh_per_bbl": 1.31,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 405500.05,
+              "oil_bbl": 9382.3,
+              "sor": 2.0,
+              "float_days": 0,
+              "min_float_margin": 1.839,
+              "kwh_per_bbl": 1.29,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Co_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 4384.5,
+            "injection_pressure_bar": 75.5,
+            "injection_duration_days": 15.39,
+            "soak_duration_days": 4.28,
+            "economic_cutoff_bpd": 11.49,
+            "spm": 7.1,
+            "stroke_length_inch": 136.8,
+            "vfd_downstroke_ratio": 0.946,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 534824.04,
+              "oil_bbl": 12554.3,
+              "sor": 2.18,
+              "float_days": 0,
+              "min_float_margin": 1.388,
+              "kwh_per_bbl": 1.67,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 501133.25,
+              "oil_bbl": 12061.8,
+              "sor": 2.27,
+              "float_days": 0,
+              "min_float_margin": 1.284,
+              "kwh_per_bbl": 1.88,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 481794.74,
+              "oil_bbl": 11739.4,
+              "sor": 2.33,
+              "float_days": 0,
+              "min_float_margin": 1.227,
+              "kwh_per_bbl": 2.03,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Plus_Adaptive": {
+          "plan": {
+            "steam_volume_tonnes": 4408.3,
+            "injection_pressure_bar": 63.5,
+            "injection_duration_days": 19.15,
+            "soak_duration_days": 8.39,
+            "economic_cutoff_bpd": 7.9,
+            "spm": 4.0,
+            "stroke_length_inch": 143.2,
+            "vfd_downstroke_ratio": 0.945,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.17,
+            "srp_min_fillage": 0.792,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 565024.9,
+              "oil_bbl": 13123.2,
+              "sor": 2.1,
+              "float_days": 0,
+              "min_float_margin": 1.714,
+              "kwh_per_bbl": 1.43,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 535710.2,
+              "oil_bbl": 12572.8,
+              "sor": 2.19,
+              "float_days": 0,
+              "min_float_margin": 1.701,
+              "kwh_per_bbl": 1.41,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 516886.78,
+              "oil_bbl": 12220.1,
+              "sor": 2.25,
+              "float_days": 0,
+              "min_float_margin": 1.695,
+              "kwh_per_bbl": 1.38,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "well": "BGW-02",
+      "rows": {
+        "Baseline_Fixed_Schedule": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "soak_duration_days": 7.0,
+            "production_duration_days": 90.0,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 196075.13,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.968,
+              "kwh_per_bbl": 0.74,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 195893.49,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.437,
+              "kwh_per_bbl": 0.8,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 195756.01,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.154,
+              "kwh_per_bbl": 0.86,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Heuristic_Aggressive_Lift": {
+          "plan": {
+            "steam_volume_tonnes": 3500.0,
+            "injection_pressure_bar": 134.4,
+            "soak_duration_days": 5.0,
+            "production_duration_days": 75.0,
+            "spm": 6.5,
+            "stroke_length_inch": 120.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 349619.18,
+              "oil_bbl": 8617.8,
+              "sor": 2.54,
+              "float_days": 0,
+              "min_float_margin": 1.666,
+              "kwh_per_bbl": 1.28,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 336441.8,
+              "oil_bbl": 8372.3,
+              "sor": 2.61,
+              "float_days": 0,
+              "min_float_margin": 1.537,
+              "kwh_per_bbl": 1.42,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 327036.0,
+              "oil_bbl": 8197.4,
+              "sor": 2.67,
+              "float_days": 0,
+              "min_float_margin": 1.468,
+              "kwh_per_bbl": 1.52,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "CSS_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 1608.3,
+            "injection_pressure_bar": 65.7,
+            "injection_duration_days": 8.54,
+            "soak_duration_days": 3.82,
+            "economic_cutoff_bpd": 11.65,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 235266.89,
+              "oil_bbl": 5490.7,
+              "sor": 1.83,
+              "float_days": 0,
+              "min_float_margin": 2.78,
+              "kwh_per_bbl": 1.25,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 229754.46,
+              "oil_bbl": 5389.7,
+              "sor": 1.86,
+              "float_days": 0,
+              "min_float_margin": 2.586,
+              "kwh_per_bbl": 1.36,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 223968.6,
+              "oil_bbl": 5298.2,
+              "sor": 1.9,
+              "float_days": 0,
+              "min_float_margin": 2.49,
+              "kwh_per_bbl": 1.44,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 7.2,
+            "stroke_length_inch": 128.1,
+            "vfd_downstroke_ratio": 0.921,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 405320.34,
+              "oil_bbl": 9448.7,
+              "sor": 1.98,
+              "float_days": 0,
+              "min_float_margin": 1.311,
+              "kwh_per_bbl": 2.78,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 379791.98,
+              "oil_bbl": 9122.2,
+              "sor": 2.06,
+              "float_days": 0,
+              "min_float_margin": 1.243,
+              "kwh_per_bbl": 3.0,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 367821.44,
+              "oil_bbl": 8924.3,
+              "sor": 2.1,
+              "float_days": 0,
+              "min_float_margin": 1.205,
+              "kwh_per_bbl": 3.14,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Adaptive_Only": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 4.0,
+            "stroke_length_inch": 144.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.359,
+            "srp_min_fillage": 0.944,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 420876.79,
+              "oil_bbl": 9667.1,
+              "sor": 1.94,
+              "float_days": 0,
+              "min_float_margin": 1.836,
+              "kwh_per_bbl": 1.29,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 404969.74,
+              "oil_bbl": 9371.7,
+              "sor": 2.0,
+              "float_days": 0,
+              "min_float_margin": 1.855,
+              "kwh_per_bbl": 1.26,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 395332.56,
+              "oil_bbl": 9192.3,
+              "sor": 2.04,
+              "float_days": 0,
+              "min_float_margin": 1.843,
+              "kwh_per_bbl": 1.25,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Co_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 4017.1,
+            "injection_pressure_bar": 77.8,
+            "injection_duration_days": 12.81,
+            "soak_duration_days": 11.88,
+            "economic_cutoff_bpd": 11.52,
+            "spm": 7.18,
+            "stroke_length_inch": 131.3,
+            "vfd_downstroke_ratio": 0.952,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 495929.88,
+              "oil_bbl": 11646.5,
+              "sor": 2.16,
+              "float_days": 0,
+              "min_float_margin": 1.351,
+              "kwh_per_bbl": 1.93,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 463271.38,
+              "oil_bbl": 11178.5,
+              "sor": 2.25,
+              "float_days": 0,
+              "min_float_margin": 1.263,
+              "kwh_per_bbl": 2.14,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 445556.59,
+              "oil_bbl": 10881.8,
+              "sor": 2.31,
+              "float_days": 0,
+              "min_float_margin": 1.214,
+              "kwh_per_bbl": 2.29,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Plus_Adaptive": {
+          "plan": {
+            "steam_volume_tonnes": 4259.6,
+            "injection_pressure_bar": 64.1,
+            "injection_duration_days": 19.8,
+            "soak_duration_days": 5.99,
+            "economic_cutoff_bpd": 6.43,
+            "spm": 4.0,
+            "stroke_length_inch": 139.9,
+            "vfd_downstroke_ratio": 0.752,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.495,
+            "srp_min_fillage": 0.774,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 539073.17,
+              "oil_bbl": 12559.6,
+              "sor": 2.12,
+              "float_days": 0,
+              "min_float_margin": 2.208,
+              "kwh_per_bbl": 1.51,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 510629.11,
+              "oil_bbl": 12025.4,
+              "sor": 2.21,
+              "float_days": 0,
+              "min_float_margin": 2.207,
+              "kwh_per_bbl": 1.48,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 492579.81,
+              "oil_bbl": 11687.5,
+              "sor": 2.28,
+              "float_days": 0,
+              "min_float_margin": 2.204,
+              "kwh_per_bbl": 1.45,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "well": "BGW-03",
+      "rows": {
+        "Baseline_Fixed_Schedule": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "soak_duration_days": 7.0,
+            "production_duration_days": 90.0,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 196849.51,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 4.23,
+              "kwh_per_bbl": 0.79,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 195898.12,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.639,
+              "kwh_per_bbl": 0.85,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 195760.61,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.319,
+              "kwh_per_bbl": 0.91,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Heuristic_Aggressive_Lift": {
+          "plan": {
+            "steam_volume_tonnes": 3500.0,
+            "injection_pressure_bar": 134.4,
+            "soak_duration_days": 5.0,
+            "production_duration_days": 75.0,
+            "spm": 6.5,
+            "stroke_length_inch": 120.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 350449.96,
+              "oil_bbl": 8634.3,
+              "sor": 2.53,
+              "float_days": 0,
+              "min_float_margin": 1.735,
+              "kwh_per_bbl": 1.36,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 336914.59,
+              "oil_bbl": 8381.9,
+              "sor": 2.61,
+              "float_days": 0,
+              "min_float_margin": 1.596,
+              "kwh_per_bbl": 1.5,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 327225.77,
+              "oil_bbl": 8201.6,
+              "sor": 2.67,
+              "float_days": 0,
+              "min_float_margin": 1.522,
+              "kwh_per_bbl": 1.6,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "CSS_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 1834.0,
+            "injection_pressure_bar": 93.9,
+            "injection_duration_days": 15.85,
+            "soak_duration_days": 4.69,
+            "economic_cutoff_bpd": 4.11,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 228747.89,
+              "oil_bbl": 5500.7,
+              "sor": 2.08,
+              "float_days": 0,
+              "min_float_margin": 2.979,
+              "kwh_per_bbl": 1.23,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 224547.49,
+              "oil_bbl": 5424.5,
+              "sor": 2.11,
+              "float_days": 0,
+              "min_float_margin": 2.719,
+              "kwh_per_bbl": 1.34,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 219593.92,
+              "oil_bbl": 5332.7,
+              "sor": 2.15,
+              "float_days": 0,
+              "min_float_margin": 2.599,
+              "kwh_per_bbl": 1.42,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 7.43,
+            "stroke_length_inch": 123.0,
+            "vfd_downstroke_ratio": 0.909,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 405263.7,
+              "oil_bbl": 9447.7,
+              "sor": 1.98,
+              "float_days": 0,
+              "min_float_margin": 1.386,
+              "kwh_per_bbl": 2.85,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 383750.51,
+              "oil_bbl": 9100.0,
+              "sor": 2.06,
+              "float_days": 0,
+              "min_float_margin": 1.311,
+              "kwh_per_bbl": 3.08,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 367524.93,
+              "oil_bbl": 8890.6,
+              "sor": 2.11,
+              "float_days": 0,
+              "min_float_margin": 1.268,
+              "kwh_per_bbl": 3.23,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Adaptive_Only": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 4.0,
+            "stroke_length_inch": 143.7,
+            "vfd_downstroke_ratio": 0.992,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.088,
+            "srp_min_fillage": 0.943,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 421738.92,
+              "oil_bbl": 9684.1,
+              "sor": 1.94,
+              "float_days": 0,
+              "min_float_margin": 1.918,
+              "kwh_per_bbl": 1.39,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 404966.36,
+              "oil_bbl": 9372.4,
+              "sor": 2.0,
+              "float_days": 0,
+              "min_float_margin": 1.926,
+              "kwh_per_bbl": 1.36,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 394718.08,
+              "oil_bbl": 9181.5,
+              "sor": 2.04,
+              "float_days": 0,
+              "min_float_margin": 1.959,
+              "kwh_per_bbl": 1.34,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Co_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 4396.3,
+            "injection_pressure_bar": 77.8,
+            "injection_duration_days": 14.87,
+            "soak_duration_days": 11.26,
+            "economic_cutoff_bpd": 11.44,
+            "spm": 7.22,
+            "stroke_length_inch": 134.8,
+            "vfd_downstroke_ratio": 0.972,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 522473.99,
+              "oil_bbl": 12342.1,
+              "sor": 2.23,
+              "float_days": 0,
+              "min_float_margin": 1.366,
+              "kwh_per_bbl": 1.85,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 487136.16,
+              "oil_bbl": 11831.7,
+              "sor": 2.32,
+              "float_days": 0,
+              "min_float_margin": 1.268,
+              "kwh_per_bbl": 2.07,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 467728.01,
+              "oil_bbl": 11505.0,
+              "sor": 2.39,
+              "float_days": 0,
+              "min_float_margin": 1.215,
+              "kwh_per_bbl": 2.22,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Plus_Adaptive": {
+          "plan": {
+            "steam_volume_tonnes": 4493.1,
+            "injection_pressure_bar": 60.3,
+            "injection_duration_days": 17.92,
+            "soak_duration_days": 3.15,
+            "economic_cutoff_bpd": 6.61,
+            "spm": 4.0,
+            "stroke_length_inch": 143.4,
+            "vfd_downstroke_ratio": 0.913,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.254,
+            "srp_min_fillage": 0.823,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 563365.23,
+              "oil_bbl": 13126.6,
+              "sor": 2.14,
+              "float_days": 0,
+              "min_float_margin": 1.845,
+              "kwh_per_bbl": 1.46,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 532829.71,
+              "oil_bbl": 12553.0,
+              "sor": 2.24,
+              "float_days": 0,
+              "min_float_margin": 1.825,
+              "kwh_per_bbl": 1.42,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 513190.25,
+              "oil_bbl": 12184.9,
+              "sor": 2.3,
+              "float_days": 0,
+              "min_float_margin": 1.834,
+              "kwh_per_bbl": 1.4,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "well": "BGW-04",
+      "rows": {
+        "Baseline_Fixed_Schedule": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "soak_duration_days": 7.0,
+            "production_duration_days": 90.0,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 196859.15,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 4.137,
+              "kwh_per_bbl": 0.71,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 195942.68,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.558,
+              "kwh_per_bbl": 0.78,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 195804.42,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.248,
+              "kwh_per_bbl": 0.84,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Heuristic_Aggressive_Lift": {
+          "plan": {
+            "steam_volume_tonnes": 3500.0,
+            "injection_pressure_bar": 134.4,
+            "soak_duration_days": 5.0,
+            "production_duration_days": 75.0,
+            "spm": 6.5,
+            "stroke_length_inch": 120.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 345244.11,
+              "oil_bbl": 8532.5,
+              "sor": 2.56,
+              "float_days": 0,
+              "min_float_margin": 1.728,
+              "kwh_per_bbl": 1.24,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 330835.49,
+              "oil_bbl": 8264.0,
+              "sor": 2.65,
+              "float_days": 0,
+              "min_float_margin": 1.593,
+              "kwh_per_bbl": 1.38,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 320950.17,
+              "oil_bbl": 8080.2,
+              "sor": 2.71,
+              "float_days": 0,
+              "min_float_margin": 1.519,
+              "kwh_per_bbl": 1.47,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "CSS_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 1876.3,
+            "injection_pressure_bar": 83.9,
+            "injection_duration_days": 8.56,
+            "soak_duration_days": 7.87,
+            "economic_cutoff_bpd": 6.2,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 228005.13,
+              "oil_bbl": 5500.7,
+              "sor": 2.13,
+              "float_days": 0,
+              "min_float_margin": 3.017,
+              "kwh_per_bbl": 1.1,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 224472.54,
+              "oil_bbl": 5437.2,
+              "sor": 2.16,
+              "float_days": 0,
+              "min_float_margin": 2.749,
+              "kwh_per_bbl": 1.21,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 219721.87,
+              "oil_bbl": 5349.2,
+              "sor": 2.19,
+              "float_days": 0,
+              "min_float_margin": 2.625,
+              "kwh_per_bbl": 1.28,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 6.91,
+            "stroke_length_inch": 131.7,
+            "vfd_downstroke_ratio": 0.852,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 393561.19,
+              "oil_bbl": 9227.6,
+              "sor": 2.03,
+              "float_days": 0,
+              "min_float_margin": 1.487,
+              "kwh_per_bbl": 2.68,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 372800.61,
+              "oil_bbl": 8899.8,
+              "sor": 2.11,
+              "float_days": 0,
+              "min_float_margin": 1.405,
+              "kwh_per_bbl": 2.9,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 360997.15,
+              "oil_bbl": 8695.9,
+              "sor": 2.16,
+              "float_days": 0,
+              "min_float_margin": 1.354,
+              "kwh_per_bbl": 3.05,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Adaptive_Only": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 4.0,
+            "stroke_length_inch": 143.9,
+            "vfd_downstroke_ratio": 0.995,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.404,
+            "srp_min_fillage": 0.795,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 410057.07,
+              "oil_bbl": 9462.3,
+              "sor": 1.98,
+              "float_days": 0,
+              "min_float_margin": 1.962,
+              "kwh_per_bbl": 1.2,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 394257.15,
+              "oil_bbl": 9168.9,
+              "sor": 2.04,
+              "float_days": 0,
+              "min_float_margin": 1.98,
+              "kwh_per_bbl": 1.17,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 384774.87,
+              "oil_bbl": 8992.4,
+              "sor": 2.09,
+              "float_days": 0,
+              "min_float_margin": 2.0,
+              "kwh_per_bbl": 1.16,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Co_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 4396.3,
+            "injection_pressure_bar": 77.1,
+            "injection_duration_days": 17.78,
+            "soak_duration_days": 3.36,
+            "economic_cutoff_bpd": 11.19,
+            "spm": 7.4,
+            "stroke_length_inch": 134.2,
+            "vfd_downstroke_ratio": 0.958,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 519334.87,
+              "oil_bbl": 12270.5,
+              "sor": 2.24,
+              "float_days": 0,
+              "min_float_margin": 1.365,
+              "kwh_per_bbl": 1.73,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 485607.71,
+              "oil_bbl": 11744.6,
+              "sor": 2.34,
+              "float_days": 0,
+              "min_float_margin": 1.266,
+              "kwh_per_bbl": 1.95,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 464024.85,
+              "oil_bbl": 11411.7,
+              "sor": 2.41,
+              "float_days": 0,
+              "min_float_margin": 1.21,
+              "kwh_per_bbl": 2.1,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Plus_Adaptive": {
+          "plan": {
+            "steam_volume_tonnes": 4492.6,
+            "injection_pressure_bar": 74.8,
+            "injection_duration_days": 24.38,
+            "soak_duration_days": 12.9,
+            "economic_cutoff_bpd": 9.86,
+            "spm": 4.0,
+            "stroke_length_inch": 142.2,
+            "vfd_downstroke_ratio": 0.96,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.158,
+            "srp_min_fillage": 0.934,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 532321.79,
+              "oil_bbl": 12564.4,
+              "sor": 2.23,
+              "float_days": 0,
+              "min_float_margin": 1.831,
+              "kwh_per_bbl": 1.27,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 502735.03,
+              "oil_bbl": 12009.5,
+              "sor": 2.34,
+              "float_days": 0,
+              "min_float_margin": 1.827,
+              "kwh_per_bbl": 1.24,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 484207.73,
+              "oil_bbl": 11663.1,
+              "sor": 2.41,
+              "float_days": 0,
+              "min_float_margin": 1.818,
+              "kwh_per_bbl": 1.22,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "well": "BGW-05",
+      "rows": {
+        "Baseline_Fixed_Schedule": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "soak_duration_days": 7.0,
+            "production_duration_days": 90.0,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 195985.13,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.939,
+              "kwh_per_bbl": 0.83,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 195796.06,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.413,
+              "kwh_per_bbl": 0.91,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 195652.17,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.131,
+              "kwh_per_bbl": 0.97,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Heuristic_Aggressive_Lift": {
+          "plan": {
+            "steam_volume_tonnes": 3500.0,
+            "injection_pressure_bar": 134.4,
+            "soak_duration_days": 5.0,
+            "production_duration_days": 75.0,
+            "spm": 6.5,
+            "stroke_length_inch": 120.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 330862.27,
+              "oil_bbl": 8265.0,
+              "sor": 2.65,
+              "float_days": 0,
+              "min_float_margin": 1.72,
+              "kwh_per_bbl": 1.48,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 315184.19,
+              "oil_bbl": 7975.3,
+              "sor": 2.74,
+              "float_days": 0,
+              "min_float_margin": 1.596,
+              "kwh_per_bbl": 1.62,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 304786.41,
+              "oil_bbl": 7786.2,
+              "sor": 2.81,
+              "float_days": 0,
+              "min_float_margin": 1.526,
+              "kwh_per_bbl": 1.72,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "CSS_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 1867.1,
+            "injection_pressure_bar": 60.8,
+            "injection_duration_days": 8.83,
+            "soak_duration_days": 3.85,
+            "economic_cutoff_bpd": 5.24,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 227313.07,
+              "oil_bbl": 5478.3,
+              "sor": 2.13,
+              "float_days": 0,
+              "min_float_margin": 3.03,
+              "kwh_per_bbl": 1.27,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 220279.96,
+              "oil_bbl": 5348.5,
+              "sor": 2.18,
+              "float_days": 0,
+              "min_float_margin": 2.79,
+              "kwh_per_bbl": 1.38,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 214357.67,
+              "oil_bbl": 5238.6,
+              "sor": 2.23,
+              "float_days": 0,
+              "min_float_margin": 2.668,
+              "kwh_per_bbl": 1.47,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 6.65,
+            "stroke_length_inch": 133.3,
+            "vfd_downstroke_ratio": 0.912,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 365482.19,
+              "oil_bbl": 8710.3,
+              "sor": 2.15,
+              "float_days": 0,
+              "min_float_margin": 1.443,
+              "kwh_per_bbl": 2.88,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 345706.47,
+              "oil_bbl": 8404.7,
+              "sor": 2.23,
+              "float_days": 0,
+              "min_float_margin": 1.348,
+              "kwh_per_bbl": 3.11,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 331250.79,
+              "oil_bbl": 8217.2,
+              "sor": 2.28,
+              "float_days": 0,
+              "min_float_margin": 1.296,
+              "kwh_per_bbl": 3.27,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Adaptive_Only": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 4.0,
+            "stroke_length_inch": 143.7,
+            "vfd_downstroke_ratio": 0.999,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.414,
+            "srp_min_fillage": 0.848,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 382384.45,
+              "oil_bbl": 8949.4,
+              "sor": 2.1,
+              "float_days": 0,
+              "min_float_margin": 2.085,
+              "kwh_per_bbl": 1.29,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 368889.04,
+              "oil_bbl": 8698.9,
+              "sor": 2.16,
+              "float_days": 0,
+              "min_float_margin": 2.085,
+              "kwh_per_bbl": 1.27,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 360536.9,
+              "oil_bbl": 8543.4,
+              "sor": 2.19,
+              "float_days": 0,
+              "min_float_margin": 2.085,
+              "kwh_per_bbl": 1.26,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Co_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 4228.8,
+            "injection_pressure_bar": 77.1,
+            "injection_duration_days": 24.4,
+            "soak_duration_days": 3.44,
+            "economic_cutoff_bpd": 6.1,
+            "spm": 6.85,
+            "stroke_length_inch": 125.2,
+            "vfd_downstroke_ratio": 0.777,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 449685.64,
+              "oil_bbl": 10895.9,
+              "sor": 2.43,
+              "float_days": 0,
+              "min_float_margin": 1.987,
+              "kwh_per_bbl": 1.68,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 424281.01,
+              "oil_bbl": 10429.5,
+              "sor": 2.53,
+              "float_days": 0,
+              "min_float_margin": 1.835,
+              "kwh_per_bbl": 1.89,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 407813.74,
+              "oil_bbl": 10128.7,
+              "sor": 2.61,
+              "float_days": 0,
+              "min_float_margin": 1.751,
+              "kwh_per_bbl": 2.04,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Plus_Adaptive": {
+          "plan": {
+            "steam_volume_tonnes": 4226.3,
+            "injection_pressure_bar": 60.5,
+            "injection_duration_days": 19.65,
+            "soak_duration_days": 5.43,
+            "economic_cutoff_bpd": 6.5,
+            "spm": 4.0,
+            "stroke_length_inch": 141.5,
+            "vfd_downstroke_ratio": 0.959,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.143,
+            "srp_min_fillage": 0.878,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 502094.38,
+              "oil_bbl": 11838.3,
+              "sor": 2.23,
+              "float_days": 0,
+              "min_float_margin": 1.963,
+              "kwh_per_bbl": 1.35,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 473690.65,
+              "oil_bbl": 11306.5,
+              "sor": 2.34,
+              "float_days": 0,
+              "min_float_margin": 1.941,
+              "kwh_per_bbl": 1.32,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 456059.76,
+              "oil_bbl": 10977.3,
+              "sor": 2.41,
+              "float_days": 0,
+              "min_float_margin": 1.949,
+              "kwh_per_bbl": 1.29,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "well": "BGW-06",
+      "rows": {
+        "Baseline_Fixed_Schedule": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "soak_duration_days": 7.0,
+            "production_duration_days": 90.0,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 196886.15,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 4.208,
+              "kwh_per_bbl": 0.73,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 195973.49,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.614,
+              "kwh_per_bbl": 0.79,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 195839.08,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.303,
+              "kwh_per_bbl": 0.84,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Heuristic_Aggressive_Lift": {
+          "plan": {
+            "steam_volume_tonnes": 3500.0,
+            "injection_pressure_bar": 134.4,
+            "soak_duration_days": 5.0,
+            "production_duration_days": 75.0,
+            "spm": 6.5,
+            "stroke_length_inch": 120.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 357775.11,
+              "oil_bbl": 8771.5,
+              "sor": 2.49,
+              "float_days": 0,
+              "min_float_margin": 1.703,
+              "kwh_per_bbl": 1.23,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 347414.42,
+              "oil_bbl": 8579.3,
+              "sor": 2.55,
+              "float_days": 0,
+              "min_float_margin": 1.556,
+              "kwh_per_bbl": 1.36,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 338932.2,
+              "oil_bbl": 8421.4,
+              "sor": 2.6,
+              "float_days": 0,
+              "min_float_margin": 1.481,
+              "kwh_per_bbl": 1.46,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "CSS_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 1532.2,
+            "injection_pressure_bar": 73.2,
+            "injection_duration_days": 9.2,
+            "soak_duration_days": 6.46,
+            "economic_cutoff_bpd": 9.0,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 237554.72,
+              "oil_bbl": 5499.5,
+              "sor": 1.74,
+              "float_days": 0,
+              "min_float_margin": 2.744,
+              "kwh_per_bbl": 1.3,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 233264.7,
+              "oil_bbl": 5421.6,
+              "sor": 1.77,
+              "float_days": 0,
+              "min_float_margin": 2.552,
+              "kwh_per_bbl": 1.4,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 227938.21,
+              "oil_bbl": 5338.7,
+              "sor": 1.79,
+              "float_days": 0,
+              "min_float_margin": 2.461,
+              "kwh_per_bbl": 1.48,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 7.11,
+            "stroke_length_inch": 127.9,
+            "vfd_downstroke_ratio": 0.917,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 426642.22,
+              "oil_bbl": 9837.6,
+              "sor": 1.91,
+              "float_days": 0,
+              "min_float_margin": 1.34,
+              "kwh_per_bbl": 2.59,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 399777.21,
+              "oil_bbl": 9479.5,
+              "sor": 1.98,
+              "float_days": 0,
+              "min_float_margin": 1.268,
+              "kwh_per_bbl": 2.81,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 386618.8,
+              "oil_bbl": 9261.4,
+              "sor": 2.02,
+              "float_days": 0,
+              "min_float_margin": 1.228,
+              "kwh_per_bbl": 2.96,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Adaptive_Only": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 4.0,
+            "stroke_length_inch": 143.8,
+            "vfd_downstroke_ratio": 0.989,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.567,
+            "srp_min_fillage": 0.928,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 444919.37,
+              "oil_bbl": 10117.0,
+              "sor": 1.85,
+              "float_days": 0,
+              "min_float_margin": 1.789,
+              "kwh_per_bbl": 1.36,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 427139.96,
+              "oil_bbl": 9785.9,
+              "sor": 1.92,
+              "float_days": 0,
+              "min_float_margin": 1.806,
+              "kwh_per_bbl": 1.34,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 416259.64,
+              "oil_bbl": 9583.9,
+              "sor": 1.96,
+              "float_days": 0,
+              "min_float_margin": 1.773,
+              "kwh_per_bbl": 1.32,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Co_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 4471.4,
+            "injection_pressure_bar": 75.2,
+            "injection_duration_days": 13.56,
+            "soak_duration_days": 12.15,
+            "economic_cutoff_bpd": 11.79,
+            "spm": 6.83,
+            "stroke_length_inch": 137.2,
+            "vfd_downstroke_ratio": 0.831,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 530695.75,
+              "oil_bbl": 12539.1,
+              "sor": 2.23,
+              "float_days": 0,
+              "min_float_margin": 1.644,
+              "kwh_per_bbl": 1.6,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 504796.51,
+              "oil_bbl": 12117.9,
+              "sor": 2.31,
+              "float_days": 0,
+              "min_float_margin": 1.515,
+              "kwh_per_bbl": 1.8,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 487965.27,
+              "oil_bbl": 11820.7,
+              "sor": 2.36,
+              "float_days": 0,
+              "min_float_margin": 1.448,
+              "kwh_per_bbl": 1.94,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Plus_Adaptive": {
+          "plan": {
+            "steam_volume_tonnes": 4311.9,
+            "injection_pressure_bar": 61.4,
+            "injection_duration_days": 24.67,
+            "soak_duration_days": 5.77,
+            "economic_cutoff_bpd": 5.68,
+            "spm": 4.0,
+            "stroke_length_inch": 143.2,
+            "vfd_downstroke_ratio": 0.903,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.54,
+            "srp_min_fillage": 0.81,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 574247.4,
+              "oil_bbl": 13251.4,
+              "sor": 2.03,
+              "float_days": 0,
+              "min_float_margin": 1.733,
+              "kwh_per_bbl": 1.47,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 545233.79,
+              "oil_bbl": 12706.3,
+              "sor": 2.12,
+              "float_days": 0,
+              "min_float_margin": 1.724,
+              "kwh_per_bbl": 1.44,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 526496.51,
+              "oil_bbl": 12354.4,
+              "sor": 2.18,
+              "float_days": 0,
+              "min_float_margin": 1.732,
+              "kwh_per_bbl": 1.42,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "well": "BGW-07",
+      "rows": {
+        "Baseline_Fixed_Schedule": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "soak_duration_days": 7.0,
+            "production_duration_days": 90.0,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 196747.0,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 4.025,
+              "kwh_per_bbl": 0.84,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 195829.84,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.485,
+              "kwh_per_bbl": 0.91,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 195691.96,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.191,
+              "kwh_per_bbl": 0.96,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Heuristic_Aggressive_Lift": {
+          "plan": {
+            "steam_volume_tonnes": 3500.0,
+            "injection_pressure_bar": 134.4,
+            "soak_duration_days": 5.0,
+            "production_duration_days": 75.0,
+            "spm": 6.5,
+            "stroke_length_inch": 120.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 349417.04,
+              "oil_bbl": 8617.0,
+              "sor": 2.54,
+              "float_days": 0,
+              "min_float_margin": 1.682,
+              "kwh_per_bbl": 1.45,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 335988.23,
+              "oil_bbl": 8366.7,
+              "sor": 2.61,
+              "float_days": 0,
+              "min_float_margin": 1.552,
+              "kwh_per_bbl": 1.6,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 326442.43,
+              "oil_bbl": 8189.8,
+              "sor": 2.67,
+              "float_days": 0,
+              "min_float_margin": 1.482,
+              "kwh_per_bbl": 1.7,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "CSS_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 1598.2,
+            "injection_pressure_bar": 60.2,
+            "injection_duration_days": 12.8,
+            "soak_duration_days": 6.23,
+            "economic_cutoff_bpd": 9.88,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 234362.54,
+              "oil_bbl": 5481.5,
+              "sor": 1.82,
+              "float_days": 0,
+              "min_float_margin": 2.797,
+              "kwh_per_bbl": 1.44,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 228251.19,
+              "oil_bbl": 5368.5,
+              "sor": 1.86,
+              "float_days": 0,
+              "min_float_margin": 2.606,
+              "kwh_per_bbl": 1.55,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 222158.28,
+              "oil_bbl": 5271.9,
+              "sor": 1.89,
+              "float_days": 0,
+              "min_float_margin": 2.512,
+              "kwh_per_bbl": 1.63,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 6.09,
+            "stroke_length_inch": 133.4,
+            "vfd_downstroke_ratio": 0.846,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 390975.24,
+              "oil_bbl": 9166.1,
+              "sor": 2.05,
+              "float_days": 0,
+              "min_float_margin": 1.658,
+              "kwh_per_bbl": 2.44,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 368422.25,
+              "oil_bbl": 8810.0,
+              "sor": 2.13,
+              "float_days": 0,
+              "min_float_margin": 1.564,
+              "kwh_per_bbl": 2.65,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 355880.44,
+              "oil_bbl": 8591.9,
+              "sor": 2.18,
+              "float_days": 0,
+              "min_float_margin": 1.512,
+              "kwh_per_bbl": 2.8,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Adaptive_Only": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 4.0,
+            "stroke_length_inch": 143.7,
+            "vfd_downstroke_ratio": 0.997,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.467,
+            "srp_min_fillage": 0.849,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 419888.47,
+              "oil_bbl": 9652.6,
+              "sor": 1.94,
+              "float_days": 0,
+              "min_float_margin": 1.846,
+              "kwh_per_bbl": 1.46,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 403613.35,
+              "oil_bbl": 9349.5,
+              "sor": 2.01,
+              "float_days": 0,
+              "min_float_margin": 1.882,
+              "kwh_per_bbl": 1.43,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 393825.09,
+              "oil_bbl": 9167.2,
+              "sor": 2.05,
+              "float_days": 0,
+              "min_float_margin": 1.87,
+              "kwh_per_bbl": 1.42,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Co_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 4244.0,
+            "injection_pressure_bar": 61.3,
+            "injection_duration_days": 24.55,
+            "soak_duration_days": 12.95,
+            "economic_cutoff_bpd": 6.97,
+            "spm": 6.87,
+            "stroke_length_inch": 135.4,
+            "vfd_downstroke_ratio": 0.926,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 509060.02,
+              "oil_bbl": 12034.1,
+              "sor": 2.2,
+              "float_days": 0,
+              "min_float_margin": 1.465,
+              "kwh_per_bbl": 1.88,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 480437.71,
+              "oil_bbl": 11565.5,
+              "sor": 2.29,
+              "float_days": 0,
+              "min_float_margin": 1.361,
+              "kwh_per_bbl": 2.09,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 463049.55,
+              "oil_bbl": 11260.4,
+              "sor": 2.36,
+              "float_days": 0,
+              "min_float_margin": 1.304,
+              "kwh_per_bbl": 2.23,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Plus_Adaptive": {
+          "plan": {
+            "steam_volume_tonnes": 4415.1,
+            "injection_pressure_bar": 60.6,
+            "injection_duration_days": 24.15,
+            "soak_duration_days": 4.25,
+            "economic_cutoff_bpd": 11.44,
+            "spm": 4.0,
+            "stroke_length_inch": 140.5,
+            "vfd_downstroke_ratio": 0.954,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.451,
+            "srp_min_fillage": 0.874,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 550434.68,
+              "oil_bbl": 12858.6,
+              "sor": 2.15,
+              "float_days": 0,
+              "min_float_margin": 1.74,
+              "kwh_per_bbl": 1.52,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 521225.76,
+              "oil_bbl": 12310.0,
+              "sor": 2.24,
+              "float_days": 0,
+              "min_float_margin": 1.718,
+              "kwh_per_bbl": 1.49,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 502375.02,
+              "oil_bbl": 11956.7,
+              "sor": 2.31,
+              "float_days": 0,
+              "min_float_margin": 1.72,
+              "kwh_per_bbl": 1.46,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "well": "BGW-08",
+      "rows": {
+        "Baseline_Fixed_Schedule": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "soak_duration_days": 7.0,
+            "production_duration_days": 90.0,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 196061.32,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.906,
+              "kwh_per_bbl": 0.76,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 195877.61,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.387,
+              "kwh_per_bbl": 0.83,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 195738.3,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.109,
+              "kwh_per_bbl": 0.89,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Heuristic_Aggressive_Lift": {
+          "plan": {
+            "steam_volume_tonnes": 3500.0,
+            "injection_pressure_bar": 134.4,
+            "soak_duration_days": 5.0,
+            "production_duration_days": 75.0,
+            "spm": 6.5,
+            "stroke_length_inch": 120.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 343746.61,
+              "oil_bbl": 8507.1,
+              "sor": 2.57,
+              "float_days": 0,
+              "min_float_margin": 1.667,
+              "kwh_per_bbl": 1.33,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 329586.93,
+              "oil_bbl": 8243.4,
+              "sor": 2.65,
+              "float_days": 0,
+              "min_float_margin": 1.542,
+              "kwh_per_bbl": 1.47,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 319851.83,
+              "oil_bbl": 8062.5,
+              "sor": 2.71,
+              "float_days": 0,
+              "min_float_margin": 1.473,
+              "kwh_per_bbl": 1.57,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "CSS_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 1806.1,
+            "injection_pressure_bar": 66.7,
+            "injection_duration_days": 19.02,
+            "soak_duration_days": 6.9,
+            "economic_cutoff_bpd": 8.94,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 229115.68,
+              "oil_bbl": 5500.7,
+              "sor": 2.05,
+              "float_days": 0,
+              "min_float_margin": 2.9,
+              "kwh_per_bbl": 1.18,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 225262.98,
+              "oil_bbl": 5431.1,
+              "sor": 2.08,
+              "float_days": 0,
+              "min_float_margin": 2.663,
+              "kwh_per_bbl": 1.29,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 220607.99,
+              "oil_bbl": 5345.6,
+              "sor": 2.11,
+              "float_days": 0,
+              "min_float_margin": 2.552,
+              "kwh_per_bbl": 1.36,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 7.28,
+            "stroke_length_inch": 127.6,
+            "vfd_downstroke_ratio": 0.922,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 393249.72,
+              "oil_bbl": 9228.7,
+              "sor": 2.03,
+              "float_days": 0,
+              "min_float_margin": 1.307,
+              "kwh_per_bbl": 2.88,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 368873.66,
+              "oil_bbl": 8919.7,
+              "sor": 2.1,
+              "float_days": 0,
+              "min_float_margin": 1.24,
+              "kwh_per_bbl": 3.1,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 357286.18,
+              "oil_bbl": 8729.6,
+              "sor": 2.15,
+              "float_days": 0,
+              "min_float_margin": 1.199,
+              "kwh_per_bbl": 3.25,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Adaptive_Only": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 4.0,
+            "stroke_length_inch": 144.0,
+            "vfd_downstroke_ratio": 0.997,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.481,
+            "srp_min_fillage": 0.883,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 407758.24,
+              "oil_bbl": 9422.5,
+              "sor": 1.99,
+              "float_days": 0,
+              "min_float_margin": 1.929,
+              "kwh_per_bbl": 1.27,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 392850.41,
+              "oil_bbl": 9145.1,
+              "sor": 2.05,
+              "float_days": 0,
+              "min_float_margin": 1.934,
+              "kwh_per_bbl": 1.24,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 383722.59,
+              "oil_bbl": 8975.2,
+              "sor": 2.09,
+              "float_days": 0,
+              "min_float_margin": 1.934,
+              "kwh_per_bbl": 1.23,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Co_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 4271.6,
+            "injection_pressure_bar": 61.0,
+            "injection_duration_days": 24.98,
+            "soak_duration_days": 4.67,
+            "economic_cutoff_bpd": 6.11,
+            "spm": 6.93,
+            "stroke_length_inch": 135.0,
+            "vfd_downstroke_ratio": 0.98,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 504047.03,
+              "oil_bbl": 11934.8,
+              "sor": 2.24,
+              "float_days": 0,
+              "min_float_margin": 1.384,
+              "kwh_per_bbl": 1.68,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 473316.28,
+              "oil_bbl": 11454.7,
+              "sor": 2.33,
+              "float_days": 0,
+              "min_float_margin": 1.283,
+              "kwh_per_bbl": 1.88,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 452846.96,
+              "oil_bbl": 11142.0,
+              "sor": 2.4,
+              "float_days": 0,
+              "min_float_margin": 1.227,
+              "kwh_per_bbl": 2.02,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Plus_Adaptive": {
+          "plan": {
+            "steam_volume_tonnes": 4456.5,
+            "injection_pressure_bar": 60.0,
+            "injection_duration_days": 18.04,
+            "soak_duration_days": 7.88,
+            "economic_cutoff_bpd": 9.54,
+            "spm": 4.0,
+            "stroke_length_inch": 139.0,
+            "vfd_downstroke_ratio": 0.835,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.356,
+            "srp_min_fillage": 0.827,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 534500.19,
+              "oil_bbl": 12576.5,
+              "sor": 2.21,
+              "float_days": 0,
+              "min_float_margin": 2.037,
+              "kwh_per_bbl": 1.41,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 505819.22,
+              "oil_bbl": 12037.8,
+              "sor": 2.31,
+              "float_days": 0,
+              "min_float_margin": 2.014,
+              "kwh_per_bbl": 1.38,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 487532.08,
+              "oil_bbl": 11695.4,
+              "sor": 2.38,
+              "float_days": 0,
+              "min_float_margin": 2.006,
+              "kwh_per_bbl": 1.36,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "well": "BGW-09",
+      "rows": {
+        "Baseline_Fixed_Schedule": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "soak_duration_days": 7.0,
+            "production_duration_days": 90.0,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 196800.49,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 4.188,
+              "kwh_per_bbl": 0.81,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 195882.76,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.602,
+              "kwh_per_bbl": 0.88,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 195744.06,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.286,
+              "kwh_per_bbl": 0.94,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Heuristic_Aggressive_Lift": {
+          "plan": {
+            "steam_volume_tonnes": 3500.0,
+            "injection_pressure_bar": 134.4,
+            "soak_duration_days": 5.0,
+            "production_duration_days": 75.0,
+            "spm": 6.5,
+            "stroke_length_inch": 120.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 345037.71,
+              "oil_bbl": 8532.2,
+              "sor": 2.56,
+              "float_days": 0,
+              "min_float_margin": 1.742,
+              "kwh_per_bbl": 1.4,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 330504.6,
+              "oil_bbl": 8261.3,
+              "sor": 2.65,
+              "float_days": 0,
+              "min_float_margin": 1.606,
+              "kwh_per_bbl": 1.55,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 320482.02,
+              "oil_bbl": 8074.9,
+              "sor": 2.71,
+              "float_days": 0,
+              "min_float_margin": 1.532,
+              "kwh_per_bbl": 1.65,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "CSS_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 1825.0,
+            "injection_pressure_bar": 74.1,
+            "injection_duration_days": 9.94,
+            "soak_duration_days": 6.36,
+            "economic_cutoff_bpd": 4.34,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 229355.2,
+              "oil_bbl": 5500.3,
+              "sor": 2.07,
+              "float_days": 0,
+              "min_float_margin": 3.031,
+              "kwh_per_bbl": 1.27,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 224720.07,
+              "oil_bbl": 5415.8,
+              "sor": 2.11,
+              "float_days": 0,
+              "min_float_margin": 2.77,
+              "kwh_per_bbl": 1.38,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 219549.9,
+              "oil_bbl": 5319.9,
+              "sor": 2.14,
+              "float_days": 0,
+              "min_float_margin": 2.646,
+              "kwh_per_bbl": 1.46,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 7.48,
+            "stroke_length_inch": 125.5,
+            "vfd_downstroke_ratio": 0.919,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 395431.28,
+              "oil_bbl": 9272.1,
+              "sor": 2.02,
+              "float_days": 0,
+              "min_float_margin": 1.344,
+              "kwh_per_bbl": 3.06,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 370762.94,
+              "oil_bbl": 8949.8,
+              "sor": 2.1,
+              "float_days": 0,
+              "min_float_margin": 1.271,
+              "kwh_per_bbl": 3.29,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 358559.92,
+              "oil_bbl": 8752.2,
+              "sor": 2.14,
+              "float_days": 0,
+              "min_float_margin": 1.223,
+              "kwh_per_bbl": 3.44,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Adaptive_Only": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 4.0,
+            "stroke_length_inch": 143.9,
+            "vfd_downstroke_ratio": 0.998,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.398,
+            "srp_min_fillage": 0.776,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 409332.19,
+              "oil_bbl": 9452.6,
+              "sor": 1.98,
+              "float_days": 0,
+              "min_float_margin": 1.966,
+              "kwh_per_bbl": 1.36,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 393493.61,
+              "oil_bbl": 9157.7,
+              "sor": 2.05,
+              "float_days": 0,
+              "min_float_margin": 1.984,
+              "kwh_per_bbl": 1.34,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 383845.39,
+              "oil_bbl": 8978.0,
+              "sor": 2.09,
+              "float_days": 0,
+              "min_float_margin": 2.003,
+              "kwh_per_bbl": 1.32,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Co_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 3966.8,
+            "injection_pressure_bar": 62.7,
+            "injection_duration_days": 14.28,
+            "soak_duration_days": 7.77,
+            "economic_cutoff_bpd": 10.72,
+            "spm": 6.32,
+            "stroke_length_inch": 143.1,
+            "vfd_downstroke_ratio": 0.937,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 483980.88,
+              "oil_bbl": 11389.9,
+              "sor": 2.18,
+              "float_days": 0,
+              "min_float_margin": 1.525,
+              "kwh_per_bbl": 1.87,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 454750.44,
+              "oil_bbl": 10914.4,
+              "sor": 2.27,
+              "float_days": 0,
+              "min_float_margin": 1.418,
+              "kwh_per_bbl": 2.08,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 437315.83,
+              "oil_bbl": 10608.7,
+              "sor": 2.34,
+              "float_days": 0,
+              "min_float_margin": 1.357,
+              "kwh_per_bbl": 2.22,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Plus_Adaptive": {
+          "plan": {
+            "steam_volume_tonnes": 4192.9,
+            "injection_pressure_bar": 60.4,
+            "injection_duration_days": 17.01,
+            "soak_duration_days": 3.78,
+            "economic_cutoff_bpd": 5.62,
+            "spm": 4.0,
+            "stroke_length_inch": 139.2,
+            "vfd_downstroke_ratio": 0.895,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.372,
+            "srp_min_fillage": 0.869,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 528105.06,
+              "oil_bbl": 12305.6,
+              "sor": 2.13,
+              "float_days": 0,
+              "min_float_margin": 2.016,
+              "kwh_per_bbl": 1.44,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 498673.33,
+              "oil_bbl": 11753.9,
+              "sor": 2.23,
+              "float_days": 0,
+              "min_float_margin": 2.011,
+              "kwh_per_bbl": 1.4,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 480292.27,
+              "oil_bbl": 11410.0,
+              "sor": 2.3,
+              "float_days": 0,
+              "min_float_margin": 2.002,
+              "kwh_per_bbl": 1.38,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "well": "BGW-10",
+      "rows": {
+        "Baseline_Fixed_Schedule": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "soak_duration_days": 7.0,
+            "production_duration_days": 90.0,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 196736.86,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.997,
+              "kwh_per_bbl": 0.8,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 195850.34,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.461,
+              "kwh_per_bbl": 0.88,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 195708.51,
+              "oil_bbl": 5500.7,
+              "sor": 3.41,
+              "float_days": 0,
+              "min_float_margin": 3.172,
+              "kwh_per_bbl": 0.94,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Heuristic_Aggressive_Lift": {
+          "plan": {
+            "steam_volume_tonnes": 3500.0,
+            "injection_pressure_bar": 134.4,
+            "soak_duration_days": 5.0,
+            "production_duration_days": 75.0,
+            "spm": 6.5,
+            "stroke_length_inch": 120.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed"
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 338487.59,
+              "oil_bbl": 8408.4,
+              "sor": 2.6,
+              "float_days": 0,
+              "min_float_margin": 1.712,
+              "kwh_per_bbl": 1.43,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 323352.97,
+              "oil_bbl": 8126.6,
+              "sor": 2.69,
+              "float_days": 0,
+              "min_float_margin": 1.586,
+              "kwh_per_bbl": 1.57,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 313103.7,
+              "oil_bbl": 7938.8,
+              "sor": 2.76,
+              "float_days": 0,
+              "min_float_margin": 1.516,
+              "kwh_per_bbl": 1.67,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "CSS_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 1798.0,
+            "injection_pressure_bar": 77.7,
+            "injection_duration_days": 8.45,
+            "soak_duration_days": 5.16,
+            "economic_cutoff_bpd": 5.62,
+            "spm": 4.0,
+            "stroke_length_inch": 100.0,
+            "vfd_downstroke_ratio": 1.0,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 228454.54,
+              "oil_bbl": 5464.8,
+              "sor": 2.06,
+              "float_days": 0,
+              "min_float_margin": 2.936,
+              "kwh_per_bbl": 1.28,
+              "status": "FEASIBLE",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 221066.21,
+              "oil_bbl": 5328.4,
+              "sor": 2.11,
+              "float_days": 0,
+              "min_float_margin": 2.716,
+              "kwh_per_bbl": 1.4,
+              "status": "FEASIBLE",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 215102.3,
+              "oil_bbl": 5217.8,
+              "sor": 2.15,
+              "float_days": 0,
+              "min_float_margin": 2.601,
+              "kwh_per_bbl": 1.48,
+              "status": "FEASIBLE",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Only_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 6.98,
+            "stroke_length_inch": 129.0,
+            "vfd_downstroke_ratio": 0.95,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 379787.59,
+              "oil_bbl": 8976.0,
+              "sor": 2.09,
+              "float_days": 0,
+              "min_float_margin": 1.351,
+              "kwh_per_bbl": 2.88,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 355468.92,
+              "oil_bbl": 8657.5,
+              "sor": 2.17,
+              "float_days": 0,
+              "min_float_margin": 1.273,
+              "kwh_per_bbl": 3.1,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 343454.98,
+              "oil_bbl": 8464.0,
+              "sor": 2.22,
+              "float_days": 0,
+              "min_float_margin": 1.224,
+              "kwh_per_bbl": 3.26,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "SRP_Adaptive_Only": {
+          "plan": {
+            "steam_volume_tonnes": 3000.0,
+            "injection_pressure_bar": 124.1,
+            "injection_duration_days": 15.0,
+            "soak_duration_days": 7.0,
+            "economic_cutoff_bpd": 8.0,
+            "spm": 4.0,
+            "stroke_length_inch": 143.9,
+            "vfd_downstroke_ratio": 0.99,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.326,
+            "srp_min_fillage": 0.876,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 396319.21,
+              "oil_bbl": 9209.6,
+              "sor": 2.04,
+              "float_days": 0,
+              "min_float_margin": 2.004,
+              "kwh_per_bbl": 1.31,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 381685.37,
+              "oil_bbl": 8937.2,
+              "sor": 2.1,
+              "float_days": 0,
+              "min_float_margin": 2.004,
+              "kwh_per_bbl": 1.29,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 372814.98,
+              "oil_bbl": 8772.7,
+              "sor": 2.14,
+              "float_days": 0,
+              "min_float_margin": 2.004,
+              "kwh_per_bbl": 1.28,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Co_Optimization": {
+          "plan": {
+            "steam_volume_tonnes": 4084.7,
+            "injection_pressure_bar": 80.9,
+            "injection_duration_days": 24.21,
+            "soak_duration_days": 11.28,
+            "economic_cutoff_bpd": 6.06,
+            "spm": 7.13,
+            "stroke_length_inch": 133.8,
+            "vfd_downstroke_ratio": 0.996,
+            "srp_policy": "fixed",
+            "srp_m_target": 1.15,
+            "srp_min_fillage": 0.85,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 474544.33,
+              "oil_bbl": 11305.8,
+              "sor": 2.26,
+              "float_days": 0,
+              "min_float_margin": 1.324,
+              "kwh_per_bbl": 2.07,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 440332.55,
+              "oil_bbl": 10823.2,
+              "sor": 2.36,
+              "float_days": 0,
+              "min_float_margin": 1.237,
+              "kwh_per_bbl": 2.3,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 422473.21,
+              "oil_bbl": 10522.2,
+              "sor": 2.43,
+              "float_days": 0,
+              "min_float_margin": 1.188,
+              "kwh_per_bbl": 2.45,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        },
+        "Joint_Plus_Adaptive": {
+          "plan": {
+            "steam_volume_tonnes": 4473.6,
+            "injection_pressure_bar": 64.6,
+            "injection_duration_days": 8.38,
+            "soak_duration_days": 3.05,
+            "economic_cutoff_bpd": 5.67,
+            "spm": 4.0,
+            "stroke_length_inch": 138.9,
+            "vfd_downstroke_ratio": 0.95,
+            "srp_policy": "adaptive",
+            "srp_m_target": 1.14,
+            "srp_min_fillage": 0.874,
+            "production_duration_days": 90.0
+          },
+          "runs": [
+            {
+              "net_benefit_usd": 522284.48,
+              "oil_bbl": 12330.7,
+              "sor": 2.27,
+              "float_days": 0,
+              "min_float_margin": 1.89,
+              "kwh_per_bbl": 1.38,
+              "status": "NEAR_LIMIT",
+              "scenario": "none"
+            },
+            {
+              "net_benefit_usd": 492652.22,
+              "oil_bbl": 11774.5,
+              "sor": 2.37,
+              "float_days": 0,
+              "min_float_margin": 1.885,
+              "kwh_per_bbl": 1.35,
+              "status": "NEAR_LIMIT",
+              "scenario": "20pct_day35"
+            },
+            {
+              "net_benefit_usd": 473889.24,
+              "oil_bbl": 11423.4,
+              "sor": 2.45,
+              "float_days": 0,
+              "min_float_margin": 1.876,
+              "kwh_per_bbl": 1.32,
+              "status": "NEAR_LIMIT",
+              "scenario": "35pct_day35"
+            }
+          ]
+        }
+      }
     }
-  },
+  ],
   "sensitivity_analysis": {
     "crude_oil_price_usd_bbl": {
       "$45.0/bbl": {
         "multiplier": 45.0,
-        "net_benefit_usd": 343542.0,
-        "oil_recovery_bbl": 11334.3,
-        "sor": 2.28
+        "net_benefit_usd": 412298.0,
+        "oil_recovery_bbl": 13166.4,
+        "sor": 2.09
       },
       "$58.0/bbl": {
         "multiplier": 58.0,
-        "net_benefit_usd": 490888.0,
-        "oil_recovery_bbl": 11334.3,
-        "sor": 2.28
+        "net_benefit_usd": 583461.0,
+        "oil_recovery_bbl": 13166.4,
+        "sor": 2.09
       },
       "$75.0/bbl": {
         "multiplier": 75.0,
-        "net_benefit_usd": 683571.0,
-        "oil_recovery_bbl": 11334.3,
-        "sor": 2.28
+        "net_benefit_usd": 807290.0,
+        "oil_recovery_bbl": 13166.4,
+        "sor": 2.09
       },
       "$90.0/bbl": {
         "multiplier": 90.0,
-        "net_benefit_usd": 853585.0,
-        "oil_recovery_bbl": 11334.3,
-        "sor": 2.28
+        "net_benefit_usd": 1004786.0,
+        "oil_recovery_bbl": 13166.4,
+        "sor": 2.09
       }
     },
     "steam_cost_usd_tonne": {
       "$20.0/tonne": {
         "multiplier": 20.0,
-        "net_benefit_usd": 514702.0,
-        "oil_recovery_bbl": 11334.3,
-        "sor": 2.28
+        "net_benefit_usd": 607766.0,
+        "oil_recovery_bbl": 13166.4,
+        "sor": 2.09
       },
       "$28.5/tonne": {
         "multiplier": 28.5,
-        "net_benefit_usd": 479553.0,
-        "oil_recovery_bbl": 11334.3,
-        "sor": 2.28
+        "net_benefit_usd": 570295.0,
+        "oil_recovery_bbl": 13166.4,
+        "sor": 2.09
       },
       "$35.0/tonne": {
         "multiplier": 35.0,
-        "net_benefit_usd": 452675.0,
-        "oil_recovery_bbl": 11334.3,
-        "sor": 2.28
+        "net_benefit_usd": 541641.0,
+        "oil_recovery_bbl": 13166.4,
+        "sor": 2.09
       },
       "$45.0/tonne": {
         "multiplier": 45.0,
-        "net_benefit_usd": 411324.0,
-        "oil_recovery_bbl": 11334.3,
-        "sor": 2.28
+        "net_benefit_usd": 497558.0,
+        "oil_recovery_bbl": 13166.4,
+        "sor": 2.09
       }
     }
   },
   "provenance": {
     "provenance_type": "SIMULATED",
-    "source": "Petro-Twin Benchmark Engine"
+    "source": "scripts/run_benchmark.py"
   }
 }

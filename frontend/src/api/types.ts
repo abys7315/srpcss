@@ -200,6 +200,27 @@ export interface SimulationResult {
   provenance: ProvenanceTier;
 }
 
+export interface TelemetryObservation {
+  cycle_number: number;
+  day: number;
+  oil_rate_bpd: number;
+  water_cut_pct?: number | null;
+  temperature_c?: number | null;
+  pump_intake_pressure_bar?: number | null;
+  source_label: string;
+  ingested_at?: string | null;
+}
+
+export interface ThermalCalibrationState {
+  well_id: string;
+  default_kappa: number;
+  active_kappa: number;
+  runs: Array<{
+    id: number; status: string; applied: boolean; kappa_fitted: number;
+    holdout_improvement_pct: number; n_observations: number; created_at?: string | null; message?: string | null;
+  }>;
+}
+
 export interface ParetoPoint {
   solution_id: string;
   steam_volume_tonnes: number;

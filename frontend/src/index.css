@@ -5,48 +5,46 @@
 /* Design tokens: RGB channels so Tailwind can apply alpha (see tailwind.config.js). */
 @layer base {
   :root {
-    /* light — clean control-room paper (cool neutral, not yellow) */
-    --bg: 246 247 249;        /* #F6F7F9  cool off-white */
-    --panel: 255 255 255;     /* #FFFFFF  crisp white panels */
-    --sunk: 237 239 243;      /* #EDEFF3  subtle inset */
-    --ink: 23 27 33;          /* #171B21  near-black */
-    --muted: 99 107 118;      /* #636B76  readable grey */
-    --rule: 215 219 226;      /* #D7DBE2  clean dividers */
-    --accent: 190 68 18;      /* #BE4412  warm rust-orange */
-    --ok: 22 120 55;          /* #167837  strong green */
-    --warn: 174 100 0;        /* #AE6400  amber */
-    --alarm: 197 33 25;       /* #C52119  bold red */
-    --steam: 31 100 150;      /* #1F6496  deep teal-blue */
-    /* tinted backgrounds for state tags */
-    --accent-t: 252 237 228;  --accent-b: 243 212 194;
-    --ok-t: 230 245 234;      --ok-b: 198 228 204;
-    --warn-t: 252 241 222;    --warn-b: 240 218 178;
-    --alarm-t: 252 228 226;   --alarm-b: 238 192 189;
-    --steam-t: 228 240 248;   --steam-b: 196 220 238;
-    /* highlight for active row / hover */
-    --highlight: 232 238 250; /* soft blue tint */
+    /* light — crisp “field intelligence” palette. Blue means action; amber is warning only. */
+    --bg: 242 246 252;        /* #F2F6FC  blue-white canvas */
+    --panel: 255 255 255;     /* #FFFFFF */
+    --sunk: 232 238 248;      /* #E8EEF8  recessed data surfaces */
+    --ink: 15 31 57;          /* #0F1F39  navy ink */
+    --muted: 83 101 128;      /* #536580 */
+    --rule: 205 217 234;      /* #CDD9EA */
+    --accent: 37 99 235;      /* #2563EB  sapphire: controls and highlights */
+    --ok: 5 130 105;          /* #058269  teal-green */
+    --warn: 202 112 20;       /* #CA7014  warning orange only */
+    --alarm: 205 52 66;       /* #CD3442 */
+    --steam: 14 116 144;      /* #0E7490  process/telemetry teal */
+    --accent-t: 231 240 255;  --accent-b: 190 214 255;
+    --ok-t: 224 247 241;      --ok-b: 177 229 216;
+    --warn-t: 255 243 226;    --warn-b: 247 205 157;
+    --alarm-t: 255 233 236;   --alarm-b: 248 190 199;
+    --steam-t: 226 246 250;   --steam-b: 174 224 235;
+    --highlight: 221 234 255; /* clearly visible active/hover blue */
     color-scheme: light;
   }
 
   html.dark {
-    /* dark — night-shift control room */
-    --bg: 13 15 19;           /* #0D0F13  deep dark */
-    --panel: 21 24 30;        /* #15181E  card surfaces */
-    --sunk: 30 34 41;         /* #1E2229  inset */
-    --ink: 232 234 238;       /* #E8EAEE  bright text */
-    --muted: 136 142 153;     /* #888E99  readable muted */
-    --rule: 42 47 56;         /* #2A2F38  dividers */
-    --accent: 228 115 50;     /* #E47332  warm orange */
-    --ok: 88 196 120;         /* #58C478  green */
-    --warn: 224 170 56;       /* #E0AA38  amber */
-    --alarm: 235 90 80;       /* #EB5A50  red */
-    --steam: 88 168 210;      /* #58A8D2  blue */
-    --accent-t: 48 34 26;     --accent-b: 86 54 32;
-    --ok-t: 22 44 32;         --ok-b: 38 72 48;
-    --warn-t: 46 38 22;       --warn-b: 78 62 28;
-    --alarm-t: 50 28 28;      --alarm-b: 88 42 40;
-    --steam-t: 22 36 48;      --steam-b: 36 58 76;
-    --highlight: 28 36 50;
+    /* dark — blue-black night shift, with the same semantic hierarchy */
+    --bg: 8 18 33;            /* #081221 */
+    --panel: 15 30 50;        /* #0F1E32 */
+    --sunk: 22 42 67;         /* #162A43 */
+    --ink: 231 240 255;       /* #E7F0FF */
+    --muted: 155 178 207;     /* #9BB2CF */
+    --rule: 42 69 101;        /* #2A4565 */
+    --accent: 96 165 250;     /* #60A5FA */
+    --ok: 52 211 153;         /* #34D399 */
+    --warn: 251 146 60;       /* #FB923C */
+    --alarm: 251 113 133;     /* #FB7185 */
+    --steam: 45 212 191;      /* #2DD4BF */
+    --accent-t: 19 49 90;     --accent-b: 36 81 143;
+    --ok-t: 12 59 49;         --ok-b: 20 104 82;
+    --warn-t: 74 42 20;       --warn-b: 124 67 27;
+    --alarm-t: 75 30 43;      --alarm-b: 126 45 64;
+    --steam-t: 12 57 62;      --steam-b: 20 101 105;
+    --highlight: 23 53 94;
     color-scheme: dark;
   }
 
@@ -63,6 +61,7 @@
     -webkit-font-smoothing: antialiased;
     min-height: 100vh;
     overflow-x: hidden;
+    background-image: radial-gradient(circle at 88% -12%, rgb(var(--accent) / 0.10), transparent 31rem);
     transition: background-color 120ms linear, color 120ms linear;
   }
 
@@ -96,6 +95,7 @@
   .num { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums slashed-zero; }
   .rule-b { border-bottom: 1px solid rgb(var(--rule)); }
   .highlight-row { background-color: rgb(var(--highlight)); }
+  .app-surface { box-shadow: 0 1px 2px rgb(15 31 57 / 0.04), 0 10px 28px rgb(37 99 235 / 0.05); }
   /* Chart path reveal; pair with pathLength="1" on the SVG element. */
   .trace-draw { stroke-dasharray: 1; animation: draw 700ms ease-out both; }
   /* Stat value emphasis */

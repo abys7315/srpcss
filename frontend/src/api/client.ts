@@ -11,6 +11,7 @@ import type {
   BenchmarkData,
   ProvenanceManifest,
   MulticyclePlan
+  , TelemetryObservation, ThermalCalibrationState
 } from './types';
 
 // Support VITE_API_URL, VITE_API_BASE_URL, relative /api/v1 (Vite dev proxy), and direct fallbacks
@@ -228,6 +229,28 @@ export const apiClient = {
   getSystemReadiness: async (): Promise<Record<string, string>> => {
     const res = await api.get<Record<string, string>>('/system/readiness');
     return res.data;
+  },
+
+  // Field-data workflow — values remain explicitly user-supplied until independently validated.
+  getTelemetry: async (wellId: string): Promise<TelemetryObservation[]> => {
+    const res = await api.get<APIResponse<TelemetryObservation[]>>(`/telemetry/${wellId}`);
+    return res.data.data;
+  },
+  ingestTelemetry: async (params: { well_id: string; cycle_number?: number; source_label: string; observations: Array<Pick<TelemetryObservation, 'day' | 'oil_rate_bpd' | 'water_cut_pct' | 'temperature_c' | 'pump_intake_pressure_bar'>>; replace_existing?: boolean }) => {
+    const res = await api.post('/telemetry/ingest', params);
+    return res.data.data;
+  },
+  calibrateThermal: async (params: { well_id: string; cycle_number?: number; source_label?: string; apply_if_accepted?: boolean }) => {
+    const res = await api.post('/calibrate/thermal', params, { timeout: 120000 });
+    return res.data.data;
+  },
+  getThermalCalibration: async (wellId: string): Promise<ThermalCalibrationState> => {
+    const res = await api.get<APIResponse<ThermalCalibrationState>>(`/calibrate/thermal/${wellId}`);
+    return res.data.data;
+  },
+  resetThermalCalibration: async (wellId: string) => {
+    const res = await api.delete(`/calibrate/thermal/${wellId}`);
+    return res.data.data;
   },
 };
 
