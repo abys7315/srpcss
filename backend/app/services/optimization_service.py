@@ -29,7 +29,7 @@ class OptimizationService:
         self.css_opt = CSSOptimizer(joint_optimizer=self.joint_opt)
         self.srp_opt = SRPOptimizer(joint_optimizer=self.joint_opt)
 
-    def optimize_joint(self, req: JointOptimizationRequest) -> OptimizationResponse:
+    def optimize_joint(self, req: JointOptimizationRequest, progress_cb=None) -> OptimizationResponse:
         current_cfg = req.current_configuration or {
             "steam_volume_tonnes": 3000.0,
             "soak_duration_days": 6.0,
@@ -53,10 +53,18 @@ class OptimizationService:
             weight_sor_minimization=w_sor,
             weight_risk_minimization=w_risk,
             cooling_anomaly_day=req.cooling_anomaly_day,
-            cooling_anomaly_severity_pct=req.cooling_anomaly_severity_pct
+            cooling_anomaly_severity_pct=req.cooling_anomaly_severity_pct,
+            srp_policy=req.srp_policy,
+            seed=req.seed,
+            progress_cb=progress_cb,
         )
 
         return self._build_response(res)
+
+    def optimize_multicycle(self, req) -> Dict[str, Any]:
+        from optimizer.multicycle import optimize_multicycle
+        return optimize_multicycle(req.well_id, n_cycles=req.n_cycles, base_cfg=req.base_configuration,
+                                   srp_policy=req.srp_policy).to_dict()
 
     def optimize_css(self, req: CSSOptimizationRequest) -> OptimizationResponse:
         current_cfg = req.current_configuration or {
@@ -77,7 +85,8 @@ class OptimizationService:
         res = self.css_opt.optimize_css_cycle(
             well_id=req.well_id,
             current_cfg=current_cfg,
-            fixed_spm=req.fixed_spm
+            fixed_spm=req.fixed_spm,
+            seed=req.seed,
         )
         return self._build_response(res)
 
@@ -101,7 +110,9 @@ class OptimizationService:
             well_id=req.well_id,
             current_cfg=current_cfg,
             fixed_steam_tonnes=req.fixed_steam_tonnes,
-            cooling_anomaly_day=req.cooling_anomaly_day
+            cooling_anomaly_day=req.cooling_anomaly_day,
+            srp_policy=req.srp_policy,
+            seed=req.seed,
         )
         return self._build_response(res)
 
@@ -175,6 +186,10 @@ class OptimizationService:
             contributing_factors=res.contributing_factors,
             constraints_checked=res.constraints_checked,
             execution_time_seconds=res.execution_time_seconds,
+            evaluations=getattr(res, "evaluations", res.total_evaluated_count),
+            seed=getattr(res, "seed", 0),
+            srp_policy=getattr(res, "srp_policy", "fixed"),
+            evaluated_points=[self._map_point(p) for p in getattr(res, "evaluated_points", [])],
             provenance=ProvenanceEnum.SIMULATED
         )
 
@@ -200,5 +215,14 @@ class OptimizationService:
             is_non_dominated=pt.is_non_dominated,
             status=st,
             composite_score=round(pt.composite_score, 3),
+            srp_policy=getattr(pt, "srp_policy", "fixed"),
+            srp_m_target=getattr(pt, "srp_m_target", 1.15),
+            srp_min_fillage=getattr(pt, "srp_min_fillage", 0.85),
+            max_spm=getattr(pt, "max_spm", pt.spm),
+            float_days=getattr(pt, "float_days", 0),
+            recovery_factor_pct=getattr(pt, "recovery_factor_pct", 0.0),
+            goodman_stress_ratio=pt.goodman_stress_ratio,
+            peak_gearbox_torque_in_lbs=pt.peak_gearbox_torque_in_lbs,
+            pump_intake_pressure_bar=pt.pump_intake_pressure_bar,
             provenance=ProvenanceEnum.SIMULATED
         )

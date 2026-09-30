@@ -10,35 +10,39 @@ PROVENANCE: ASSUMED (literature equations, calibrated for Baghewala sandstone).
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
 from .heat_loss import marx_langenheim_heat_loss_factor, compute_dimensionless_time
 from .heated_zone import calculate_heated_zone_geometry, HeatedZoneGeometry
+from .steam_props import saturated_steam, SaturatedSteam
+from core.config import canonical_config as _C
+
+_RHO_OIL = _C.fluid.dead_oil_density_kg_m3
+_RHO_WATER = 1000.0
+
 
 @dataclass
 class CSSThermalParameters:
-    # Steam Injection Controls
-    steam_volume_tonnes: float = 3000.0       # Total steam mass per cycle [metric tonnes]
-    injection_duration_days: float = 15.0     # Injection duration [days]
-    injection_pressure_bar: float = 125.0     # Bottomhole injection pressure [bar]
-    steam_temp_celsius: float = 260.0         # Injection steam temperature [C]
-    steam_quality_wellhead: float = 0.80      # Quality at steam generator outlet
-    wellbore_heat_loss_quality_drop: float = 0.08 # Tubing condensation loss [ASSUMED]
-    
-    # Soak & Production Timing
-    soak_duration_days: float = 6.0           # Soak period [days]
-    
-    # Reservoir Thermal Properties (Baghewala Field)
-    reservoir_temp_celsius: float = 47.0      # Initial Baghewala reservoir temp [C]
-    net_pay_thickness_m: float = 14.0         # Net pay sand thickness [m]
-    rock_volumetric_heat_capacity: float = 2.3e6 # M_R in J/(m3.K)
-    overburden_thermal_conductivity: float = 1.8 # k_ob in W/(m.K)
-    overburden_volumetric_heat_capacity: float = 2.2e6 # M_ob in J/(m3.K)
-    
-    # Thermodynamic Constants
-    water_specific_heat_j_kg_k: float = 4200.0 # c_w
-    oil_specific_heat_j_kg_k: float = 2100.0   # c_o
-    latent_heat_steam_j_kg: float = 1.65e6     # L_v at ~120 bar [J/kg]
+    # Steam injection controls (defaults from configs/field.yaml)
+    steam_volume_tonnes: float = _C.css.default_steam_volume_tonnes
+    injection_duration_days: float = _C.css.default_injection_duration_days
+    injection_pressure_bar: float = _C.css.default_injection_pressure_bar   # bottomhole; sets Tsat, h_fg
+    steam_temp_celsius: Optional[float] = None   # derived: Tsat(injection_pressure_bar); input ignored
+    steam_quality_wellhead: float = _C.css.default_steam_quality_wellhead
+    delivered_steam_quality: Optional[float] = None  # sandface quality from wellbore heat-loss model
+
+    soak_duration_days: float = _C.css.default_soak_days
+
+    # Reservoir thermal properties
+    reservoir_temp_celsius: float = _C.reservoir.initial_temperature_c
+    net_pay_thickness_m: float = _C.reservoir.net_pay_thickness_m
+    rock_volumetric_heat_capacity: float = _C.reservoir.rock_volumetric_heat_capacity_j_m3_k
+    overburden_thermal_conductivity: float = _C.reservoir.overburden_conductivity_w_m_k
+    overburden_volumetric_heat_capacity: float = _C.reservoir.overburden_volumetric_heat_capacity_j_m3_k
+    thermal_loss_calibration: float = _C.reservoir.thermal_loss_calibration
+
+    water_specific_heat_j_kg_k: float = _C.css.water_specific_heat_j_kg_k
+    oil_specific_heat_j_kg_k: float = _C.css.oil_specific_heat_j_kg_k
     provenance: str = "ASSUMED"
 
 @dataclass
@@ -61,28 +65,53 @@ class CSSThermalModel:
     def __init__(self, params: CSSThermalParameters = None):
         self.params = params or CSSThermalParameters()
 
+    @property
+    def steam(self) -> SaturatedSteam:
+        """IAPWS-IF97 saturation state at the bottomhole injection pressure."""
+        return saturated_steam(self.params.injection_pressure_bar)
+
+    @property
+    def steam_temp_c(self) -> float:
+        return self.steam.t_sat_c
+
     def get_delivered_steam_quality(self) -> float:
-        """Delivered steam quality at the sandface accounting for wellbore heat loss."""
-        return max(0.05, self.params.steam_quality_wellhead - self.params.wellbore_heat_loss_quality_drop)
+        """Sandface steam quality (from the wellbore heat-loss model when supplied)."""
+        if self.params.delivered_steam_quality is not None:
+            return float(np.clip(self.params.delivered_steam_quality, 0.0, 1.0))
+        return max(0.05, self.params.steam_quality_wellhead - 0.05)
+
+    def enthalpy_above_reservoir_j_kg(self) -> float:
+        """Specific heat delivered per kg steam relative to reservoir-temperature water:
+        h = (h_f(P) - h_w(T_R)) + x_bh * h_fg(P)."""
+        s = self.steam
+        h_w_res = self.params.water_specific_heat_j_kg_k * self.params.reservoir_temp_celsius
+        return max(0.0, s.h_f_j_kg - h_w_res) + self.get_delivered_steam_quality() * s.h_fg_j_kg
 
     def compute_injection_heat_rate_watts(self) -> Tuple[float, float]:
-        """
-        Computes steam mass rate (kg/s) and heat injection rate Ho (Watts).
-        Ho = m_dot * [ c_w * (T_s - T_R) + x_bh * L_v ]
-        """
+        """Steam mass rate [kg/s] and heat injection rate H_o = m_dot * h [W]."""
         if self.params.steam_volume_tonnes <= 0.0 or self.params.injection_duration_days <= 0.0:
             return 0.0, 0.0
-            
         m_dot_kg_s = (self.params.steam_volume_tonnes * 1000.0) / (self.params.injection_duration_days * 86400.0)
-        x_bh = self.get_delivered_steam_quality()
-        delta_t = max(0.0, self.params.steam_temp_celsius - self.params.reservoir_temp_celsius)
-        
-        sensible_heat = self.params.water_specific_heat_j_kg_k * delta_t
-        latent_heat = x_bh * self.params.latent_heat_steam_j_kg
-        enthalpy_per_kg = sensible_heat + latent_heat
-        
-        h_o_watts = m_dot_kg_s * enthalpy_per_kg
-        return m_dot_kg_s, h_o_watts
+        return m_dot_kg_s, m_dot_kg_s * self.enthalpy_above_reservoir_j_kg()
+
+    def heat_loss_conductance_w_k(self, area_m2: float, elapsed_s: float, fluid_heat_capacity_rate_w_k: float = 0.0) -> float:
+        """Lumped heated-zone loss conductance U [W/K] (Boberg-Lantz form):
+        U = kappa * [ 2 k_ob A / sqrt(pi alpha_ob t) + (q_o rho_o c_o + q_w rho_w c_w) ]
+        First term: transient conduction to over- and underburden. Second: enthalpy carried
+        out by produced fluids. kappa = thermal_loss_calibration (one documented scalar)."""
+        p = self.params
+        alpha_ob = p.overburden_thermal_conductivity / p.overburden_volumetric_heat_capacity
+        cond = 2.0 * p.overburden_thermal_conductivity * area_m2 / np.sqrt(np.pi * alpha_ob * max(elapsed_s, 3600.0))
+        return p.thermal_loss_calibration * (cond + max(0.0, fluid_heat_capacity_rate_w_k))
+
+    def zone_heat_capacity_j_k(self, area_m2: float) -> float:
+        p = self.params
+        return p.rock_volumetric_heat_capacity * p.net_pay_thickness_m * max(area_m2, 1.0)
+
+    def time_constant_days(self, area_m2: float, elapsed_s: float, fluid_heat_capacity_rate_w_k: float = 0.0) -> float:
+        """tau = C_zone / U, in days."""
+        u = self.heat_loss_conductance_w_k(area_m2, elapsed_s, fluid_heat_capacity_rate_w_k)
+        return self.zone_heat_capacity_j_k(area_m2) / max(u, 1e-9) / 86400.0
 
     def simulate_injection_end(self) -> CSSThermalState:
         """Simulates state at the end of the steam injection phase using Marx-Langenheim."""
@@ -104,7 +133,7 @@ class CSSThermalModel:
 
         t_inj_sec = p.injection_duration_days * 86400.0
         m_dot, h_o = self.compute_injection_heat_rate_watts()
-        delta_t = p.steam_temp_celsius - p.reservoir_temp_celsius
+        delta_t = self.steam_temp_c - p.reservoir_temp_celsius
 
         # Dimensionless time t_D
         t_d = compute_dimensionless_time(
@@ -141,7 +170,7 @@ class CSSThermalModel:
         return CSSThermalState(
             time_day=p.injection_duration_days,
             phase="INJECTION",
-            average_temperature_c=p.steam_temp_celsius,
+            average_temperature_c=round(self.steam_temp_c, 2),
             heated_zone_radius_m=round(geom.radius_m, 2),
             heated_zone_area_m2=round(geom.area_m2, 2),
             cumulative_heat_injected_gj=round(q_inj_joules * 1e-9, 2),
@@ -151,126 +180,48 @@ class CSSThermalModel:
             delivered_steam_quality=self.get_delivered_steam_quality()
         )
 
-    def simulate_soak_end(self, injection_state: CSSThermalState) -> CSSThermalState:
-        """Simulates thermal decay during soak period due to conduction."""
+    def _decay(self, state: CSSThermalState, days: float, elapsed_start_s: float,
+               fluid_w_k: float, anomaly_multiplier: float, phase: str) -> CSSThermalState:
+        """Integrates the lumped balance C dT/dt = -U(t) (T - T_R) over `days` (sub-daily steps)."""
         p = self.params
-        if p.steam_volume_tonnes <= 0.0:
-            return injection_state
-
-        # Soak cooling rate: empirical exponential decay based on overburden conduction
-        # Heat efficiency accounts for conductive caprock losses during injection duration
-        soak_decay_rate_per_day = 0.015
-        heat_efficiency = min(1.0, injection_state.heat_retained_gj / max(1.0, injection_state.cumulative_heat_injected_gj))
-        delta_t_nominal = injection_state.average_temperature_c - p.reservoir_temp_celsius
-        delta_t_start = delta_t_nominal * (0.85 + 0.15 * heat_efficiency)
-        delta_t_end = delta_t_start * np.exp(-soak_decay_rate_per_day * p.soak_duration_days)
-        t_soak_end = p.reservoir_temp_celsius + delta_t_end
-
-        q_retained_new = injection_state.heat_retained_gj * (delta_t_end / max(delta_t_start, 1e-3))
-        q_lost_new = injection_state.cumulative_heat_lost_gj + (injection_state.heat_retained_gj - q_retained_new)
-
+        area = max(state.heated_zone_area_m2, 1.0)
+        c_zone = self.zone_heat_capacity_j_k(area)
+        delta_t = max(0.0, state.average_temperature_c - p.reservoir_temp_celsius)
+        n = max(1, int(np.ceil(days)))
+        dt_s = days * 86400.0 / n
+        for i in range(n):
+            t_mid = elapsed_start_s + (i + 0.5) * dt_s
+            u = self.heat_loss_conductance_w_k(area, t_mid, fluid_w_k) * anomaly_multiplier
+            delta_t *= float(np.exp(-u * dt_s / c_zone))
+        retained_new = c_zone * delta_t * 1e-9
+        lost_new = state.cumulative_heat_lost_gj + max(0.0, state.heat_retained_gj - retained_new)
         return CSSThermalState(
-            time_day=injection_state.time_day + p.soak_duration_days,
-            phase="SOAK",
-            average_temperature_c=round(float(t_soak_end), 2),
-            heated_zone_radius_m=injection_state.heated_zone_radius_m,
-            heated_zone_area_m2=injection_state.heated_zone_area_m2,
-            cumulative_heat_injected_gj=injection_state.cumulative_heat_injected_gj,
-            cumulative_heat_lost_gj=round(float(q_lost_new), 2),
-            heat_retained_gj=round(float(q_retained_new), 2),
-            energy_balance_error_pct=injection_state.energy_balance_error_pct,
-            delivered_steam_quality=injection_state.delivered_steam_quality
+            time_day=state.time_day + days,
+            phase=phase,
+            average_temperature_c=round(float(p.reservoir_temp_celsius + delta_t), 2),
+            heated_zone_radius_m=state.heated_zone_radius_m,
+            heated_zone_area_m2=state.heated_zone_area_m2,
+            cumulative_heat_injected_gj=state.cumulative_heat_injected_gj,
+            cumulative_heat_lost_gj=round(float(lost_new), 2),
+            heat_retained_gj=round(float(retained_new), 2),
+            energy_balance_error_pct=state.energy_balance_error_pct,
+            delivered_steam_quality=state.delivered_steam_quality,
         )
 
-    def simulate_production_history(
-        self,
-        soak_state: CSSThermalState,
-        production_duration_days: float,
-        daily_oil_rate_m3_d: List[float],
-        daily_water_rate_m3_d: List[float]
-    ) -> List[CSSThermalState]:
-        """
-        Simulates daily thermal decline during the production phase using Boberg-Lantz model:
-        Heat is removed via:
-        1. Produced fluids (oil + water sensible enthalpy extraction)
-        2. Conductive heat loss to overburden and underburden caprock.
-        """
+    def simulate_soak_end(self, injection_state: CSSThermalState) -> CSSThermalState:
+        """Soak: well shut in, so only conduction to over/underburden removes heat."""
         p = self.params
-        states: List[CSSThermalState] = []
-        
-        current_temp = soak_state.average_temperature_c
-        heat_retained_joules = soak_state.heat_retained_gj * 1e9
-        cum_lost_joules = soak_state.cumulative_heat_lost_gj * 1e9
-        q_injected_joules = soak_state.cumulative_heat_injected_gj * 1e9
-        area_m2 = max(soak_state.heated_zone_area_m2, 1.0)
-        
-        # Thermal mass of the heated zone
-        m_r_total = p.rock_volumetric_heat_capacity * p.net_pay_thickness_m * area_m2
-        
-        n_days = int(production_duration_days)
-        time_offset = soak_state.time_day
+        if p.steam_volume_tonnes <= 0.0 or p.soak_duration_days <= 0.0:
+            return CSSThermalState(**{**injection_state.__dict__, "phase": "SOAK"})
+        return self._decay(injection_state, p.soak_duration_days, p.injection_duration_days * 86400.0,
+                           fluid_w_k=0.0, anomaly_multiplier=1.0, phase="SOAK")
 
-        for day in range(1, n_days + 1):
-            if current_temp <= p.reservoir_temp_celsius:
-                current_temp = p.reservoir_temp_celsius
-                states.append(CSSThermalState(
-                    time_day=time_offset + day,
-                    phase="PRODUCTION",
-                    average_temperature_c=p.reservoir_temp_celsius,
-                    heated_zone_radius_m=soak_state.heated_zone_radius_m,
-                    heated_zone_area_m2=soak_state.heated_zone_area_m2,
-                    cumulative_heat_injected_gj=soak_state.cumulative_heat_injected_gj,
-                    cumulative_heat_lost_gj=round(cum_lost_joules * 1e-9, 2),
-                    heat_retained_gj=0.0,
-                    energy_balance_error_pct=0.0,
-                    delivered_steam_quality=soak_state.delivered_steam_quality
-                ))
-                continue
-
-            delta_t = current_temp - p.reservoir_temp_celsius
-            
-            # 1. Produced fluid heat removal (Joules in 1 day):
-            idx = min(day - 1, len(daily_oil_rate_m3_d) - 1)
-            qo_m3 = daily_oil_rate_m3_d[idx] if daily_oil_rate_m3_d else 2.0
-            qw_m3 = daily_water_rate_m3_d[idx] if daily_water_rate_m3_d else 4.0
-            
-            # Density approx: oil ~ 980 kg/m3, water ~ 1000 kg/m3
-            heat_produced_daily = (
-                (qo_m3 * 980.0 * p.oil_specific_heat_j_kg_k + qw_m3 * 1000.0 * p.water_specific_heat_j_kg_k)
-                * delta_t
-            )
-            
-            # 2. Overburden conductive loss rate (Boberg-Lantz transient conduction):
-            # q_cond = 2 * k_ob * A_h * delta_t / sqrt(pi * alpha * t_total)
-            alpha_ob = p.overburden_thermal_conductivity / p.overburden_volumetric_heat_capacity
-            t_total_sec = (p.injection_duration_days + p.soak_duration_days + day) * 86400.0
-            conduction_heat_flux = (2.0 * p.overburden_thermal_conductivity * delta_t) / np.sqrt(np.pi * alpha_ob * t_total_sec)
-            heat_conduction_daily = conduction_heat_flux * area_m2 * 86400.0
-            
-            # Total energy extracted from the heated cylinder today:
-            total_delta_heat = heat_produced_daily + heat_conduction_daily
-            
-            heat_retained_joules = max(0.0, heat_retained_joules - total_delta_heat)
-            cum_lost_joules += heat_conduction_daily
-            
-            # New average temperature:
-            delta_t_new = heat_retained_joules / max(m_r_total, 1.0)
-            current_temp = float(p.reservoir_temp_celsius + delta_t_new)
-            
-            states.append(CSSThermalState(
-                time_day=time_offset + day,
-                phase="PRODUCTION",
-                average_temperature_c=round(current_temp, 2),
-                heated_zone_radius_m=soak_state.heated_zone_radius_m,
-                heated_zone_area_m2=soak_state.heated_zone_area_m2,
-                cumulative_heat_injected_gj=soak_state.cumulative_heat_injected_gj,
-                cumulative_heat_lost_gj=round(cum_lost_joules * 1e-9, 2),
-                heat_retained_gj=round(heat_retained_joules * 1e-9, 2),
-                energy_balance_error_pct=0.0,
-                delivered_steam_quality=soak_state.delivered_steam_quality
-            ))
-
-        return states
+    @staticmethod
+    def fluid_heat_capacity_rate_w_k(oil_m3_d: float, water_m3_d: float,
+                                     c_o: float = _C.css.oil_specific_heat_j_kg_k,
+                                     c_w: float = _C.css.water_specific_heat_j_kg_k) -> float:
+        """(q_o rho_o c_o + q_w rho_w c_w) in W/K for daily volumes in m3/d."""
+        return (max(0.0, oil_m3_d) * _RHO_OIL * c_o + max(0.0, water_m3_d) * _RHO_WATER * c_w) / 86400.0
 
     def simulate_production_step(
         self,
@@ -281,63 +232,32 @@ class CSSThermalModel:
         cooling_anomaly_severity_pct: float = 0.0
     ) -> CSSThermalState:
         """
-        Executes a single daily step of Boberg-Lantz thermal decline.
-        Combines overburden/underburden caprock conduction, radial diffusion into cold
-        unheated reservoir rock, and convective enthalpy displacement by cold reservoir influx.
-        Properly handles cooling anomaly severity as a percentage fraction (severity / 100.0).
+        One production day of the lumped heated-zone energy balance.
+        tau(t) = C_zone / U(t), with U from overburden conduction and produced-fluid heat flow
+        (see heat_loss_conductance_w_k). A seeded cooling anomaly (scenario input) scales U by
+        (1 + 1.2 * severity/100).
         """
         p = self.params
-        area_m2 = max(current_state.heated_zone_area_m2, 1.0)
-        m_r_total = p.rock_volumetric_heat_capacity * p.net_pay_thickness_m * area_m2
-        
-        current_temp = current_state.average_temperature_c
-        heat_retained_joules = current_state.heat_retained_gj * 1e9
-        cum_lost_joules = current_state.cumulative_heat_lost_gj * 1e9
+        fluid_w_k = self.fluid_heat_capacity_rate_w_k(daily_oil_m3, daily_water_m3,
+                                                      p.oil_specific_heat_j_kg_k, p.water_specific_heat_j_kg_k)
+        anomaly = 1.0 + 1.2 * max(0.0, cooling_anomaly_severity_pct) / 100.0
+        elapsed_s = (p.injection_duration_days + p.soak_duration_days + max(0, day - 1)) * 86400.0
+        return self._decay(current_state, 1.0, elapsed_s, fluid_w_k, anomaly, phase="PRODUCTION")
 
-        delta_t_current = max(0.0, current_temp - p.reservoir_temp_celsius)
-        if delta_t_current <= 0.01:
-            return CSSThermalState(
-                time_day=current_state.time_day + 1.0,
-                phase="PRODUCTION",
-                average_temperature_c=p.reservoir_temp_celsius,
-                heated_zone_radius_m=current_state.heated_zone_radius_m,
-                heated_zone_area_m2=current_state.heated_zone_area_m2,
-                cumulative_heat_injected_gj=current_state.cumulative_heat_injected_gj,
-                cumulative_heat_lost_gj=round(cum_lost_joules * 1e-9, 2),
-                heat_retained_gj=0.0,
-                energy_balance_error_pct=0.0,
-                delivered_steam_quality=current_state.delivered_steam_quality
-            )
-
-        # Boberg-Lantz characteristic thermal decay time constant:
-        # Calibrated for Baghewala 14m net pay; scaled by retained thermal mass fraction
-        nominal_retained_gj = 5600.0
-        heat_ratio = max(0.70, min(1.30, current_state.heat_retained_gj / nominal_retained_gj))
-        base_tau_days = 26.0 * heat_ratio
-        
-        # Anomaly increases thermal dissipation rate proportionally
-        if cooling_anomaly_severity_pct > 0.0:
-            tau_eff = base_tau_days / (1.0 + (cooling_anomaly_severity_pct / 100.0) * 1.2)
-        else:
-            tau_eff = base_tau_days
-
-        delta_t_new = delta_t_current * np.exp(-1.0 / tau_eff)
-        new_temp = float(p.reservoir_temp_celsius + delta_t_new)
-
-        heat_lost_today = max(0.0, delta_t_current - delta_t_new) * m_r_total
-        heat_retained_joules = max(0.0, heat_retained_joules - heat_lost_today)
-        cum_lost_joules += heat_lost_today
-
-        return CSSThermalState(
-            time_day=current_state.time_day + 1.0,
-            phase="PRODUCTION",
-            average_temperature_c=round(new_temp, 2),
-            heated_zone_radius_m=current_state.heated_zone_radius_m,
-            heated_zone_area_m2=current_state.heated_zone_area_m2,
-            cumulative_heat_injected_gj=current_state.cumulative_heat_injected_gj,
-            cumulative_heat_lost_gj=round(cum_lost_joules * 1e-9, 2),
-            heat_retained_gj=round(heat_retained_joules * 1e-9, 2),
-            energy_balance_error_pct=0.0,
-            delivered_steam_quality=current_state.delivered_steam_quality
-        )
-
+    def simulate_production_history(
+        self,
+        soak_state: CSSThermalState,
+        production_duration_days: float,
+        daily_oil_rate_m3_d: List[float],
+        daily_water_rate_m3_d: List[float]
+    ) -> List[CSSThermalState]:
+        """Daily production-phase decline using the same balance as simulate_production_step."""
+        states: List[CSSThermalState] = []
+        state = soak_state
+        for day in range(1, int(production_duration_days) + 1):
+            idx = day - 1
+            qo = daily_oil_rate_m3_d[min(idx, len(daily_oil_rate_m3_d) - 1)] if daily_oil_rate_m3_d else 0.0
+            qw = daily_water_rate_m3_d[min(idx, len(daily_water_rate_m3_d) - 1)] if daily_water_rate_m3_d else 0.0
+            state = self.simulate_production_step(state, day, qo, qw)
+            states.append(state)
+        return states

@@ -81,7 +81,8 @@ class FieldEconomicsCalculator:
         sor = steam_oil_ratio if steam_oil_ratio is not None else (
             steam_volume_tonnes / max(0.1, cumulative_oil_bbl * 0.160)
         )
-        excess_sor = max(0.0, sor - p.target_sor)
+        # Capped at 10 t/t excess so a near-zero-oil cycle does not produce an unbounded penalty.
+        excess_sor = min(10.0, max(0.0, sor - p.target_sor))
         sor_penalty = excess_sor * p.sor_penalty_per_unit_excess_usd
 
         # Net Benefit:

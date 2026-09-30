@@ -69,6 +69,9 @@ pnpm-debug.log*
 .env.*.local
 *.pem
 *.key
+*.download
+frontend/.env*
+!frontend/.env.example
 
 # SQLite & local databases
 *.db
@@ -104,6 +107,9 @@ models/*.h5
 benchmarks/results/*
 !benchmarks/results/.gitkeep
 !benchmarks/results/README.md
+!benchmarks/results/summary.md
+!benchmarks/results/benchmark_report.json
+!benchmarks/results/benchmark_report.csv
 
 # Log files
 *.log

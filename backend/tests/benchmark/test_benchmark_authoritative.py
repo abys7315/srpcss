@@ -15,6 +15,15 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
 pytestmark = pytest.mark.benchmark
 
+_REPORT = ROOT_DIR / "benchmarks" / "results" / "benchmark_report.json"
+
+
+@pytest.fixture(autouse=True)
+def _require_report():
+    """Skip (visibly) until the benchmark has been run; stale reports are moved to benchmarks/results/stale/."""
+    if not _REPORT.exists():
+        pytest.skip("No benchmark report yet: run `python scripts/run_benchmark.py` (takes several minutes).")
+
 def test_authoritative_benchmark_report_exists_and_valid():
     """Verify that authoritative benchmark JSON exists and contains expected sections."""
     json_path = ROOT_DIR / "benchmarks" / "results" / "benchmark_report.json"
@@ -44,9 +53,9 @@ def test_authoritative_benchmark_metrics_and_formulas():
     expected_gain = round((o_net - b_net) / abs(b_net) * 100, 1)
     assert abs(gain_pct - expected_gain) <= 0.1
     
-    # Floats: baseline > 0, optimized == 0
-    assert b_data["baseline_actual_float_events"] > 0
-    assert b_data["optimized_actual_float_events"] == 0
+    # Float-days are simulated counts; the report must not presuppose an outcome.
+    assert b_data["baseline_actual_float_events"] >= 0
+    assert b_data["optimized_actual_float_events"] >= 0
 
 def test_authoritative_benchmark_ablation_and_csv_consistency():
     """Verify ablation study matches CSV output."""
@@ -58,11 +67,12 @@ def test_authoritative_benchmark_ablation_and_csv_consistency():
         data = json.load(f)
         
     ablation = data["ablation_study"]
-    assert "Baseline_Historical" in ablation
-    assert "CSS_Only_Optimization" in ablation
-    assert "SRP_Only_Optimization" in ablation
-    assert "Joint_Co_Optimization" in ablation
-    
+    for key in ("Baseline_Fixed_Schedule", "CSS_Only_Optimization", "SRP_Only_Optimization",
+                "SRP_Adaptive_Only", "Joint_Co_Optimization", "Joint_Plus_Adaptive", "Heuristic_Aggressive_Lift"):
+        assert key in ablation
+        assert ablation[key]["n_runs"] == 30          # 10 wells x 3 scenarios
+
     csv_content = csv_path.read_text(encoding="utf-8")
-    assert "Baseline_Historical" in csv_content
-    assert "Joint_Co_Optimization" in csv_content
+    assert "Baseline_Fixed_Schedule" in csv_content
+    assert "Joint_Plus_Adaptive" in csv_content
+    assert (ROOT_DIR / "benchmarks" / "results" / "summary.md").exists()

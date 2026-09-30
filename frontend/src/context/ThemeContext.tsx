@@ -1,49 +1,52 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type Theme = 'dark' | 'light';
+export type UnitSystem = 'metric' | 'field';
 
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
+  units: UnitSystem;
+  toggleUnits: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
+  theme: 'light',
   toggleTheme: () => {},
   setTheme: () => {},
+  units: 'metric',
+  toggleUnits: () => {},
 });
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    // Default to 'dark' to match user's requested high-tech obsidian theme
-    const saved = localStorage.getItem('petrotwin_theme');
-    if (saved === 'light' || saved === 'dark') {
-      return saved;
-    }
-    return 'dark';
-  });
+  // Light "paper" is the default theme; dark "night shift" only when the user picked it.
+  const [theme, setThemeState] = useState<Theme>(() =>
+    localStorage.getItem('petrotwin_theme') === 'dark' ? 'dark' : 'light',
+  );
+  const [units, setUnits] = useState<UnitSystem>(() =>
+    localStorage.getItem('petrotwin_units') === 'field' ? 'field' : 'metric',
+  );
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', theme === 'dark');
     localStorage.setItem('petrotwin_theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
-
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-  };
+  useEffect(() => {
+    localStorage.setItem('petrotwin_units', units);
+  }, [units]);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider
+      value={{
+        theme,
+        toggleTheme: () => setThemeState((p) => (p === 'dark' ? 'light' : 'dark')),
+        setTheme: setThemeState,
+        units,
+        toggleUnits: () => setUnits((u) => (u === 'metric' ? 'field' : 'metric')),
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

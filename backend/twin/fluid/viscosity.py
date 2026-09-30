@@ -15,12 +15,15 @@ from dataclasses import dataclass
 import math
 import numpy as np
 
+from core.config import canonical_config as _CFG
+
+
 @dataclass(frozen=True)
 class BaghewalaViscosityParameters:
-    """Parameters for the Andrade viscosity equation."""
-    # mu(T) = A * exp(B / T_kelvin) in centipoise (cP)
-    A: float = 0.0001556  # Pre-exponential factor [cP] (ASSUMED)
-    B: float = 5500.0     # Activation energy parameter [K] (ASSUMED)
+    """Andrade parameters, derived from the configs/field.yaml anchors
+    mu(47 C) = 2400 cP and mu(150 C) = 42 cP  ->  B ~ 5320 K, A from the 47 C anchor."""
+    A: float = _CFG.fluid.andrade_a   # Pre-exponential factor [cP]
+    B: float = _CFG.fluid.andrade_b   # Activation temperature [K]
     min_viscosity_cp: float = 1.0     # Physical floor at extreme temperatures
     max_viscosity_cp: float = 100000.0 # Physical ceiling at freezing/cold states
     provenance: str = "ASSUMED"

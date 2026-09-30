@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
 
+from .float_detection import vfd_kinematics
+
 @dataclass
 class DynacardResult:
     surface_position_inch: List[float]
@@ -66,9 +68,9 @@ class GibbsDynacardModel:
         # Position S(theta) = (Stroke / 2) * (1 - cos(theta))
         s_surf = (stroke_length_inch / 2.0) * (1.0 - np.cos(theta))
         
-        # Kinematic acceleration factor: a / g = (Stroke * omega^2) / (2 * g) * cos(theta)
-        omega = (2.0 * np.pi * spm) / 60.0
-        accel_factor = ((stroke_length_inch / 386.4) * (omega ** 2) / 2.0)
+        # Kinematic acceleration factor a/g, separate for up- and downstroke under the VFD profile
+        # (upstroke is shortened when the downstroke is slowed, see float_detection.vfd_kinematics).
+        kin = vfd_kinematics(spm, stroke_length_inch, vfd_downstroke_ratio)
         
         # Viscous drag load on upstroke vs downstroke:
         # If explicit distributed drag from Wellbore1DModel is provided, use it directly!
@@ -121,7 +123,8 @@ class GibbsDynacardModel:
         else:
             diag_label = "NORMAL"
 
-        inertia_load = submerged_rod_weight_lbs * accel_factor * np.cos(theta)
+        accel_g = np.where(up_mask, kin.accel_up_g, kin.accel_down_g)
+        inertia_load = submerged_rod_weight_lbs * accel_g * np.cos(theta)
         surface_load = np.zeros(N)
         surface_load[up_mask] = (
             submerged_rod_weight_lbs + downhole_load[up_mask] + f_up_nominal * np.sin(theta[up_mask]) + inertia_load[up_mask]

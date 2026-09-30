@@ -14,7 +14,8 @@ from ..schemas.simulation import (
     DailyTimeseriesDTO,
     DynacardDTO,
     CycleKPIsDTO,
-    ConstraintStatusDTO
+    ConstraintStatusDTO,
+    ThermalSummaryDTO,
 )
 from ..schemas.common import ProvenanceEnum, OperationalStatusEnum
 
@@ -30,13 +31,15 @@ class SimulationService:
             steam_volume_tonnes=req.steam_volume_tonnes,
             injection_duration_days=req.injection_duration_days,
             injection_pressure_bar=req.injection_pressure_bar,
-            steam_temp_celsius=req.steam_temp_celsius,
             soak_duration_days=req.soak_duration_days,
             production_duration_days=req.production_duration_days,
             economic_cutoff_oil_rate_bpd=req.economic_cutoff_oil_rate_bpd,
             spm=req.spm,
             stroke_length_inch=req.stroke_length_inch,
             vfd_downstroke_ratio=req.vfd_downstroke_ratio,
+            srp_policy=req.srp_policy,
+            srp_m_target=req.srp_m_target,
+            srp_min_fillage=req.srp_min_fillage,
             cooling_anomaly_day=req.cooling_anomaly_day,
             cooling_anomaly_severity_pct=req.cooling_anomaly_severity_pct
         )
@@ -53,12 +56,12 @@ class SimulationService:
         con_res = self.constraints.evaluate_candidate(
             steam_volume_tonnes=req.steam_volume_tonnes,
             injection_pressure_bar=req.injection_pressure_bar,
-            steam_temp_celsius=req.steam_temp_celsius,
+            steam_temp_celsius=sim_res.steam_saturation_temp_c,
             soak_days=req.soak_duration_days,
-            spm=req.spm,
+            spm=max(pt.spm for pt in sim_res.daily_history),
             stroke_length_inch=req.stroke_length_inch,
-            peak_polished_rod_load_lbs=sim_res.final_dynacard.peak_polished_rod_load_lbs,
-            peak_gearbox_torque_in_lbs=sim_res.final_dynacard.peak_gearbox_torque_in_lbs,
+            peak_polished_rod_load_lbs=max(s.peak_polished_rod_load_lbs for s in sim_res.states),
+            peak_gearbox_torque_in_lbs=sim_res.max_gearbox_torque_in_lbs,
             motor_power_kw=sim_res.kpis.electrical_energy_kwh_per_bbl * (avg_oil / 24.0),
             float_margin_index=min_float,
             goodman_stress_ratio=max_stress,
@@ -92,44 +95,45 @@ class SimulationService:
                 cumulative_oil_bbl=round(pt.cumulative_oil_bbl, 1),
                 float_margin_index=round(pt.float_margin_index, 3),
                 goodman_stress_ratio=round(pt.goodman_stress_ratio, 3),
-                peak_gearbox_torque_in_lbs=round(sim_res.final_dynacard.peak_gearbox_torque_in_lbs, 1),
+                peak_gearbox_torque_in_lbs=round(pt.peak_gearbox_torque_in_lbs, 1),
                 pump_intake_pressure_bar=round(pt.pump_intake_pressure_bar, 1),
-                pump_fillage_pct=round(pt.pump_fillage_pct, 1)
+                pump_fillage_pct=round(pt.pump_fillage_pct, 1),
+                reservoir_pressure_bar=round(pt.reservoir_pressure_bar, 2),
+                spm=pt.spm,
+                vfd_downstroke_ratio=pt.vfd_downstroke_ratio,
+                is_rod_floating=pt.is_rod_floating,
+                recovery_factor_pct=pt.recovery_factor_pct,
+                heated_zone_oil_saturation=pt.heated_zone_oil_saturation,
+                srp_binding_limit=pt.srp_binding_limit,
+                cycle_day=req.injection_duration_days + req.soak_duration_days + pt.day,
             )
             for pt in sim_res.daily_history
         ]
 
-        # Dynacards mapping
-        dynacards_map = {}
-        # Initial card (e.g. day 10)
-        day10_dyn = sim.dynacard_model.generate_dynacards(
-            stroke_length_inch=req.stroke_length_inch,
-            spm=req.spm,
-            submerged_rod_weight_lbs=8500.0,
-            plunger_fluid_load_lbs=5500.0,
-            viscosity_cp=sim_res.daily_history[min(10, len(sim_res.daily_history)-1)].viscosity_cp,
-            pump_fillage=0.92,
-            float_margin_index=sim_res.daily_history[min(10, len(sim_res.daily_history)-1)].float_margin_index,
-            vfd_downstroke_ratio=req.vfd_downstroke_ratio
-        )
-        dynacards_map["day_10"] = DynacardDTO(**day10_dyn.__dict__)
-
-        # Mid-cycle card (day 60)
-        mid_idx = min(60, len(sim_res.daily_history)-1)
-        day60_dyn = sim.dynacard_model.generate_dynacards(
-            stroke_length_inch=req.stroke_length_inch,
-            spm=req.spm,
-            submerged_rod_weight_lbs=8500.0,
-            plunger_fluid_load_lbs=5200.0,
-            viscosity_cp=sim_res.daily_history[mid_idx].viscosity_cp,
-            pump_fillage=0.85,
-            float_margin_index=sim_res.daily_history[mid_idx].float_margin_index,
-            vfd_downstroke_ratio=req.vfd_downstroke_ratio
-        )
-        dynacards_map["day_60"] = DynacardDTO(**day60_dyn.__dict__)
-
-        # Final card
+        # Dynacards: full-resolution cards recorded by the simulator on those days (no re-synthesis).
+        dynacards_map = {k: DynacardDTO(**v.__dict__) for k, v in sim_res.dynacards.items()}
         dynacards_map["final"] = DynacardDTO(**sim_res.final_dynacard.__dict__)
+
+        prof = sim_res.latest_wellbore_profile
+        wellbore_profile = [
+            {"depth_m": round(z, 1), "temperature_c": round(t, 2), "viscosity_cp": round(mu, 1), "pressure_bar": round(p, 2)}
+            for z, t, mu, p in zip(prof.depths_m, prof.temperatures_c, prof.viscosities_cp, prof.pressures_bar)
+        ] if prof else []
+        from core.config import canonical_config
+        thermal = ThermalSummaryDTO(
+            steam_saturation_temp_c=sim_res.steam_saturation_temp_c,
+            steam_latent_heat_kj_kg=sim_res.steam_latent_heat_kj_kg,
+            delivered_steam_quality=sim_res.delivered_steam_quality,
+            heat_injected_gj=sim_res.heat_injected_gj,
+            heated_zone_radius_m=sim_res.heated_zone_radius_m,
+            injection_end_temp_c=sim_res.injection_end_temp_c,
+            soak_end_temp_c=sim_res.soak_end_temp_c,
+            ooip_m3=sim_res.ooip_m3,
+            recovery_factor_pct=sim_res.recovery_factor_pct,
+            heated_pore_volume_m3=sim_res.heated_pore_volume_m3,
+            final_heated_zone_oil_saturation=sim_res.final_heated_zone_oil_saturation,
+            fracture_limit_bar=canonical_config.safety_limits.max_allowable_injection_pressure_bar,
+        )
 
         # Overall Status
         st = OperationalStatusEnum(con_res.status) if con_res.status in OperationalStatusEnum._value2member_map_ else OperationalStatusEnum.FEASIBLE
@@ -151,7 +155,9 @@ class SimulationService:
                 total_float_events_count=sim_res.total_float_events_count,
                 max_goodman_stress_ratio=round(sim_res.max_goodman_stress_ratio, 3),
                 min_float_margin_index=round(min_float, 3),
-                average_pump_fillage_pct=round(sim_res.average_pump_fillage_pct, 1)
+                average_pump_fillage_pct=round(sim_res.average_pump_fillage_pct, 1),
+                recovery_factor_pct=sim_res.recovery_factor_pct,
+                float_days=sim_res.total_float_events_count,
             ),
             constraints=ConstraintStatusDTO(
                 status=st,
@@ -164,5 +170,8 @@ class SimulationService:
             ),
             dynacards=dynacards_map,
             timeseries=ts_dto,
+            phase_bands=sim_res.phase_bands,
+            thermal=thermal,
+            wellbore_profile=wellbore_profile,
             provenance=ProvenanceEnum.SIMULATED
         )

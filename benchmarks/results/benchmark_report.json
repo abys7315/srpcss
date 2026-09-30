@@ -1,0 +1,131 @@
+{
+  "benchmark_title": "Petro-Twin Physics-Informed Simulation Benchmark Report",
+  "timestamp": "2026-09-29T23:27:58.026125+00:00",
+  "execution_time_seconds": 494.7,
+  "disclaimer": "All numbers are simulation results across synthetic wells. They do not represent measured Baghewala field data.",
+  "baseline_vs_optimized": {
+    "wells_evaluated": [
+      "BGW-01",
+      "BGW-02",
+      "BGW-03",
+      "BGW-04",
+      "BGW-05"
+    ],
+    "baseline_mean_net_benefit_usd": 284487.0,
+    "optimized_mean_net_benefit_usd": 549286.1,
+    "net_benefit_gain_pct": 93.1,
+    "baseline_mean_sor": 2.6,
+    "optimized_mean_sor": 2.4,
+    "sor_reduction_pct": 7.7,
+    "baseline_actual_float_events": 0,
+    "optimized_actual_float_events": 0,
+    "baseline_float_events_count": 0,
+    "optimized_float_events_count": 0
+  },
+  "ablation_study": {
+    "Baseline_Historical": {
+      "net_benefit_usd": 285037.0,
+      "sor": 2.62,
+      "oil_bbl": 7150.9,
+      "float_margin": 2.596,
+      "total_float_events": 0,
+      "computation_time_s": 0.019,
+      "description": "Fixed schedule: 3000t steam, 5.2 SPM, unshaped downstroke (Simulated Baseline Policy)"
+    },
+    "CSS_Only_Optimization": {
+      "net_benefit_usd": 164154.0,
+      "sor": 2.28,
+      "oil_bbl": 4125.5,
+      "float_margin": 4.246,
+      "total_float_events": 0,
+      "computation_time_s": 59.181,
+      "description": "Optimized steam & soak with safe conventional 3.0 SPM lift"
+    },
+    "SRP_Only_Optimization": {
+      "net_benefit_usd": 430640.0,
+      "sor": 1.9,
+      "oil_bbl": 9845.5,
+      "float_margin": 1.86,
+      "total_float_events": 0,
+      "computation_time_s": 109.431,
+      "description": "Optimized SPM & VFD with fixed 3000t steam"
+    },
+    "Joint_Co_Optimization": {
+      "net_benefit_usd": 543437.0,
+      "sor": 2.06,
+      "oil_bbl": 12573.5,
+      "float_margin": 2.318,
+      "total_float_events": 0,
+      "computation_time_s": 103.003,
+      "description": "Simultaneous co-optimization of CSS thermal schedule & SRP dynamic lift"
+    }
+  },
+  "timing_provenance": {
+    "timing_methodology": "Measured single-pass runtime in seconds using time.perf_counter().",
+    "cache_state": "Mixed: baseline runs direct forward simulation; optimizers execute in warm Python runtime.",
+    "measured_runtimes_s": {
+      "baseline_simulation": 0.019,
+      "css_only_optimization": 59.181,
+      "srp_only_optimization": 109.431,
+      "joint_optimization": 103.003
+    }
+  },
+  "sensitivity_analysis": {
+    "crude_oil_price_usd_bbl": {
+      "$45.0/bbl": {
+        "multiplier": 45.0,
+        "net_benefit_usd": 343542.0,
+        "oil_recovery_bbl": 11334.3,
+        "sor": 2.28
+      },
+      "$58.0/bbl": {
+        "multiplier": 58.0,
+        "net_benefit_usd": 490888.0,
+        "oil_recovery_bbl": 11334.3,
+        "sor": 2.28
+      },
+      "$75.0/bbl": {
+        "multiplier": 75.0,
+        "net_benefit_usd": 683571.0,
+        "oil_recovery_bbl": 11334.3,
+        "sor": 2.28
+      },
+      "$90.0/bbl": {
+        "multiplier": 90.0,
+        "net_benefit_usd": 853585.0,
+        "oil_recovery_bbl": 11334.3,
+        "sor": 2.28
+      }
+    },
+    "steam_cost_usd_tonne": {
+      "$20.0/tonne": {
+        "multiplier": 20.0,
+        "net_benefit_usd": 514702.0,
+        "oil_recovery_bbl": 11334.3,
+        "sor": 2.28
+      },
+      "$28.5/tonne": {
+        "multiplier": 28.5,
+        "net_benefit_usd": 479553.0,
+        "oil_recovery_bbl": 11334.3,
+        "sor": 2.28
+      },
+      "$35.0/tonne": {
+        "multiplier": 35.0,
+        "net_benefit_usd": 452675.0,
+        "oil_recovery_bbl": 11334.3,
+        "sor": 2.28
+      },
+      "$45.0/tonne": {
+        "multiplier": 45.0,
+        "net_benefit_usd": 411324.0,
+        "oil_recovery_bbl": 11334.3,
+        "sor": 2.28
+      }
+    }
+  },
+  "provenance": {
+    "provenance_type": "SIMULATED",
+    "source": "Petro-Twin Benchmark Engine"
+  }
+}

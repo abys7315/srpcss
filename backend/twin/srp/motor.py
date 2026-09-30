@@ -10,6 +10,8 @@ PROVENANCE: ASSUMED.
 from dataclasses import dataclass
 import numpy as np
 
+from core.config import canonical_config as _C
+
 @dataclass
 class MotorEnergyResult:
     hydraulic_power_kw: float
@@ -26,8 +28,8 @@ class SRPMotorModel:
 
     def __init__(
         self,
-        motor_rating_kw: float = 37.0,     # ~50 HP industrial electric motor
-        gearbox_torque_rating_in_lbs: float = 320000.0,
+        motor_rating_kw: float = _C.srp.motor_rating_kw,
+        gearbox_torque_rating_in_lbs: float = _C.srp.gearbox_rating_in_lbs,
         motor_efficiency: float = 0.88,
         gearbox_efficiency: float = 0.92,
         vfd_efficiency: float = 0.96

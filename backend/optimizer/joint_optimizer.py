@@ -1,34 +1,60 @@
 """
-Joint CSS + SRP Multi-Objective Optimization Engine — Petro-Twin (SIH 2026, PS26120).
+Joint CSS + SRP multi-objective optimizer (NSGA-II, pymoo).
 
-Constrained Multi-Objective Coarse-to-Fine Grid Search + Pareto Optimization:
-Co-optimizes all 8 required decision variables:
-1. Steam Volume (tonnes)
-2. Injection Pressure (bar)
-3. Injection Duration (days)
-4. Soak Duration (days)
-5. Economic Cutoff Oil Rate (bpd)
-6. Pumping Speed (SPM)
-7. Stroke Length (inches)
-8. VFD Downstroke Speed Ratio (ratio)
+Decision variables
+  CSS : steam volume [t], bottomhole injection pressure [bar], injection duration [d],
+        soak [d], economic cutoff [bbl/d]
+  SRP : fixed policy    -> SPM, stroke [in], VFD downstroke ratio
+        adaptive policy -> controller M_target, min fillage, stroke [in], VFD downstroke ratio
+        (the daily controller in optimizer/srp_controller.py then sets SPM(t))
+Objectives (minimised): -net benefit [USD], SOR [t/t], failure risk [-]
+Constraints (g <= 0):   M_float >= 1, Goodman <= limit, torque <= rating, PIP >= limit,
+                        p_inj <= fracture-derived limit, constraint-engine status != INFEASIBLE
+Modes: JOINT_CSS_SRP (all free), CSS_ONLY (SRP frozen at current), SRP_ONLY (CSS frozen at current).
 
-Strictly gates out unsafe candidates (rod floating M_float < 1.0, injection pressure > 125 bar, gearbox torque > 456,000 in-lbs)
-before Pareto ranking and multi-objective trade-off selection.
-
+The recommendation is the highest composite-score point on the non-dominated set of all feasible
+evaluations (weights from the request). Evaluations go through the shared simulation cache.
 PROVENANCE: SIMULATED.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Tuple, Optional
-import itertools
-import numpy as np
+from typing import Callable, List, Dict, Any, Optional, Tuple
 import time
+import numpy as np
+
+from pymoo.core.problem import ElementwiseProblem
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.optimize import minimize
 
 from .pareto import ParetoSolutionPoint, compute_pareto_front
 from .objective import CandidateEvaluator
 from constraints.constraint_engine import ConstraintEngine
 from ml.confidence.estimator import ConfidenceEstimator
 from core.config import canonical_config
+
+_SL = canonical_config.safety_limits
+P_INJ_LIMIT = _SL.max_allowable_injection_pressure_bar
+
+# name -> (lower, upper)
+CSS_BOUNDS: Dict[str, Tuple[float, float]] = {
+    "steam_volume_tonnes": (1500.0, 4500.0),
+    "injection_pressure_bar": (60.0, P_INJ_LIMIT),
+    "injection_duration_days": (8.0, 25.0),
+    "soak_duration_days": (2.0, 14.0),
+    "economic_cutoff_bpd": (4.0, 12.0),
+}
+SRP_FIXED_BOUNDS: Dict[str, Tuple[float, float]] = {
+    "spm": (_SL.min_allowable_spm, _SL.max_allowable_spm),
+    "stroke_length_inch": (_SL.min_stroke_length_inch, _SL.max_stroke_length_inch),
+    "vfd_downstroke_ratio": (0.6, 1.0),
+}
+SRP_ADAPTIVE_BOUNDS: Dict[str, Tuple[float, float]] = {
+    "srp_m_target": (1.05, 1.6),
+    "srp_min_fillage": (0.75, 0.95),
+    "stroke_length_inch": (_SL.min_stroke_length_inch, _SL.max_stroke_length_inch),
+    "vfd_downstroke_ratio": (0.6, 1.0),
+}
+
 
 @dataclass
 class RecommendationComparison:
@@ -38,10 +64,11 @@ class RecommendationComparison:
     unit: str
     delta_display: str
 
+
 @dataclass
 class OptimizationRunResult:
     well_id: str
-    optimization_mode: str              # "JOINT_CSS_SRP", "CSS_ONLY", "SRP_ONLY"
+    optimization_mode: str
     status: str                         # "FEASIBLE", "NO_FEASIBLE_SOLUTION", "NO_IMPROVEMENT_FOUND"
     current_configuration: ParetoSolutionPoint
     recommended_configuration: Optional[ParetoSolutionPoint]
@@ -50,27 +77,87 @@ class OptimizationRunResult:
     feasible_count: int
     infeasible_count: int
     comparison_table: List[RecommendationComparison]
-    delta_summary: Dict[str, float]     # Percentage / dollar improvements
+    delta_summary: Dict[str, float]
     confidence_score: float
-    recommendation_mode: str            # "HIGH", "MEDIUM", "LOW", "VERY_LOW"
+    recommendation_mode: str
     explanation: str
     contributing_factors: List[str]
     constraints_checked: List[Dict[str, Any]]
     execution_time_seconds: float
     confidence_breakdown: Dict[str, Any] = field(default_factory=dict)
+    evaluations: int = 0
+    seed: int = 0
+    srp_policy: str = "fixed"
+    evaluated_points: List[ParetoSolutionPoint] = field(default_factory=list)
     provenance: str = "SIMULATED"
 
-class JointOptimizer:
-    """Jointly optimizes CSS thermal stimulation and SRP artificial lift schedules."""
 
-    def __init__(
-        self,
-        constraint_engine: Optional[ConstraintEngine] = None,
-        confidence_estimator: Optional[ConfidenceEstimator] = None
-    ):
+def _current_values(cfg: Dict[str, Any]) -> Dict[str, float]:
+    c = canonical_config
+    return {
+        "steam_volume_tonnes": float(cfg.get("steam_volume_tonnes", c.css.default_steam_volume_tonnes)),
+        "injection_pressure_bar": float(cfg.get("injection_pressure_bar", c.css.default_injection_pressure_bar)),
+        "injection_duration_days": float(cfg.get("injection_duration_days", c.css.default_injection_duration_days)),
+        "soak_duration_days": float(cfg.get("soak_duration_days", cfg.get("soak_days", c.css.default_soak_days))),
+        "economic_cutoff_bpd": float(cfg.get("economic_cutoff_bpd", c.css.default_production_cutoff_oil_rate_bpd)),
+        "spm": float(cfg.get("spm", c.srp.standard_spm)),
+        "stroke_length_inch": float(cfg.get("stroke_length_inch", c.srp.standard_stroke_length_inch)),
+        "vfd_downstroke_ratio": float(cfg.get("vfd_downstroke_ratio", c.srp.standard_vfd_downstroke_ratio)),
+        "srp_m_target": float(cfg.get("srp_m_target", 1.15)),
+        "srp_min_fillage": float(cfg.get("srp_min_fillage", 0.85)),
+    }
+
+
+class _CycleProblem(ElementwiseProblem):
+    def __init__(self, names: List[str], bounds: Dict[str, Tuple[float, float]], frozen: Dict[str, float], run_one):
+        self.names = names
+        self.frozen = frozen
+        self.run_one = run_one
+        xl = np.array([bounds[n][0] for n in names])
+        xu = np.array([bounds[n][1] for n in names])
+        super().__init__(n_var=len(names), n_obj=3, n_ieq_constr=6, xl=xl, xu=xu)
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        vals = dict(self.frozen)
+        vals.update({n: float(v) for n, v in zip(self.names, x)})
+        pt = self.run_one(vals)
+        out["F"] = [-pt.net_benefit_usd, pt.steam_oil_ratio, pt.failure_risk_probability]
+        out["G"] = [
+            _SL.min_rod_float_margin_index - pt.min_float_margin_index,
+            pt.goodman_stress_ratio - _SL.max_goodman_stress_ratio,
+            (pt.peak_gearbox_torque_in_lbs - _SL.max_gearbox_torque_in_lbs) / _SL.max_gearbox_torque_in_lbs,
+            _SL.min_pump_intake_pressure_bar - pt.pump_intake_pressure_bar,
+            vals["injection_pressure_bar"] - P_INJ_LIMIT,
+            0.5 if pt.status == "INFEASIBLE" else -0.5,
+        ]
+
+
+class JointOptimizer:
+    """NSGA-II co-optimisation of the CSS schedule and the SRP policy."""
+
+    def __init__(self, constraint_engine: Optional[ConstraintEngine] = None,
+                 confidence_estimator: Optional[ConfidenceEstimator] = None,
+                 pop_size: int = 24, n_gen: int = 12):
         self.constraints = constraint_engine or ConstraintEngine()
         self.conf_estimator = confidence_estimator or ConfidenceEstimator()
         self.evaluator = CandidateEvaluator(self.constraints)
+        self.pop_size = pop_size
+        self.n_gen = n_gen
+
+    def _evaluate(self, cid: str, well_id: str, cycle_number: int, v: Dict[str, float], policy: str,
+                  anomaly_day, anomaly_sev, carried_state=None) -> ParetoSolutionPoint:
+        return self.evaluator.evaluate_candidate(
+            candidate_id=cid, well_id=well_id, cycle_number=cycle_number,
+            steam_volume_tonnes=round(v["steam_volume_tonnes"], 1), soak_days=round(v["soak_duration_days"], 2),
+            spm=round(v["spm"], 2), stroke_length_inch=round(v["stroke_length_inch"], 1),
+            vfd_downstroke_ratio=round(v["vfd_downstroke_ratio"], 3),
+            injection_pressure_bar=round(v["injection_pressure_bar"], 1),
+            injection_duration_days=round(v["injection_duration_days"], 2),
+            economic_cutoff_bpd=round(v["economic_cutoff_bpd"], 2),
+            cooling_anomaly_day=anomaly_day, cooling_anomaly_severity_pct=anomaly_sev,
+            srp_policy=policy, srp_m_target=round(v["srp_m_target"], 3), srp_min_fillage=round(v["srp_min_fillage"], 3),
+            carried_state=carried_state,
+        )
 
     def optimize_well(
         self,
@@ -83,367 +170,204 @@ class JointOptimizer:
         weight_sor_minimization: float = 0.15,
         weight_risk_minimization: float = 0.15,
         cooling_anomaly_day: Optional[int] = None,
-        cooling_anomaly_severity_pct: float = 0.0
+        cooling_anomaly_severity_pct: float = 0.0,
+        srp_policy: str = "adaptive",
+        seed: int = 42,
+        carried_state: Optional[Dict[str, Any]] = None,
+        current_policy: Optional[str] = None,
+        progress_cb: Optional[Callable[[int, int], None]] = None,
     ) -> OptimizationRunResult:
-        """
-        Executes constrained multi-objective coarse-to-fine optimization over CSS and SRP decision spaces.
-        """
         t_start = time.time()
-
-        # 1. Normalize objective weights automatically if sum != 1.0
         total_w = weight_net_benefit + weight_oil_recovery + weight_sor_minimization + weight_risk_minimization
-        if abs(total_w - 1.0) > 1e-4 and total_w > 0.0:
-            weight_net_benefit /= total_w
-            weight_oil_recovery /= total_w
-            weight_sor_minimization /= total_w
-            weight_risk_minimization /= total_w
+        if total_w > 0 and abs(total_w - 1.0) > 1e-4:
+            weight_net_benefit, weight_oil_recovery, weight_sor_minimization, weight_risk_minimization = (
+                w / total_w for w in (weight_net_benefit, weight_oil_recovery, weight_sor_minimization, weight_risk_minimization))
 
-        # Extract current configuration parameters with canonical defaults
-        curr_steam = float(current_cfg.get("steam_volume_tonnes", canonical_config.css.default_steam_volume_tonnes))
-        curr_p_inj = float(current_cfg.get("injection_pressure_bar", canonical_config.css.default_injection_pressure_bar))
-        curr_t_inj = float(current_cfg.get("injection_duration_days", canonical_config.css.default_injection_duration_days))
-        curr_soak = float(current_cfg.get("soak_duration_days", canonical_config.css.default_soak_days))
-        curr_cutoff = float(current_cfg.get("economic_cutoff_bpd", canonical_config.css.default_production_cutoff_oil_rate_bpd))
-        curr_spm = float(current_cfg.get("spm", canonical_config.srp.standard_spm))
-        curr_stroke = float(current_cfg.get("stroke_length_inch", canonical_config.srp.standard_stroke_length_inch))
-        curr_vfd = float(current_cfg.get("vfd_downstroke_ratio", canonical_config.srp.standard_vfd_downstroke_ratio))
+        cur = _current_values(current_cfg)
+        cur_policy = current_policy or current_cfg.get("srp_policy", "fixed")
+        curr_point = self._evaluate("CURRENT", well_id, cycle_number, cur, cur_policy,
+                                    cooling_anomaly_day, cooling_anomaly_severity_pct, carried_state)
 
-        # 2. Evaluate Current Baseline Configuration
-        curr_point = self.evaluator.evaluate_candidate(
-            candidate_id="CURRENT",
-            well_id=well_id,
-            cycle_number=cycle_number,
-            steam_volume_tonnes=curr_steam,
-            soak_days=curr_soak,
-            spm=curr_spm,
-            stroke_length_inch=curr_stroke,
-            vfd_downstroke_ratio=curr_vfd,
-            injection_pressure_bar=curr_p_inj,
-            injection_duration_days=curr_t_inj,
-            economic_cutoff_bpd=curr_cutoff,
-            cooling_anomaly_day=cooling_anomaly_day,
-            cooling_anomaly_severity_pct=cooling_anomaly_severity_pct
-        )
-
-        # 3. Stage 1 (Coarse Search): Generate candidate operating points based on optimization mode
-        # 3. Stage 1 (Coarse Search): Generate candidate operating points across all decision variables
-        candidates: List[ParetoSolutionPoint] = []
-        cand_idx = 1
-
+        # Variable set by mode; frozen variables stay at the current configuration.
+        srp_bounds = SRP_ADAPTIVE_BOUNDS if srp_policy == "adaptive" else SRP_FIXED_BOUNDS
+        policy = srp_policy
         if mode == "CSS_ONLY":
-            # Genuine optimization of CSS decision variables; hold SRP parameters strictly fixed
-            steam_grid = [2400.0, 3000.0, 3400.0]
-            soak_grid = [4.0, 6.0, 8.0]
-            p_inj_grid = [115.0, 125.0]
-            t_inj_grid = [12.0, 15.0]
-            cut = curr_cutoff
-            
-            for st, sk, pinj, tinj in itertools.product(steam_grid, soak_grid, p_inj_grid, t_inj_grid):
-                sol = self.evaluator.evaluate_candidate(
-                    candidate_id=f"CSS-{cand_idx:03d}",
-                    well_id=well_id,
-                    cycle_number=cycle_number,
-                    steam_volume_tonnes=st,
-                    soak_days=sk,
-                    spm=curr_spm,
-                    stroke_length_inch=curr_stroke,
-                    vfd_downstroke_ratio=curr_vfd,
-                    injection_pressure_bar=pinj,
-                    injection_duration_days=tinj,
-                    economic_cutoff_bpd=cut,
-                    cooling_anomaly_day=cooling_anomaly_day,
-                    cooling_anomaly_severity_pct=cooling_anomaly_severity_pct
-                )
-                candidates.append(sol)
-                cand_idx += 1
-
+            bounds, policy = dict(CSS_BOUNDS), cur_policy
         elif mode == "SRP_ONLY":
-            # Genuine optimization of SRP decision variables; hold CSS parameters strictly fixed
-            spm_grid = [2.5, 3.2, 4.0, 4.8, 5.5]
-            stroke_grid = [86.0, 100.0]
-            vfd_grid = [0.70, 0.85, 1.0]
-
-            for sp, strk, vfd in itertools.product(spm_grid, stroke_grid, vfd_grid):
-                sol = self.evaluator.evaluate_candidate(
-                    candidate_id=f"SRP-{cand_idx:03d}",
-                    well_id=well_id,
-                    cycle_number=cycle_number,
-                    steam_volume_tonnes=curr_steam,
-                    soak_days=curr_soak,
-                    spm=sp,
-                    stroke_length_inch=strk,
-                    vfd_downstroke_ratio=vfd,
-                    injection_pressure_bar=curr_p_inj,
-                    injection_duration_days=curr_t_inj,
-                    economic_cutoff_bpd=curr_cutoff,
-                    cooling_anomaly_day=cooling_anomaly_day,
-                    cooling_anomaly_severity_pct=cooling_anomaly_severity_pct
-                )
-                candidates.append(sol)
-                cand_idx += 1
-
+            bounds = dict(srp_bounds)
         else:
-            # JOINT_CSS_SRP: Co-optimize all 8 decision variables across Slow and Fast loops
-            # Efficient orthogonal grid covering primary thermal and lift coupling,
-            # systematically varying injection pressure, injection duration, and economic cutoff.
-            coarse_steam = [2400.0, 3200.0]
-            coarse_soak = [5.0, 7.0]
-            coarse_spm = [3.5, 4.5, 5.5]
-            coarse_vfd = [0.75, 1.0]
-            coarse_stroke = [86.0, 100.0]
-            p_inj_options = [115.0, 125.0]
-            t_inj_options = [12.0, 16.0]
-            cutoff_options = [6.0, 8.0]
+            bounds = {**CSS_BOUNDS, **srp_bounds}
+        names = list(bounds)
+        frozen = {k: v for k, v in cur.items() if k not in bounds}
 
-            for st, sk, sp, vfd, strk in itertools.product(
-                coarse_steam, coarse_soak, coarse_spm, coarse_vfd, coarse_stroke
-            ):
-                pinj = p_inj_options[cand_idx % len(p_inj_options)]
-                tinj = t_inj_options[(cand_idx // 2) % len(t_inj_options)]
-                cut = cutoff_options[(cand_idx // 4) % len(cutoff_options)]
-                sol = self.evaluator.evaluate_candidate(
-                    candidate_id=f"JOINT-{cand_idx:03d}",
-                    well_id=well_id,
-                    cycle_number=cycle_number,
-                    steam_volume_tonnes=st,
-                    soak_days=sk,
-                    spm=sp,
-                    stroke_length_inch=strk,
-                    vfd_downstroke_ratio=vfd,
-                    injection_pressure_bar=pinj,
-                    injection_duration_days=tinj,
-                    economic_cutoff_bpd=cut,
-                    cooling_anomaly_day=cooling_anomaly_day,
-                    cooling_anomaly_severity_pct=cooling_anomaly_severity_pct
-                )
-                candidates.append(sol)
-                cand_idx += 1
+        evaluated: List[ParetoSolutionPoint] = []
+        total_evals = self.pop_size * self.n_gen + 2      # NSGA-II evaluates pop_size per generation; +2 for reference points
 
-        # 4. Initial Constraint Safety Gating & Pareto Frontier
-        coarse_pareto_front, coarse_ranked = compute_pareto_front(
-            candidates,
-            weight_net_benefit=weight_net_benefit,
-            weight_oil_recovery=weight_oil_recovery,
-            weight_sor_minimization=weight_sor_minimization,
-            weight_risk_minimization=weight_risk_minimization
-        )
+        def run_one(vals: Dict[str, float]) -> ParetoSolutionPoint:
+            pt = self._evaluate(f"NSGA-{len(evaluated) + 1:03d}", well_id, cycle_number, vals, policy,
+                                cooling_anomaly_day, cooling_anomaly_severity_pct, carried_state)
+            evaluated.append(pt)
+            if progress_cb is not None:
+                progress_cb(len(evaluated), total_evals)
+            return pt
 
-        # Stage 2 (Targeted Fine Search Refinement): Perturb high-sensitivity operating variables around top Pareto candidates
-        if mode == "JOINT_CSS_SRP" and coarse_pareto_front:
-            top_seed = coarse_pareto_front[0]
-            max_safe_fine_spm = curr_spm if curr_point.min_float_margin_index < 1.0 else 7.5
-            fine_perturbations = [
-                (top_seed.spm - 0.2, top_seed.vfd_downstroke_ratio, top_seed.steam_volume_tonnes, top_seed.injection_duration_days),
-                (top_seed.spm + 0.2, max(0.65, top_seed.vfd_downstroke_ratio - 0.05), top_seed.steam_volume_tonnes, top_seed.injection_duration_days),
-                (top_seed.spm, min(1.0, top_seed.vfd_downstroke_ratio + 0.05), top_seed.steam_volume_tonnes, top_seed.injection_duration_days),
-                (top_seed.spm, top_seed.vfd_downstroke_ratio, top_seed.steam_volume_tonnes - 150.0, top_seed.injection_duration_days),
-                (top_seed.spm, top_seed.vfd_downstroke_ratio, top_seed.steam_volume_tonnes + 150.0, top_seed.injection_duration_days),
-                (top_seed.spm, top_seed.vfd_downstroke_ratio, top_seed.steam_volume_tonnes, max(8.0, top_seed.injection_duration_days - 2.0)),
-                (top_seed.spm, top_seed.vfd_downstroke_ratio, top_seed.steam_volume_tonnes, min(25.0, top_seed.injection_duration_days + 2.0))
-            ]
-            for f_spm, f_vfd, f_steam, f_tinj in fine_perturbations:
-                if 1.5 <= f_spm <= max_safe_fine_spm and 1500.0 <= f_steam <= 4500.0:
-                    fine_sol = self.evaluator.evaluate_candidate(
-                        candidate_id=f"FINE-{cand_idx:03d}",
-                        well_id=well_id,
-                        cycle_number=cycle_number,
-                        steam_volume_tonnes=f_steam,
-                        soak_days=top_seed.soak_days,
-                        spm=f_spm,
-                        stroke_length_inch=top_seed.stroke_length_inch,
-                        vfd_downstroke_ratio=f_vfd,
-                        injection_pressure_bar=top_seed.injection_pressure_bar,
-                        injection_duration_days=f_tinj,
-                        economic_cutoff_bpd=top_seed.economic_cutoff_bpd,
-                        cooling_anomaly_day=cooling_anomaly_day,
-                        cooling_anomaly_severity_pct=cooling_anomaly_severity_pct
-                    )
-                    candidates.append(fine_sol)
-                    cand_idx += 1
+        problem = _CycleProblem(names, bounds, frozen, run_one)
+        minimize(problem, NSGA2(pop_size=self.pop_size), ("n_gen", self.n_gen), seed=seed, verbose=False)
 
-        # Stage 3 (Rule 3): RECOMPUTE Pareto front and rankings across ALL candidates (coarse + fine)
-        pareto_front, ranked_feasible = compute_pareto_front(
-            candidates,
-            weight_net_benefit=weight_net_benefit,
-            weight_oil_recovery=weight_oil_recovery,
-            weight_sor_minimization=weight_sor_minimization,
-            weight_risk_minimization=weight_risk_minimization
-        )
+        pareto_front, ranked = compute_pareto_front(
+            evaluated, weight_net_benefit=weight_net_benefit, weight_oil_recovery=weight_oil_recovery,
+            weight_sor_minimization=weight_sor_minimization, weight_risk_minimization=weight_risk_minimization)
+        infeasible = sum(1 for c in evaluated if c.status == "INFEASIBLE")
+        exec_time = round(time.time() - t_start, 2)
 
-        infeasible_count = sum(1 for c in candidates if c.status == "INFEASIBLE")
-        feasible_count = len(ranked_feasible)
-        exec_time = time.time() - t_start
-
-        # Handle NO_FEASIBLE_SOLUTION edge case
-        if not ranked_feasible or not pareto_front:
+        if not pareto_front:
             return OptimizationRunResult(
-                well_id=well_id,
-                optimization_mode=mode,
-                status="NO_FEASIBLE_SOLUTION",
-                current_configuration=curr_point,
-                recommended_configuration=None,
-                pareto_front=[],
-                total_evaluated_count=len(candidates),
-                feasible_count=0,
-                infeasible_count=infeasible_count,
-                comparison_table=[],
-                delta_summary={},
-                confidence_score=0.35,
-                recommendation_mode="VERY_LOW",
-                explanation="No feasible operating point was found that satisfies all hard mechanical, thermal, and rod floating constraints.",
-                contributing_factors=["All evaluated points violated binding mechanical or reservoir safety limits."],
-                constraints_checked=[{"name": "Rod Float Margin >= 1.0", "status": "VIOLATED"}],
-                execution_time_seconds=round(exec_time, 2)
-            )
+                well_id=well_id, optimization_mode=mode, status="NO_FEASIBLE_SOLUTION",
+                current_configuration=curr_point, recommended_configuration=None, pareto_front=[],
+                total_evaluated_count=len(evaluated), feasible_count=0, infeasible_count=infeasible,
+                comparison_table=[], delta_summary={}, confidence_score=0.35, recommendation_mode="VERY_LOW",
+                explanation="No evaluated operating point satisfied all hard constraints.",
+                contributing_factors=["Every candidate violated at least one mechanical, thermal or float limit."],
+                constraints_checked=[], execution_time_seconds=exec_time, evaluations=len(evaluated), seed=seed,
+                srp_policy=policy, evaluated_points=evaluated)
 
-        # Final recommendation MUST come from the final recomputed Pareto front!
-        best_cand = pareto_front[0]
+        best = pareto_front[0]
+        improves = (best.net_benefit_usd > curr_point.net_benefit_usd * 1.01
+                    or best.min_float_margin_index > curr_point.min_float_margin_index * 1.05
+                    or best.steam_oil_ratio < curr_point.steam_oil_ratio * 0.98
+                    or curr_point.status == "INFEASIBLE")
+        opt_status = "FEASIBLE" if improves else "NO_IMPROVEMENT_FOUND"
 
-        # Check if best candidate actually improves over current configuration:
-        has_improvement = (
-            best_cand.net_benefit_usd > curr_point.net_benefit_usd * 1.01 or
-            best_cand.min_float_margin_index > curr_point.min_float_margin_index * 1.05 or
-            best_cand.steam_oil_ratio < curr_point.steam_oil_ratio * 0.98
-        )
-        opt_status = "FEASIBLE" if has_improvement else "NO_IMPROVEMENT_FOUND"
-
-        # 5. Delta Summary & Comparison Table
-        oil_delta_pct = ((best_cand.cumulative_oil_bbl - curr_point.cumulative_oil_bbl) / max(curr_point.cumulative_oil_bbl, 1.0)) * 100.0
-        nb_delta_usd = best_cand.net_benefit_usd - curr_point.net_benefit_usd
-        sor_delta_pct = ((best_cand.steam_oil_ratio - curr_point.steam_oil_ratio) / max(curr_point.steam_oil_ratio, 0.1)) * 100.0
-        energy_delta_pct = ((best_cand.energy_intensity_kwh_per_bbl - curr_point.energy_intensity_kwh_per_bbl) / max(curr_point.energy_intensity_kwh_per_bbl, 0.1)) * 100.0
-        risk_delta_pct = ((best_cand.failure_risk_probability - curr_point.failure_risk_probability) / max(curr_point.failure_risk_probability, 0.05)) * 100.0
-
+        pct = lambda a, b, floor: (a - b) / max(abs(b), floor) * 100.0  # noqa: E731
         delta_summary = {
-            "oil_recovery_change_pct": round(oil_delta_pct, 1),
-            "net_benefit_change_usd": round(nb_delta_usd, 2),
-            "steam_oil_ratio_change_pct": round(sor_delta_pct, 1),
-            "energy_intensity_change_pct": round(energy_delta_pct, 1),
-            "failure_risk_change_pct": round(risk_delta_pct, 1),
-            "float_margin_improvement": round(best_cand.min_float_margin_index - curr_point.min_float_margin_index, 3)
+            "oil_recovery_change_pct": round(pct(best.cumulative_oil_bbl, curr_point.cumulative_oil_bbl, 1.0), 1),
+            "net_benefit_change_usd": round(best.net_benefit_usd - curr_point.net_benefit_usd, 2),
+            "steam_oil_ratio_change_pct": round(pct(best.steam_oil_ratio, curr_point.steam_oil_ratio, 0.1), 1),
+            "energy_intensity_change_pct": round(pct(best.energy_intensity_kwh_per_bbl, curr_point.energy_intensity_kwh_per_bbl, 0.1), 1),
+            "failure_risk_change_pct": round(pct(best.failure_risk_probability, curr_point.failure_risk_probability, 0.05), 1),
+            "float_margin_improvement": round(best.min_float_margin_index - curr_point.min_float_margin_index, 3),
+            "float_days_change": best.float_days - curr_point.float_days,
         }
+
+        def row(name, a, b, unit, f="{:.1f}", d="{:+.1f}"):
+            return RecommendationComparison(name, f.format(a), f.format(b), unit, d.format(b - a))
 
         comparison = [
-            RecommendationComparison("Steam Volume", f"{curr_point.steam_volume_tonnes:.0f}", f"{best_cand.steam_volume_tonnes:.0f}", "tonnes", f"{best_cand.steam_volume_tonnes - curr_point.steam_volume_tonnes:+.0f}"),
-            RecommendationComparison("Injection Pressure", f"{curr_point.injection_pressure_bar:.1f}", f"{best_cand.injection_pressure_bar:.1f}", "bar", f"{best_cand.injection_pressure_bar - curr_point.injection_pressure_bar:+.1f}"),
-            RecommendationComparison("Injection Duration", f"{curr_point.injection_duration_days:.1f}", f"{best_cand.injection_duration_days:.1f}", "days", f"{best_cand.injection_duration_days - curr_point.injection_duration_days:+.1f}"),
-            RecommendationComparison("Soak Duration", f"{curr_point.soak_days:.1f}", f"{best_cand.soak_days:.1f}", "days", f"{best_cand.soak_days - curr_point.soak_days:+.1f}"),
-            RecommendationComparison("Pumping Speed", f"{curr_point.spm:.2f}", f"{best_cand.spm:.2f}", "SPM", f"{best_cand.spm - curr_point.spm:+.2f}"),
-            RecommendationComparison("Stroke Length", f"{curr_point.stroke_length_inch:.0f}", f"{best_cand.stroke_length_inch:.0f}", "in", f"{best_cand.stroke_length_inch - curr_point.stroke_length_inch:+.0f}"),
-            RecommendationComparison("VFD Downstroke Ratio", f"{curr_point.vfd_downstroke_ratio:.2f}", f"{best_cand.vfd_downstroke_ratio:.2f}", "ratio", f"{best_cand.vfd_downstroke_ratio - curr_point.vfd_downstroke_ratio:+.2f}"),
-            RecommendationComparison("Economic Cutoff", f"{curr_point.economic_cutoff_bpd:.1f}", f"{best_cand.economic_cutoff_bpd:.1f}", "bpd", f"{best_cand.economic_cutoff_bpd - curr_point.economic_cutoff_bpd:+.1f}"),
-            RecommendationComparison("Cumulative Oil", f"{curr_point.cumulative_oil_bbl:.1f}", f"{best_cand.cumulative_oil_bbl:.1f}", "bbl", f"{oil_delta_pct:+.1f}%"),
-            RecommendationComparison("Steam-to-Oil Ratio", f"{curr_point.steam_oil_ratio:.2f}", f"{best_cand.steam_oil_ratio:.2f}", "t/t", f"{sor_delta_pct:+.1f}%"),
-            RecommendationComparison("Net Benefit", f"${curr_point.net_benefit_usd:,.0f}", f"${best_cand.net_benefit_usd:,.0f}", "USD", f"${nb_delta_usd:+,.0f}"),
-            RecommendationComparison("Min Float Margin", f"{curr_point.min_float_margin_index:.3f}", f"{best_cand.min_float_margin_index:.3f}", "index", f"{best_cand.min_float_margin_index - curr_point.min_float_margin_index:+.3f}")
+            row("Steam volume", curr_point.steam_volume_tonnes, best.steam_volume_tonnes, "t", "{:.0f}", "{:+.0f}"),
+            row("Injection pressure (bottomhole)", curr_point.injection_pressure_bar, best.injection_pressure_bar, "bar"),
+            row("Injection duration", curr_point.injection_duration_days, best.injection_duration_days, "d"),
+            row("Soak duration", curr_point.soak_days, best.soak_days, "d"),
+            row("Pumping speed (cycle mean)", curr_point.spm, best.spm, "SPM", "{:.2f}", "{:+.2f}"),
+            row("Stroke length", curr_point.stroke_length_inch, best.stroke_length_inch, "in", "{:.0f}", "{:+.0f}"),
+            row("VFD downstroke ratio", curr_point.vfd_downstroke_ratio, best.vfd_downstroke_ratio, "-", "{:.2f}", "{:+.2f}"),
+            row("Economic cutoff", curr_point.economic_cutoff_bpd, best.economic_cutoff_bpd, "bbl/d"),
+            row("Cumulative oil", curr_point.cumulative_oil_bbl, best.cumulative_oil_bbl, "bbl", "{:.0f}", "{:+.0f}"),
+            row("Steam-oil ratio", curr_point.steam_oil_ratio, best.steam_oil_ratio, "t/t", "{:.2f}", "{:+.2f}"),
+            row("Net benefit", curr_point.net_benefit_usd, best.net_benefit_usd, "USD", "{:,.0f}", "{:+,.0f}"),
+            row("Min float margin", curr_point.min_float_margin_index, best.min_float_margin_index, "-", "{:.3f}", "{:+.3f}"),
+            row("Float-days", curr_point.float_days, best.float_days, "d", "{:.0f}", "{:+.0f}"),
         ]
+        if best.srp_policy == "adaptive":
+            comparison.append(RecommendationComparison("SRP policy", curr_point.srp_policy, "adaptive", "-",
+                                                       f"M_target {best.srp_m_target:.2f}, fillage >= {best.srp_min_fillage:.2f}"))
 
-        # 6. Candidate-Specific Dynamic Constraint Margins (Section 7)
-        float_margin = best_cand.min_float_margin_index - 1.0
-        pinj_margin = 125.0 - best_cand.injection_pressure_bar
-        goodman_margin = 0.85 - best_cand.goodman_stress_ratio
-        torque_margin_pct = ((456000.0 - best_cand.peak_gearbox_torque_in_lbs) / 456000.0) * 100.0
-        pip_margin = best_cand.pump_intake_pressure_bar - 3.0
-
+        margins = {
+            "float": best.min_float_margin_index - _SL.min_rod_float_margin_index,
+            "p_inj": P_INJ_LIMIT - best.injection_pressure_bar,
+            "goodman": _SL.max_goodman_stress_ratio - best.goodman_stress_ratio,
+            "torque_pct": (_SL.max_gearbox_torque_in_lbs - best.peak_gearbox_torque_in_lbs) / _SL.max_gearbox_torque_in_lbs * 100.0,
+            "pip": best.pump_intake_pressure_bar - _SL.min_pump_intake_pressure_bar,
+        }
+        st = lambda m: "PASSED" if m >= 0 else "VIOLATED"  # noqa: E731
         constraints_checked = [
-            {"name": "Rod Float Margin >= 1.000", "margin": f"{float_margin:+.3f}", "status": "PASSED" if float_margin >= 0 else "VIOLATED"},
-            {"name": "Max Injection Pressure <= 125 bar", "margin": f"{pinj_margin:+.1f} bar", "status": "PASSED" if pinj_margin >= 0 else "VIOLATED"},
-            {"name": "Modified Goodman Stress Ratio <= 0.85", "margin": f"{goodman_margin:+.3f}", "status": "PASSED" if goodman_margin >= 0 else "VIOLATED"},
-            {"name": "Gearbox Torque <= 456,000 in-lbs", "margin": f"{torque_margin_pct:+.1f}%", "status": "PASSED" if torque_margin_pct >= 0 else "VIOLATED"},
-            {"name": "Pump Intake Pressure >= 3.0 bar", "margin": f"{pip_margin:+.1f} bar", "status": "PASSED" if pip_margin >= 0 else "VIOLATED"}
+            {"name": f"Rod float margin >= {_SL.min_rod_float_margin_index:.2f}", "margin": f"{margins['float']:+.3f}", "status": st(margins["float"])},
+            {"name": f"Injection pressure <= {P_INJ_LIMIT:.0f} bar (0.9 x fracture)", "margin": f"{margins['p_inj']:+.1f} bar", "status": st(margins["p_inj"])},
+            {"name": f"Goodman ratio <= {_SL.max_goodman_stress_ratio:.2f}", "margin": f"{margins['goodman']:+.3f}", "status": st(margins["goodman"])},
+            {"name": f"Gearbox torque <= {_SL.max_gearbox_torque_in_lbs:,.0f} in-lbf", "margin": f"{margins['torque_pct']:+.1f}%", "status": st(margins["torque_pct"])},
+            {"name": f"Pump intake pressure >= {_SL.min_pump_intake_pressure_bar:.1f} bar", "margin": f"{margins['pip']:+.1f} bar", "status": st(margins["pip"])},
         ]
 
-        # 7. State- and Candidate-Specific Dynamic Confidence (Section 13)
-        d_steam = abs(best_cand.steam_volume_tonnes - 3000.0) / 1500.0
-        d_spm = abs(best_cand.spm - 4.5) / 3.0
-        d_vfd = abs(best_cand.vfd_downstroke_ratio - 1.0) / 0.5
-        anom_penalty = (cooling_anomaly_severity_pct / 100.0) * 0.45
-        dist_to_training = float(np.clip(0.08 + 0.25 * ((d_steam + d_spm + d_vfd) / 3.0) + anom_penalty, 0.05, 0.95))
-        pred_spread = float(np.clip(0.08 + 0.15 * dist_to_training, 0.05, 0.45))
-        min_headroom = min(
-            max(0.0, float_margin),
-            max(0.0, pinj_margin / 125.0),
-            max(0.0, goodman_margin / 0.85),
-            max(0.0, torque_margin_pct / 100.0)
-        )
+        # Scenario-robustness error (replaces the former hardcoded 8 % 'validation error').
+        # No field history exists, so there is no validation error to report. What can be computed is how much of
+        # the projected net benefit disappears when the chosen plan meets a heat-loss anomaly it was not planned for.
+        # It feeds the same confidence slot and is labelled as such.
+        stress_day = cooling_anomaly_day if cooling_anomaly_day else 35
+        stress_sev = max(20.0, cooling_anomaly_severity_pct + 15.0)
+        robust_err = 0.30            # worst case if the stress evaluation cannot run
+        robust_evaluated = False
+        try:
+            best_vals = {
+                "steam_volume_tonnes": best.steam_volume_tonnes, "soak_duration_days": best.soak_days,
+                "spm": cur["spm"] if best.srp_policy == "adaptive" else best.spm,
+                "stroke_length_inch": best.stroke_length_inch, "vfd_downstroke_ratio": best.vfd_downstroke_ratio,
+                "injection_pressure_bar": best.injection_pressure_bar, "injection_duration_days": best.injection_duration_days,
+                "economic_cutoff_bpd": best.economic_cutoff_bpd, "srp_m_target": best.srp_m_target,
+                "srp_min_fillage": best.srp_min_fillage,
+            }
+            stressed = self._evaluate("ROBUST", well_id, cycle_number, best_vals, best.srp_policy,
+                                      stress_day, stress_sev, carried_state)
+            robust_err = float(np.clip(abs(best.net_benefit_usd - stressed.net_benefit_usd)
+                                       / max(abs(best.net_benefit_usd), 1.0), 0.0, 0.30))
+            robust_evaluated = True
+        except Exception:
+            pass
 
-        # Derive validation error from stored model metrics
-        val_error = 0.08
-        if hasattr(self, 'registry') and self.registry:
-            champ = self.registry.get_champion("residual_corrector")
-            if champ and "validation_mae" in champ.metrics:
-                val_error = min(0.30, float(champ.metrics["validation_mae"]) / 25.0)
-
-        # Calculate input data quality based on cooling anomaly and telemetry completeness
-        data_quality = 0.96 if cooling_anomaly_severity_pct == 0 else max(0.40, 0.96 - (cooling_anomaly_severity_pct / 100.0) * 0.50)
-
-        # Physical operational range validation for Baghewala heavy crude
-        physics_valid = (
-            500.0 <= best_cand.steam_volume_tonnes <= 6000.0 and
-            1.0 <= best_cand.spm <= 8.5 and
-            50.0 <= best_cand.stroke_length_inch <= 160.0 and
-            best_cand.status != "INFEASIBLE"
-        )
-
-        conf_res = self.conf_estimator.compute_confidence(
-            prediction_spread_pct=round(pred_spread, 3),
-            validation_error_pct=round(val_error, 3),
-            distance_to_training_distribution=round(dist_to_training, 3),
-            data_quality_score=round(data_quality, 2),
-            are_physics_inputs_in_range=physics_valid,
-            min_constraint_margin_pct=max(0.02, min_headroom)
-        )
-
+        # Confidence heuristic (distance from the nominal operating point)
+        d_steam = abs(best.steam_volume_tonnes - 3000.0) / 1500.0
+        d_spm = abs(best.spm - 4.5) / 3.0
+        d_vfd = abs(best.vfd_downstroke_ratio - 1.0) / 0.5
+        anom = (cooling_anomaly_severity_pct / 100.0) * 0.45
+        dist = float(np.clip(0.08 + 0.25 * ((d_steam + d_spm + d_vfd) / 3.0) + anom, 0.05, 0.95))
+        spread = float(np.clip(0.08 + 0.15 * dist, 0.05, 0.45))
+        headroom = min(max(0.0, margins["float"]), max(0.0, margins["p_inj"] / P_INJ_LIMIT),
+                       max(0.0, margins["goodman"] / _SL.max_goodman_stress_ratio), max(0.0, margins["torque_pct"] / 100.0))
+        quality = 0.96 if cooling_anomaly_severity_pct == 0 else max(0.40, 0.96 - cooling_anomaly_severity_pct / 200.0)
+        conf = self.conf_estimator.compute_confidence(
+            prediction_spread_pct=round(spread, 3), validation_error_pct=round(robust_err, 3),
+            distance_to_training_distribution=round(dist, 3), data_quality_score=round(quality, 2),
+            are_physics_inputs_in_range=best.status != "INFEASIBLE", min_constraint_margin_pct=max(0.02, headroom))
         conf_breakdown = {
-            "confidence_type": "Simulation Confidence",
-            "overall_simulation_confidence": round(conf_res.overall_confidence_score, 2),
-            "data_completeness": round(data_quality, 2),
-            "data_completeness_provenance": "SIMULATED",
-            "validation_error": round(val_error, 3),
-            "validation_error_provenance": "SIMULATED",
-            "scenario_model_agreement": round(1.0 - pred_spread, 3),
-            "scenario_model_agreement_provenance": "SIMULATED",
-            "extrapolation_distance": round(dist_to_training, 3),
-            "extrapolation_distance_provenance": "SIMULATED",
-            "physics_range_validity": physics_valid,
-            "disclaimer": "Confidence is a simulated engineering heuristic based on model domain distance and synthetic verification split. No field calibration telemetry is represented."
+            "confidence_type": "Simulation confidence (heuristic)",
+            "overall_simulation_confidence": round(conf.overall_confidence_score, 2),
+            "data_completeness": round(quality, 2),
+            "extrapolation_distance": round(dist, 3),
+            "scenario_model_agreement": round(1.0 - spread, 3),
+            "scenario_robustness_error_pct": round(robust_err * 100.0, 1),
+            "robustness_scenario": f"{stress_sev:.0f} % heat-loss anomaly from day {stress_day}" if robust_evaluated else "not evaluated (worst case assumed)",
+            "disclaimer": ("Heuristic. The 'historical validation error' term is the net-benefit loss under an unplanned heat-loss "
+                           "anomaly, not an error against field data (none exists). Not calibrated to field data."),
         }
 
-        # 8. Explainability & Physics Drivers
+        lift = (f"adaptive daily SPM (M_target {best.srp_m_target:.2f}, fillage >= {best.srp_min_fillage:.2f}), "
+                f"cycle-mean {best.spm:.2f} SPM, max {best.max_spm:.2f}") if best.srp_policy == "adaptive" else f"{best.spm:.2f} SPM"
         factors = [
-            f"Steam volume tuned to {best_cand.steam_volume_tonnes:.0f}t to maximize thermal efficiency and deliver SOR={best_cand.steam_oil_ratio:.2f} t/t.",
-            f"SPM set to {best_cand.spm:.1f} with VFD downstroke ratio {best_cand.vfd_downstroke_ratio:.2f} ensuring minimum float margin index of {best_cand.min_float_margin_index:.3f} >= 1.000.",
-            f"Economic Net Benefit yields ${best_cand.net_benefit_usd:,.0f} USD ({nb_delta_usd:+,.0f} vs current operating policy)."
+            f"Steam {best.steam_volume_tonnes:.0f} t at {best.injection_pressure_bar:.0f} bar bottomhole; SOR {best.steam_oil_ratio:.2f} t/t.",
+            f"Lift: {lift}, stroke {best.stroke_length_inch:.0f} in, VFD ratio {best.vfd_downstroke_ratio:.2f}; "
+            f"min float margin {best.min_float_margin_index:.3f}, {best.float_days} float-days.",
+            f"Simulated net benefit ${best.net_benefit_usd:,.0f} ({delta_summary['net_benefit_change_usd']:+,.0f} vs current).",
         ]
-        if curr_point.min_float_margin_index < 1.0:
-            factors.insert(0, f"Eliminates active rod floating: adjusts pumping speed from {curr_point.spm:.1f} to {best_cand.spm:.1f} SPM with VFD downstroke ratio {best_cand.vfd_downstroke_ratio:.2f} (restoring float margin index to {best_cand.min_float_margin_index:.3f} >= 1.000).")
+        # Injection pressure pinned to its search bound is a model artifact, not an optimum: heat delivered per tonne
+        # is nearly flat in pressure and no injectivity benefit is modelled, so flag it instead of presenting it as insight.
+        p_lo = CSS_BOUNDS["injection_pressure_bar"][0]
+        p_tol = 0.02 * (P_INJ_LIMIT - p_lo)
+        p_at_upper = best.injection_pressure_bar >= P_INJ_LIMIT - p_tol
+        p_at_lower = best.injection_pressure_bar <= p_lo + p_tol
+        if mode != "SRP_ONLY" and (p_at_upper or p_at_lower):
+            side = "upper" if p_at_upper else "lower"
+            factors.append(
+                f"Injection pressure ({best.injection_pressure_bar:.0f} bar) sits at the {side} search bound. Treat this as a "
+                f"model artifact: heat per tonne is nearly flat in pressure and injectivity is not modelled.")
+            conf_breakdown["injection_pressure_at_bound"] = side
 
-        explanation_text = (
-            f"Recommended plan jointly adjusts steam injection to {best_cand.steam_volume_tonnes:.0f} tonnes "
-            f"and sets SPM to {best_cand.spm:.1f} with VFD downstroke ratio {best_cand.vfd_downstroke_ratio:.2f}. "
-            f"This guarantees rod float margin index of {best_cand.min_float_margin_index:.3f} (>= 1.000 safety threshold), "
-            f"preventing rod floating shock while unlocking net economic benefit of ${best_cand.net_benefit_usd:,.0f}."
-        )
-
-        exec_time = time.time() - t_start
+        explanation = (f"NSGA-II ({len(evaluated)} evaluations, seed {seed}) over {len(names)} free variables in mode {mode}. "
+                       f"Recommended: {factors[0]} {factors[1]}")
 
         return OptimizationRunResult(
-            well_id=well_id,
-            optimization_mode=mode,
-            status=opt_status,
-            current_configuration=curr_point,
-            recommended_configuration=best_cand,
-            pareto_front=pareto_front,
-            total_evaluated_count=len(candidates),
-            feasible_count=feasible_count,
-            infeasible_count=infeasible_count,
-            comparison_table=comparison,
-            delta_summary=delta_summary,
-            confidence_score=conf_res.overall_confidence_score,
-            recommendation_mode=conf_res.recommendation_mode,
-            confidence_breakdown=conf_breakdown,
-            explanation=explanation_text,
-            contributing_factors=factors,
-            constraints_checked=constraints_checked,
-            execution_time_seconds=round(exec_time, 2)
-        )
+            well_id=well_id, optimization_mode=mode, status=opt_status, current_configuration=curr_point,
+            recommended_configuration=best, pareto_front=pareto_front, total_evaluated_count=len(evaluated),
+            feasible_count=len(ranked), infeasible_count=infeasible, comparison_table=comparison,
+            delta_summary=delta_summary, confidence_score=conf.overall_confidence_score,
+            recommendation_mode=conf.recommendation_mode, confidence_breakdown=conf_breakdown,
+            explanation=explanation, contributing_factors=factors, constraints_checked=constraints_checked,
+            execution_time_seconds=round(time.time() - t_start, 2), evaluations=len(evaluated), seed=seed,
+            srp_policy=policy, evaluated_points=evaluated)

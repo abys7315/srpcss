@@ -38,7 +38,7 @@ class RodStringModel:
 
     def __init__(
         self,
-        pump_depth_m: float = 980.0,
+        pump_depth_m: float = canonical_config.srp.pump_depth_m,
         grade: str = "Grade D",
         ultimate_tensile_strength_psi: float = 115000.0,
         service_factor: float = 0.85 # Sour / corrosive service factor

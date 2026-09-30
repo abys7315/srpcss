@@ -1,6 +1,4 @@
 import React from 'react';
-import { ProvenanceBadge } from './ProvenanceBadge';
-import type { ProvenanceTier } from '../../api/types';
 
 interface MetricCardProps {
   title: string;
@@ -10,9 +8,10 @@ interface MetricCardProps {
   delta?: string;
   deltaPositive?: boolean;
   icon?: React.ReactNode;
-  provenance?: ProvenanceTier;
+  provenance?: string;
   warning?: boolean;
   danger?: boolean;
+  footnote?: string;
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({
@@ -23,60 +22,52 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   delta,
   deltaPositive,
   icon,
-  provenance = 'SIMULATED',
   warning,
-  danger
+  danger,
+  footnote,
 }) => {
+  const borderColor = danger ? 'border-alarm' : warning ? 'border-warn' : 'border-rule';
+  const valuColor = danger ? 'text-alarm' : warning ? 'text-warn' : 'text-ink';
+  const iconColor = danger ? 'text-alarm' : warning ? 'text-warn' : 'text-accent';
+
   return (
-    <div className={`bg-white dark:bg-[#0c1322] border rounded-xl p-3.5 sm:p-4 flex flex-col justify-between shadow-xs transition-all hover:shadow-md hover:border-cyan-500/40 min-w-0 ${
-      danger
-        ? 'border-rose-200 dark:border-rose-800/60 bg-rose-50/20 dark:bg-rose-950/20'
-        : warning
-        ? 'border-amber-200 dark:border-amber-800/60 bg-amber-50/20 dark:bg-amber-950/20'
-        : 'border-slate-200 dark:border-slate-800/80'
-    }`}>
-      {/* Top Header */}
-      <div className="flex items-center justify-between gap-1.5 mb-2 min-w-0">
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5 truncate">
-          {icon && <span className={`shrink-0 ${danger ? 'text-rose-500' : warning ? 'text-amber-500' : 'text-cyan-500 dark:text-cyan-400'}`}>{icon}</span>}
+    <div className={`bg-panel border ${borderColor} rounded-sm p-3.5 flex flex-col justify-between min-w-0 transition-colors hover:bg-highlight`}>
+      {/* Label */}
+      <div className="flex items-center justify-between gap-1.5 mb-1.5 min-w-0">
+        <span className="stat-label flex items-center gap-1.5 truncate">
+          {icon && <span className={`shrink-0 ${iconColor}`}>{icon}</span>}
           <span className="truncate">{title}</span>
+          {footnote && <span className="text-muted text-[10px]">{footnote}</span>}
         </span>
-        <div className="shrink-0 scale-90 origin-right">
-          <ProvenanceBadge tier={provenance} size="sm" variant="bracket" />
-        </div>
       </div>
 
-      {/* Main Metric Value */}
-      <div className="flex items-baseline gap-1.5 my-1 min-w-0 overflow-hidden">
-        <span className={`text-2xl font-bold tracking-tight font-mono truncate ${
-          danger
-            ? 'text-rose-600 dark:text-rose-400'
-            : warning
-            ? 'text-amber-700 dark:text-amber-400'
-            : 'text-slate-900 dark:text-white'
-        }`}>
+      {/* Value */}
+      <div className="flex items-baseline gap-1.5 min-w-0 overflow-hidden">
+        <span className={`stat-value truncate ${valuColor}`}>
           {value}
         </span>
-        {unit && <span className="text-xs text-slate-500 dark:text-slate-400 font-normal shrink-0">{unit}</span>}
+        {unit && <span className="stat-unit shrink-0">{unit}</span>}
       </div>
 
-      {/* Footer / Delta */}
-      <div className="flex items-center justify-between gap-1.5 text-xs mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 min-w-0">
-        {subtitle && (
-          <span className="text-slate-500 dark:text-slate-400 truncate text-[11px] max-w-[55%]" title={subtitle}>
-            {subtitle}
-          </span>
-        )}
-        {delta && (
-          <span className={`text-[10px] font-semibold ml-auto shrink-0 px-1.5 py-0.5 rounded border ${
-            deltaPositive
-              ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/50'
-              : 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/50'
-          }`}>
-            {delta}
-          </span>
-        )}
-      </div>
+      {/* Footer */}
+      {(subtitle || delta) && (
+        <div className="flex items-center justify-between gap-1.5 text-[11px] mt-2 pt-2 border-t border-rule min-w-0">
+          {subtitle && (
+            <span className="text-muted truncate max-w-[60%]" title={subtitle}>
+              {subtitle}
+            </span>
+          )}
+          {delta && (
+            <span className={`font-medium ml-auto shrink-0 px-1.5 py-0.5 rounded-sm border ${
+              deltaPositive
+                ? 'text-ok bg-ok-t border-ok'
+                : 'text-alarm bg-alarm-t border-alarm'
+            }`}>
+              {delta}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 };

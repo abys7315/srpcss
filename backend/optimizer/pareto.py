@@ -43,6 +43,18 @@ class ParetoSolutionPoint:
     pump_fillage_pct: float = 100.0
     constraint_violations: List[str] = field(default_factory=list)
 
+    # SRP policy (spm is the cycle-mean SPM when the adaptive controller is used)
+    srp_policy: str = "fixed"
+    srp_m_target: float = 1.15
+    srp_min_fillage: float = 0.85
+    max_spm: float = 0.0
+    float_days: int = 0
+    recovery_factor_pct: float = 0.0
+    max_asphaltene_risk: float = 0.0
+    final_heated_zone_oil_saturation: float = 0.0
+    heated_pore_volume_m3: float = 0.0
+    cycle_duration_days: float = 0.0
+
     # Status & Pareto Rank
     pareto_rank: int = 1
     is_non_dominated: bool = False

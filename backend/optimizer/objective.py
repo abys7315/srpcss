@@ -15,6 +15,7 @@ from constraints.constraint_engine import ConstraintEngine, ConstraintEvaluation
 from ml.failure_risk.predictor import FailureRiskPredictor
 from economics.net_benefit import FieldEconomicsCalculator
 from .pareto import ParetoSolutionPoint
+from core.config import canonical_config
 
 _SIMULATION_CACHE: Dict[tuple, Any] = {}
 
@@ -51,7 +52,11 @@ class CandidateEvaluator:
         economic_cutoff_bpd: float = 8.0,
         production_duration_days: float = 90.0,
         cooling_anomaly_day: Optional[int] = None,
-        cooling_anomaly_severity_pct: float = 0.0
+        cooling_anomaly_severity_pct: float = 0.0,
+        srp_policy: str = "fixed",
+        srp_m_target: float = 1.15,
+        srp_min_fillage: float = 0.85,
+        carried_state: Optional[Dict[str, Any]] = None
     ) -> ParetoSolutionPoint:
         """
         Executes forward physics simulation and checks constraints across the full 8-variable decision vector.
@@ -62,7 +67,9 @@ class CandidateEvaluator:
             round(spm, 2), round(stroke_length_inch, 2), round(vfd_downstroke_ratio, 3),
             round(injection_pressure_bar, 2), round(injection_duration_days, 2),
             round(economic_cutoff_bpd, 2), round(production_duration_days, 1),
-            cooling_anomaly_day, round(cooling_anomaly_severity_pct, 2)
+            cooling_anomaly_day, round(cooling_anomaly_severity_pct, 2),
+            srp_policy, round(srp_m_target, 3), round(srp_min_fillage, 3),
+            tuple(sorted((carried_state or {}).items()))
         )
 
         if cache_key in self._sim_cache:
@@ -74,15 +81,18 @@ class CandidateEvaluator:
                 steam_volume_tonnes=steam_volume_tonnes,
                 injection_duration_days=injection_duration_days,
                 injection_pressure_bar=injection_pressure_bar,
-                steam_temp_celsius=260.0,
                 soak_duration_days=soak_days,
                 production_duration_days=production_duration_days,
                 economic_cutoff_oil_rate_bpd=economic_cutoff_bpd,
                 spm=spm,
                 stroke_length_inch=stroke_length_inch,
                 vfd_downstroke_ratio=vfd_downstroke_ratio,
+                srp_policy=srp_policy,
+                srp_m_target=srp_m_target,
+                srp_min_fillage=srp_min_fillage,
                 cooling_anomaly_day=cooling_anomaly_day,
-                cooling_anomaly_severity_pct=cooling_anomaly_severity_pct
+                cooling_anomaly_severity_pct=cooling_anomaly_severity_pct,
+                **(carried_state or {})
             )
             sim = CSSCycleSimulator(cfg)
             sim_res = sim.run_simulation()
@@ -93,17 +103,20 @@ class CandidateEvaluator:
         max_goodman = sim_res.max_goodman_stress_ratio
         min_pip = min(pt.pump_intake_pressure_bar for pt in sim_res.daily_history)
         avg_oil_bpd = float(np.mean([pt.oil_rate_bpd for pt in sim_res.daily_history]))
+        max_spm = max(pt.spm for pt in sim_res.daily_history)
+        mean_spm = float(np.mean([pt.spm for pt in sim_res.daily_history]))
+        peak_prl = max(s.peak_polished_rod_load_lbs for s in sim_res.states)
 
         # Evaluate Safety Constraints:
         con_res = self.constraints.evaluate_candidate(
             steam_volume_tonnes=steam_volume_tonnes,
             injection_pressure_bar=injection_pressure_bar,
-            steam_temp_celsius=260.0,
+            steam_temp_celsius=sim_res.steam_saturation_temp_c,
             soak_days=soak_days,
-            spm=spm,
+            spm=max_spm,
             stroke_length_inch=stroke_length_inch,
-            peak_polished_rod_load_lbs=sim_res.final_dynacard.peak_polished_rod_load_lbs,
-            peak_gearbox_torque_in_lbs=sim_res.final_dynacard.peak_gearbox_torque_in_lbs,
+            peak_polished_rod_load_lbs=peak_prl,
+            peak_gearbox_torque_in_lbs=sim_res.max_gearbox_torque_in_lbs,
             motor_power_kw=sim_res.kpis.electrical_energy_kwh_per_bbl * (avg_oil_bpd / 24.0),
             float_margin_index=min_float_margin,
             goodman_stress_ratio=max_goodman,
@@ -119,8 +132,8 @@ class CandidateEvaluator:
             float_margin_index=min_float_margin,
             goodman_stress_ratio=max_goodman,
             fluid_pound_severity=fluid_pound_sev,
-            gearbox_load_pct=(sim_res.final_dynacard.peak_gearbox_torque_in_lbs / 320000.0) * 100.0,
-            asphaltene_risk_score=0.25,
+            gearbox_load_pct=(sim_res.max_gearbox_torque_in_lbs / canonical_config.srp.gearbox_rating_in_lbs) * 100.0,
+            asphaltene_risk_score=sim_res.max_daily_asphaltene_risk,
             cumulative_float_events=sim_res.total_float_events_count
         )
 
@@ -142,7 +155,17 @@ class CandidateEvaluator:
             solution_id=candidate_id,
             steam_volume_tonnes=steam_volume_tonnes,
             soak_days=soak_days,
-            spm=spm,
+            spm=round(mean_spm, 3) if srp_policy == "adaptive" else spm,
+            srp_policy=srp_policy,
+            srp_m_target=srp_m_target,
+            srp_min_fillage=srp_min_fillage,
+            max_spm=round(max_spm, 3),
+            float_days=sim_res.total_float_events_count,
+            recovery_factor_pct=sim_res.recovery_factor_pct,
+            max_asphaltene_risk=sim_res.max_daily_asphaltene_risk,
+            final_heated_zone_oil_saturation=sim_res.final_heated_zone_oil_saturation,
+            heated_pore_volume_m3=sim_res.heated_pore_volume_m3,
+            cycle_duration_days=sim_res.production_cutoff_day_actual + injection_duration_days + soak_days,
             stroke_length_inch=stroke_length_inch,
             vfd_downstroke_ratio=vfd_downstroke_ratio,
             economic_cutoff_bpd=economic_cutoff_bpd,
@@ -154,8 +177,8 @@ class CandidateEvaluator:
             energy_intensity_kwh_per_bbl=sim_res.kpis.electrical_energy_kwh_per_bbl,
             failure_risk_probability=risk_res.overall_failure_probability,
             min_float_margin_index=round(min_float_margin, 3),
-            peak_polished_rod_load_lbs=round(float(sim_res.final_dynacard.peak_polished_rod_load_lbs), 1),
-            peak_gearbox_torque_in_lbs=round(float(sim_res.final_dynacard.peak_gearbox_torque_in_lbs), 1),
+            peak_polished_rod_load_lbs=round(float(peak_prl), 1),
+            peak_gearbox_torque_in_lbs=round(float(sim_res.max_gearbox_torque_in_lbs), 1),
             motor_power_kw=round(float(sim_res.kpis.electrical_energy_kwh_per_bbl * (avg_oil_bpd / 24.0)), 2),
             goodman_stress_ratio=round(float(max_goodman), 3),
             pump_intake_pressure_bar=round(float(min_pip), 2),

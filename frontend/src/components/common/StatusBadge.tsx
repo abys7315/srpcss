@@ -9,32 +9,32 @@ export const StatusBadge: React.FC<Props> = ({ status }) => {
   const getStyle = () => {
     switch (status) {
       case 'FEASIBLE':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        return 'bg-ok-t text-ok border-ok';
       case 'NEAR_LIMIT':
-        return 'bg-amber-50 text-amber-800 border-amber-200';
+        return 'bg-warn-t text-warn border-warn';
       case 'INFEASIBLE':
       case 'HIGH_RISK':
-        return 'bg-rose-50 text-rose-700 border-rose-200';
+        return 'bg-alarm-t text-alarm border-alarm';
       case 'NO_FEASIBLE_SOLUTION':
       case 'NO_IMPROVEMENT_FOUND':
-        return 'bg-slate-100 text-slate-700 border-slate-200';
+        return 'bg-sunk text-muted border-rule';
       case 'LOW_CONFIDENCE':
       default:
-        return 'bg-yellow-50 text-yellow-800 border-yellow-200';
+        return 'bg-warn-t text-warn border-warn';
     }
   };
 
   const getDotStyle = () => {
     switch (status) {
       case 'FEASIBLE':
-        return 'bg-emerald-500';
+        return 'bg-ok';
       case 'NEAR_LIMIT':
-        return 'bg-amber-500';
+        return 'bg-warn';
       case 'INFEASIBLE':
       case 'HIGH_RISK':
-        return 'bg-rose-500';
+        return 'bg-alarm';
       default:
-        return 'bg-slate-400';
+        return 'bg-muted';
     }
   };
 
@@ -46,7 +46,7 @@ export const StatusBadge: React.FC<Props> = ({ status }) => {
   };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border shadow-xs ${getStyle()}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-medium border caps ${getStyle()}`}>
       <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${getDotStyle()}`} />
       {formatStatus(status)}
     </span>

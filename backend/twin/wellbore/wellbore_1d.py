@@ -108,8 +108,11 @@ class Wellbore1DModel:
         tubing_id_inch: float = 2.992,       # 3.5" 9.3# tubing ID = 2.992"
         surface_ambient_temp_c: float = 32.0, # Baghewala near-surface ground datum
         bottomhole_geothermal_c: float = 47.0, # Reservoir initial temperature
-        coupling_drag_factor: float = 1.15    # API rod coupling annular area and form factor adjustment
+        coupling_drag_factor: float = None    # rod coupling form factor; default from configs/field.yaml
     ):
+        if coupling_drag_factor is None:
+            from core.config import canonical_config as _C
+            coupling_drag_factor = _C.srp.distributed_coupling_factor
         self.well_tvd_m = float(well_tvd_m)
         self.pump_depth_m = float(pump_depth_m)
         self.dz_m = float(dz_m)

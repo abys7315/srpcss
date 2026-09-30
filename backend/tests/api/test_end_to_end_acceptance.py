@@ -49,8 +49,9 @@ def test_full_21_step_acceptance_lifecycle(client):
         "well_id": well_id,
         "steam_volume_tonnes": 3000.0,
         "soak_duration_days": 6.0,
-        "spm": 5.0,
-        "stroke_length_inch": 100.0,
+        # Aggressive fixed kinematics (max SPM, long stroke, no VFD): the float-prone operating point.
+        "spm": 7.5,
+        "stroke_length_inch": 144.0,
         "vfd_downstroke_ratio": 1.0,
         "cooling_anomaly_day": cooling_day,
         "cooling_anomaly_severity_pct": 35.0

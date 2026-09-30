@@ -3,7 +3,7 @@ SQLAlchemy ORM Data Models.
 SIH 2026, PS26120 — Baghewala Heavy Oil Digital Twin.
 """
 
-from sqlalchemy import Column, String, Integer, Float, Boolean, Text, DateTime
+from sqlalchemy import Column, String, Integer, Float, Boolean, Text, DateTime, UniqueConstraint
 from datetime import datetime, timezone
 from .database import Base
 
@@ -121,5 +121,40 @@ class WellAuditLogModel(Base):
     actor = Column(String(64), default="Engineer")
     description = Column(Text, nullable=False)
     details = Column(Text, nullable=True)               # JSON string of state diff
+    created_at = Column(DateTime, default=utc_now)
+
+
+class TelemetryObservationModel(Base):
+    """One ingested daily observation (user-supplied; the source label says where it came from)."""
+    __tablename__ = "telemetry_observations"
+    __table_args__ = (UniqueConstraint("well_id", "cycle_number", "day", "source_label", name="uq_obs_well_cycle_day_source"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    well_id = Column(String(32), index=True, nullable=False)
+    cycle_number = Column(Integer, default=1, nullable=False)
+    day = Column(Integer, nullable=False)                       # production day, 1-indexed
+    oil_rate_bpd = Column(Float, nullable=False)
+    water_cut_pct = Column(Float, nullable=True)
+    temperature_c = Column(Float, nullable=True)
+    pump_intake_pressure_bar = Column(Float, nullable=True)
+    source_label = Column(String(64), nullable=False)          # e.g. "field gauge export 2026-09", "synthetic test"
+    ingested_at = Column(DateTime, default=utc_now)
+
+
+class CalibrationRunModel(Base):
+    __tablename__ = "calibration_runs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    well_id = Column(String(32), index=True, nullable=False)
+    parameter = Column(String(32), default="thermal_loss_kappa")
+    kappa_default = Column(Float, nullable=False)
+    kappa_fitted = Column(Float, nullable=False)
+    status = Column(String(32), nullable=False)
+    applied = Column(Boolean, default=False)
+    n_observations = Column(Integer, nullable=False)
+    holdout_rmse_default = Column(Float, nullable=True)
+    holdout_rmse_fitted = Column(Float, nullable=True)
+    holdout_improvement_pct = Column(Float, nullable=True)
+    message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now)
 

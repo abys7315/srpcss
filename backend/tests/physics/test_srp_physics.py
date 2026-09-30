@@ -114,7 +114,8 @@ def test_full_cycle_simulation_heating_cooling_and_float_onset():
         injection_duration_days=15.0,
         soak_duration_days=6.0,
         production_duration_days=90.0,
-        spm=5.0, # High fixed SPM without compensation
+        spm=7.5,                  # maximum fixed SPM, long stroke, no VFD compensation
+        stroke_length_inch=144.0,
         economic_cutoff_oil_rate_bpd=5.0
     )
     sim = CSSCycleSimulator(cfg)
@@ -130,14 +131,14 @@ def test_full_cycle_simulation_heating_cooling_and_float_onset():
     # Verify heating then cooling:
     assert first_day.temperature_c > last_day.temperature_c
     assert first_day.temperature_c > 100.0 # Hot after soak
-    assert last_day.temperature_c < 75.0   # Cooled down
-    
-    # Verify viscosity swing:
-    assert first_day.viscosity_cp < 100.0  # Thin hot crude
-    assert last_day.viscosity_cp > 1000.0  # Thick cold crude
-    
-    # Verify float margin declines as viscosity rises:
+    assert last_day.temperature_c < 90.0   # Cooled down
+
+    # Viscosity swing (Andrade): thin hot crude early, at least 10x thicker at end of cycle
+    assert first_day.viscosity_cp < 100.0
+    assert last_day.viscosity_cp > 10.0 * first_day.viscosity_cp
+
+    # Float margin declines as viscosity rises
     assert first_day.float_margin_index > last_day.float_margin_index
     assert first_day.float_margin_index > 1.5
-    # Since SPM=5.0 is maintained despite cooling, float onset must occur in late cycle:
-    assert result.total_float_events_count > 0, "Expected float onset as reservoir cooled at fixed 5 SPM!"
+    # At fixed 7.5 SPM x 144 in without VFD the cooled well floats late in the cycle
+    assert result.total_float_events_count > 0

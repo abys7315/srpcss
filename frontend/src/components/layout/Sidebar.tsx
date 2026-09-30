@@ -1,19 +1,6 @@
 import React from 'react';
-import {
-  LayoutDashboard,
-  Cpu,
-  Flame,
-  ArrowUpDown,
-  Compass,
-  Sliders,
-  Activity,
-  DollarSign,
-  ShieldAlert,
-  Layers,
-  BarChart3,
-  Database,
-  MapPin,
-} from 'lucide-react';
+import type { WellSummary } from '../../api/types';
+import { useUnits, fmt } from '../../lib/units';
 
 export type PageId =
   | 'command-center'
@@ -32,157 +19,100 @@ export type PageId =
 interface SidebarProps {
   currentPage: PageId;
   onNavigate: (page: PageId) => void;
+  wells: WellSummary[];
+  selectedWell?: WellSummary;
+  readiness?: Record<string, string> | null;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate }) => {
-  const operationsNav = [
-    { id: 'command-center', label: 'Command Center', icon: LayoutDashboard },
-    { id: 'digital-twin', label: 'Digital Twin', icon: Cpu },
-    { id: 'css-optimizer', label: 'CSS Thermal Model', icon: Flame },
-    { id: 'srp-optimizer', label: 'SRP Dynamics', icon: ArrowUpDown },
-    { id: 'joint-optimizer', label: 'Joint Optimizer', icon: Compass },
-    { id: 'what-if', label: 'What-If Simulator', icon: Sliders },
-  ];
+const SECTIONS: { n: number; title: string; items: { id: PageId; label: string }[] }[] = [
+  {
+    n: 1, title: 'Operate', items: [
+      { id: 'command-center', label: 'Field overview' },
+      { id: 'digital-twin', label: 'Well digital twin' },
+      { id: 'css-optimizer', label: 'CSS thermal model' },
+      { id: 'srp-optimizer', label: 'SRP dynamics' },
+      { id: 'joint-optimizer', label: 'Joint optimizer' },
+      { id: 'what-if', label: 'What-if scenarios' },
+    ],
+  },
+  {
+    n: 2, title: 'Analyse', items: [
+      { id: 'predictions', label: 'Production and diagnostics' },
+      { id: 'economics', label: 'Economics and sensitivity' },
+      { id: 'risk', label: 'Risk and integrity' },
+    ],
+  },
+  {
+    n: 3, title: 'Validate', items: [
+      { id: 'model-registry', label: 'Model registry' },
+      { id: 'benchmarks', label: 'Benchmark and ablation' },
+      { id: 'provenance', label: 'Data provenance' },
+    ],
+  },
+];
 
-  const analyticsNav = [
-    { id: 'predictions', label: 'Production & Diagnostics', icon: Activity },
-    { id: 'economics', label: 'Economics & Sensitivity', icon: DollarSign },
-    { id: 'risk', label: 'Risk & Integrity', icon: ShieldAlert },
-  ];
-
-  const validationNav = [
-    { id: 'model-registry', label: 'Model Registry', icon: Layers },
-    { id: 'benchmarks', label: 'Benchmark & Ablation', icon: BarChart3 },
-    { id: 'provenance', label: 'Data Provenance', icon: Database },
-  ];
+export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, wells, selectedWell, readiness }) => {
+  const u = useUnits();
+  const producing = wells.filter((w) => w.cycle_phase === 'PRODUCTION');
+  const avgBpd = producing.length
+    ? producing.reduce((s, w) => s + (w.telemetry?.current_oil_rate_bpd ?? 0), 0) / producing.length
+    : null;
+  const avg = avgBpd !== null ? u.rateFromBpd(avgBpd) : null;
+  const sel = selectedWell?.telemetry?.current_oil_rate_bpd;
+  const selQ = sel !== undefined ? u.rateFromBpd(sel) : null;
+  const mlState = !readiness ? 'unknown' : readiness.ml_models === 'PASS' ? 'EXPERIMENTAL' : 'not loaded';
+  const mlColor = mlState === 'EXPERIMENTAL' ? 'text-steam' : mlState === 'unknown' ? 'text-muted' : 'text-alarm';
 
   return (
-    <aside className="w-64 border-r border-slate-200 bg-slate-900 text-slate-300 p-3 flex flex-col justify-between shrink-0 h-[calc(100vh-3.5rem)] sticky top-14 select-none overflow-y-auto">
-      <div className="space-y-4">
-        {/* Brand Subtitle in Sidebar */}
-        <div className="px-3 pt-1 pb-2 border-b border-slate-800">
-          <div className="text-[11px] font-bold text-white tracking-wider uppercase">
-            PETRO-TWIN
-          </div>
-          <div className="text-[10px] text-blue-400 font-medium">
-            CSS + SRP Digital Twin
-          </div>
-          <div className="text-[10px] text-slate-400">
-            Baghewala Heavy-Oil Field
-          </div>
-        </div>
-
-        {/* Section 1: OPERATIONS */}
-        <div className="space-y-1">
-          <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            OPERATIONS
-          </div>
-          <div className="space-y-0.5">
-            {operationsNav.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id as PageId)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-left ${isActive
-                      ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
-                    }`}
-                >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Section 2: ANALYTICS */}
-        <div className="pt-2 border-t border-slate-800 space-y-1">
-          <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            ANALYTICS
-          </div>
-          <div className="space-y-0.5">
-            {analyticsNav.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id as PageId)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-left ${isActive
-                      ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
-                    }`}
-                >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Section 3: VALIDATION */}
-        <div className="pt-2 border-t border-slate-800 space-y-1">
-          <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            VALIDATION
-          </div>
-          <div className="space-y-0.5">
-            {validationNav.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id as PageId)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-left ${isActive
-                      ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
-                    }`}
-                >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Field Overview Widget */}
-      <div className="mt-4 pt-3 border-t border-slate-800">
-        <div className="p-2.5 bg-slate-950/80 rounded-xl border border-slate-800/80 space-y-1.5 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-200 font-semibold">
-            <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-            <span className="truncate">Baghewala Field</span>
-          </div>
-          <div className="text-[10px] text-slate-400 pl-5 leading-tight">
-            Barmer Basin, Rajasthan, India
-          </div>
-
-          <div className="pt-1.5 space-y-1 text-[11px] border-t border-slate-800/80">
-            <div className="flex justify-between text-slate-400">
-              <span>Benchmark Wells</span>
-              <strong className="text-slate-200">5</strong>
+    <aside className="w-56 shrink-0 border-r border-rule bg-panel h-[calc(100vh-3rem)] sticky top-12 overflow-y-auto flex flex-col justify-between select-none">
+      <nav aria-label="Primary" className="py-3">
+        {SECTIONS.map((s) => (
+          <div key={s.n} className="mb-4">
+            <div className="px-4 pb-1.5 font-cond text-[11px] text-muted caps">
+              <span className="num mr-1.5 text-accent">{s.n}</span>{s.title}
             </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Active Wells</span>
-              <strong className="text-emerald-400">5</strong>
-            </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Avg. Oil Rate</span>
-              <strong className="text-slate-200">42.8 m³/day</strong>
-            </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Model State</span>
-              <strong className="text-emerald-400">CALIBRATED</strong>
-            </div>
+            <ul>
+              {s.items.map((it, i) => {
+                const active = currentPage === it.id;
+                return (
+                  <li key={it.id}>
+                    <button
+                      onClick={() => onNavigate(it.id)}
+                      aria-current={active ? 'page' : undefined}
+                      className={`w-full text-left pl-[14px] pr-3 py-1.5 text-[13px] border-l-2 transition-colors ${active
+                        ? 'border-accent text-ink font-semibold bg-highlight'
+                        : 'border-transparent text-muted hover:text-ink hover:bg-highlight/60'
+                        }`}
+                    >
+                      <span className="num text-[11px] text-muted/70 mr-2">{s.n}.{i + 1}</span>
+                      {it.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-        </div>
+        ))}
+      </nav>
+
+      <div className="border-t border-rule px-4 py-3 text-[12px] space-y-1.5">
+        <div className="font-cond text-[13px] text-ink font-semibold">Baghewala field</div>
+        <div className="text-muted text-[11px]">Bikaner–Nagaur Basin, Rajasthan</div>
+        <dl className="pt-1.5 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+          <dt className="text-muted">Wells in model</dt><dd className="num text-right text-ink font-medium">{wells.length}</dd>
+          <dt className="text-muted">In production phase</dt><dd className="num text-right text-ok font-medium">{producing.length}</dd>
+          <dt className="text-muted">Avg oil rate</dt>
+          <dd className="num text-right text-ink font-medium">{avg ? `${fmt(avg.value)} ${avg.unit}` : '—'}</dd>
+          {selectedWell && (
+            <>
+              <dt className="text-muted">{selectedWell.well_id} oil rate</dt>
+              <dd className="num text-right text-accent font-medium">{selQ ? `${fmt(selQ.value)} ${selQ.unit}` : '—'}</dd>
+            </>
+          )}
+          <dt className="text-muted">ML models</dt><dd className={`num text-right caps text-[11px] font-medium ${mlColor}`}>{mlState}</dd>
+        </dl>
+        <div className="text-muted/70 pt-1 text-[11px]">1 sample/day, simulated</div>
       </div>
     </aside>
   );
 };
-

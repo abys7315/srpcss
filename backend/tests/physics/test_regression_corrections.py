@@ -222,7 +222,9 @@ def test_10_canonical_engineering_values_agreement():
     assert canonical_config.fluid.api_gravity == 18.0
     assert canonical_config.reservoir.depth_m == 1050.0
     assert canonical_config.srp.pump_depth_m == 980.0
-    assert canonical_config.safety_limits.max_allowable_injection_pressure_bar == 125.0
+    r = canonical_config.reservoir
+    expected = r.fracture_gradient_bar_per_m * r.depth_m * canonical_config.css.fracture_safety_factor
+    assert abs(canonical_config.safety_limits.max_allowable_injection_pressure_bar - expected) < 0.1
     assert canonical_config.safety_limits.max_goodman_stress_ratio == 0.85
     assert canonical_config.safety_limits.min_pump_intake_pressure_bar == 3.0
     assert canonical_config.safety_limits.max_allowable_spm == 7.5

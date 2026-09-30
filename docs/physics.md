@@ -1,76 +1,146 @@
-# Physics Modeling Reference — Baghewala Heavy Oil Digital Twin
+# Physics reference
 
-## 1. Domain Physics Overview
-Baghewala field (Bikaner-Nagaur Basin, Rajasthan, India) contains heavy crude with:
-- Canonical API Gravity: 17° to 19° API (Nominal: 18.0° API)
-- Formation Depth: ~950 – 1,150 m TVD
-- Initial Reservoir Temperature: 46° to 48°C (Nominal: 47.0°C)
-- Initial Reservoir Pressure: ~95 – 105 bar
-- Viscosity: Highly temperature-dependent (~1,500 – 3,500 cP at initial reservoir temperature, dropping to <30 cP above 120°C)
-- Pour Point: ~27 – 33°C; asphaltene and paraffin deposition risk when fluid cools below 45°C.
+All numbers below are produced by the code with the inputs in `configs/field.yaml`. The data are
+simulated; nothing here is a field measurement. Units are SI/metric unless stated.
 
-Primary production without thermal stimulation is negligible. Cyclic Steam Stimulation (CSS) injects high-enthalpy saturated steam (240–260°C, 110–130 bar) to heat the near-wellbore formation, drastically lowering viscosity so fluid can flow into the wellbore and be lifted to the surface by a Sucker Rod Pump (SRP).
+## 1. Inputs (configs/field.yaml)
 
----
+| Quantity | Value | Provenance |
+|---|---|---|
+| Depth (TVD) / pump seat | 1050 m / 980 m | assumed |
+| Initial reservoir pressure / temperature | 65 bar / 47 °C | assumed |
+| Net pay, porosity, permeability | 14 m, 0.28, 250 mD | assumed |
+| Drainage area | 40 acres (161 874 m²) | assumed |
+| Initial water saturation / residual oil (heated) | 0.30 / 0.20 | assumed |
+| Oil 18 °API, Bo | 946.5 kg/m³, 1.05 | assumed |
+| Fracture gradient | 0.163 bar/m | assumed |
 
-## 2. Cyclic Steam Stimulation (CSS) Physics
+## 2. Steam (IAPWS-IF97)
 
-### 2.1 Marx-Langenheim & Boberg-Lantz Thermal Model
-Steam injection delivers thermal energy into the reservoir:
-$$Q_{\text{inj}} = \dot{m}_s \cdot \left[ h_w(T_s) + x \cdot L_v(T_s) \right]$$
-where $\dot{m}_s$ is steam mass rate, $h_w$ is liquid water enthalpy, $x$ is steam quality ($x \ge 0.8$), and $L_v$ is latent heat of vaporization.
+The bottomhole injection pressure sets the saturation state (`twin/thermal/steam_props.py`,
+`iapws.IAPWS97`). Steam temperature is not an independent input.
 
-The heated zone radius $r_h(t)$ expands according to the energy balance between injected heat, formation heat storage, and conductive heat losses to overburden and underburden formations (Marx & Langenheim, 1961):
-$$\frac{dA_h}{dt} = \frac{\dot{H}_{\text{net}}}{M_R \Delta T h_n} - \frac{2 K_{\text{ob}} (T_s - T_R)}{M_R \sqrt{\pi \alpha t}}$$
-where $M_R$ is reservoir volumetric heat capacity, $h_n$ is net pay thickness, and $K_{\text{ob}}$ is overburden thermal conductivity.
+| p_bh [bar] | T_sat [°C] | h_fg [kJ/kg] |
+|---|---|---|
+| 47 | 260.1 | 1661 |
+| 80 | 295.0 | 1442 |
+| 100 | 311.0 | 1318 |
+| 125 | 327.8 | 1163 |
+| 154 | 344.3 | 973 |
 
-During the soak and production cycles, thermal diffusion and fluid withdrawal cooling are tracked via an analytical Boberg-Lantz temperature decay formulation coupled with multi-cycle pressure depletion:
-$$P_{\text{res}}^{(k+1)} = P_{\text{res}}^{(k)} - \Delta P_{\text{depletion}} + \Delta P_{\text{steam\_support}}$$
+Injection pressure limit = fracture gradient × depth × 0.9 = 0.163 × 1050 × 0.9 = **154 bar**.
 
-### 2.2 Viscosity-Temperature Relationship
-Viscosity decreases exponentially with temperature, modeled using the Walther ASTM D341 equation:
-$$\log_{10} \log_{10} (\nu + 0.7) = A - B \log_{10}(T_K)$$
-For Baghewala heavy crude:
-- $T = 47^\circ\text{C} \implies \mu \approx 2,100\text{ cP}$
-- $T = 80^\circ\text{C} \implies \mu \approx 180\text{ cP}$
-- $T = 160^\circ\text{C} \implies \mu \approx 18\text{ cP}$
+Sandface quality: x_bh = x_wh − Q_loss / (ṁ h_fg), with Q_loss from steady radial conduction through
+the insulated annulus (`twin/wellbore/heat_transfer.py`). For 3000 t over 15 d at 125 bar,
+x_wh = 0.80 gives x_bh ≈ 0.75.
 
----
+Heat delivered per kg relative to reservoir water: h = (h_f(p) − c_w T_R) + x_bh h_fg(p).
+Raising pressure raises T_sat but lowers h_fg, so heat per tonne falls slightly with pressure
+(3000 t: 6678 GJ at 60 bar, 6559 GJ at 125 bar, 6457 GJ at 150 bar).
 
-## 3. Wellbore Hydraulics & Heat Transfer
-As fluids travel through tubing and casing:
-1. **Simplified Wellbore Heat Transfer**:
-   Tubing-to-formation radial conductive and convective heat transfer determines pump intake temperature:
-   $$T_{\text{pip}} = T_{\text{res}} - \Delta T_{\text{lift}}(q_{\text{liquid}}, \mu, \text{depth})$$
-2. **Hydrostatic & Friction Pressure Drop**:
-   $$\Delta P_{\text{wellbore}} = \rho_{\text{mix}} g h + f \frac{\rho v^2}{2 D_{\text{hyd}}} h$$
-   determining Pump Intake Pressure (PIP).
+## 3. Heated zone: injection, soak, production
 
----
+Injection: Marx-Langenheim heated area
+A_h = H_o M_R h / (4 k_ob M_ob ΔT) · F(t_D), ΔT = T_sat − T_R. The zone is at T_sat at end of injection.
 
-## 4. Sucker Rod Pump (SRP) Dynamics
+Soak and production use one lumped energy balance for the heated zone (`CSSThermalModel._decay`):
 
-### 4.1 Gibbs-Inspired 1-D Damped Wave Approximation
-To generate synthetic surface and downhole dynamometer cards without prohibitive computational overhead during multi-objective optimization, the digital twin implements a **Gibbs-inspired 1-D damped-wave approximation**.
+C dT/dt = −U(t) (T − T_R),  C = M_R h A_h
 
-Surface polished rod load $F_{\text{prl}}(t)$ incorporates:
-1. Static buoyant rod weight: $W_{\text{submerged}} = W_{\text{air}} (1 - \rho_{\text{fluid}} / \rho_{\text{steel}})$
-2. Dynamic inertial acceleration: $F_{\text{accel}}(t) = m_{\text{eff}} \cdot a_{\text{kinematic}}(t)$
-3. Phase-lagged wave propagation harmonics: $\Delta \phi \approx \frac{\omega L}{a_{\text{acoustic}}}$
-4. Heavy-oil annular viscous damping $c_{\text{visc}}(\mu, v_{\text{rod}})$
+U(t) = κ [ 2 k_ob A_h / √(π α_ob t) + (q_o ρ_o c_o + q_w ρ_w c_w) ]
 
-Downhole pump loads reflect fluid load transfer, valve opening/closing events, and partial pump fillage (fluid pound).
+The first term is transient conduction to over- and underburden (Boberg-Lantz form); the second is
+enthalpy carried out by produced fluids (zero during soak). τ = C/U is therefore set by heated-zone
+area, produced-fluid heat-capacity flow and overburden conduction; no fixed decay constants remain.
 
-### 4.2 Sucker Rod Float Detection Model
-During the downstroke, viscous drag along the narrow rod-tubing annulus acts upward against gravity. The rod string reaches a terminal falling velocity:
-$$v_{\text{terminal}} = \frac{(\rho_{\text{steel}} - \rho_{\text{fluid}}) g \cdot (D_{\text{tubing}}^2 - D_{\text{rod}}^2)}{32 \mu_{\text{fluid}}}$$
+κ (`reservoir.thermal_loss_calibration` = 2.6) is the single calibration scalar. It lumps lateral
+conduction and convective losses the one-zone model omits, and was chosen so the baseline cycle
+(3000 t, 124 bar, 7 d soak, 4 SPM) has a day-90 zone temperature of about 80 °C
+(κ = 2.0 → 102 °C, 2.7 → 78 °C, 3.0 → 72 °C). It is not history-matched to field data.
 
-The kinematic imposed downward velocity of the walking beam is governed by pumping speed (SPM) and VFD downstroke shaping:
-$$v_{\text{imposed}} = \frac{S \cdot \text{SPM} \cdot \pi}{60 \cdot R_{\text{downstroke}}}$$
+A seeded cooling anomaly (scenario input) multiplies U by (1 + 1.2 × severity/100).
 
-The **Float Margin Index** is defined dimensionally as:
-$$M_{\text{float}} = \frac{v_{\text{terminal}}}{v_{\text{imposed}}}$$
+## 4. Viscosity (Andrade)
 
-- $M_{\text{float}} \ge 1.0$: Safe operation; rods fall freely under gravity.
-- $M_{\text{float}} < 1.0$: **Rod Floating Occurs**; beam falls faster than rods can sink through heavy oil, causing slack bridle lines, severe mechanical shock on the upstroke, and accelerated rod fatigue.
+μ(T) = A exp(B/T), anchored at μ(47 °C) = 2400 cP and μ(150 °C) = 42 cP:
+B = ln(2400/42) / (1/320.15 − 1/423.15) = 5321 K, A = 1.453 × 10⁻⁴ cP.
 
+| T [°C] | μ [cP] (code output) |
+|---|---|
+| 47 | 2400 |
+| 60 | 1255 |
+| 80 | 508 |
+| 100 | 226 |
+| 120 | 110 |
+| 150 | 42 |
+| 200 | 11.1 |
+| 250 | 3.8 |
+
+`backend/tests/physics/test_physics_consistency.py` checks code, config and this table agree within 5 %.
+
+## 5. Reservoir pressure and material balance
+
+Cycle-initial pressure: p₀ = p_i − 0.85 bar × (prior cumulative oil / 1000 m³) + 0.008 bar/t × steam.
+In-cycle: p(t) = p₀ − 0.85 × (cycle cumulative oil / 1000 m³), floor 15 bar.
+
+OOIP (drainage area) = A h φ (1 − S_w) / Bo = 423 000 m³. Recovery factor is
+(prior + cycle cumulative oil) / OOIP.
+
+Oil saturation is tracked over the contacted pore volume
+V_p(t) = π (r_h + √(4 α_R t))² h φ, where r_h is the Marx-Langenheim steam-zone radius and
+√(4 α_R t) is the conductive warm-oil halo grown over the well's cumulative CSS time t
+(α_R = k/M_R ≈ 7.8 × 10⁻⁷ m²/s, about 5 m after one 110-day cycle). Newly contacted volume enters
+at S_oi. Each day S_o falls by q_o Bo / V_p and gains cold-reservoir influx
+J(T_R) (p_res − p_wf) / V_p. Inflow potential is q_max,Vogel × 0.85 × (S_o − S_or)/(S_oi − S_or),
+where q_max uses J(T) = J_ref μ_ref/μ(T).
+
+Later cycles produce less only because S_o, contacted volume and pressure carried from earlier
+cycles differ; there is no per-cycle decay factor. `optimizer/multicycle.py` chains cycles with this
+carried state (cumulative oil, contacted pore volume, S_o, elapsed time).
+
+The SOR penalty in the net-benefit objective is capped at 10 t/t excess over the target so that a
+near-zero-oil cycle stays finite.
+
+## 6. SRP kinematics with a VFD profile
+
+At fixed SPM (period T = 60/SPM) and downstroke speed ratio r (r < 1 slows the downstroke):
+
+- downstroke duration T/(2r), upstroke duration T(1 − 1/(2r)); requires r > 0.5
+- each half-stroke is a half-sine of its own duration:
+  v_down = (S/2) ω r, v_up = (S/2) ω / (2 − 1/r),
+  a_down = (S/2) ω² r², a_up = (S/2) ω² / (2 − 1/r)²
+
+So v_down = π S SPM r / 60: the ratio **multiplies** the symmetric velocity. Slowing the downstroke
+shortens the upstroke, which raises upstroke inertia, peak polished-rod load, gearbox torque and the
+Goodman ratio; these all flow from `vfd_kinematics` into the dynacard and stress models.
+
+## 7. Rod float
+
+Terminal sinking velocity from the depth-resolved Couette drag of the rod string:
+v_term = W_sub / Σ c_i, c_i = 2π μ(z_i) Δz f_c / ln(r_t/r_r), f_c = 1.15.
+Float margin M_float = v_term / v_down; float-day = a production day with M_float < 1.
+
+The lumped screening model (`RodFloatDetector.compute_terminal_fall_velocity`) uses a coupling
+multiplier of 4.5 (`srp.coupling_drag_factor`); both factors are assumed and sensitivity-tested.
+
+With these inputs float occurs only at aggressive kinematics (e.g. 7.5 SPM × 144 in, r = 1, late in
+the cycle); at 4–5 SPM × 100 in the minimum margin in a 90-day cycle stays above 1.
+
+## 8. Adaptive SRP controller
+
+`optimizer/srp_controller.py`, applied daily when `srp_policy = "adaptive"`:
+SPM_max,float = 60 v_term / (π S k_down M_target), k_down = r; fillage, Goodman (≤ 0.81),
+torque (≤ 0.95 × 456 000 in-lbf) and PIP limits by bisection; increases limited to 0.3 SPM/day.
+
+## 9. Well-to-well spread
+
+`twin/well_registry.py` gives BGW-01..10 deterministic offsets from the canonical inputs:
+depth ± 20 m, reservoir pressure ± 5 bar, net pay ± 1.5 m, cold PI × (1 ± 0.2). These are
+synthetic and exist so benchmarks average over distinct wells.
+
+## 10. Limitations
+
+- One-zone thermal model; no steam override, gravity drainage or 2-D conduction.
+- Water cut is a prescribed function of production day, not a flow calculation.
+- The dynacard is a Gibbs-inspired synthesis, not a wave-equation solution.
+- κ, S_or, coupling factors and the cold PI are assumed, not calibrated to Baghewala data.

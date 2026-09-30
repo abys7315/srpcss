@@ -17,7 +17,7 @@ class CSSConstraintConfig:
     max_injection_pressure_bar: float = canonical_config.safety_limits.max_allowable_injection_pressure_bar  # Canonical: 125.0 bar
     min_steam_volume_tonnes: float = 800.0
     max_steam_volume_tonnes: float = 5500.0
-    max_steam_temp_celsius: float = 300.0      # Casing thermal packing rating
+    max_steam_temp_celsius: float = canonical_config.safety_limits.max_steam_temp_c  # thermal casing/packer rating (ASSUMED)
     min_soak_days: float = 3.0
     max_soak_days: float = 21.0
 

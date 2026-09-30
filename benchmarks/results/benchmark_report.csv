@@ -1,0 +1,5 @@
+Configuration,Cumulative_Oil_bbl,SOR_t_per_t,Float_Margin_Index,Net_Benefit_USD,Description
+Baseline_Historical,7150.9,2.62,2.596,285037.0,"Fixed schedule: 3000t steam, 5.2 SPM, unshaped downstroke (Simulated Baseline Policy)"
+CSS_Only_Optimization,4125.5,2.28,4.246,164154.0,"Optimized steam & soak with safe conventional 3.0 SPM lift"
+SRP_Only_Optimization,9845.5,1.9,1.86,430640.0,"Optimized SPM & VFD with fixed 3000t steam"
+Joint_Co_Optimization,12573.5,2.06,2.318,543437.0,"Simultaneous co-optimization of CSS thermal schedule & SRP dynamic lift"

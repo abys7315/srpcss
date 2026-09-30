@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8" />
@@ -8,22 +8,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <title>PetroTwin | Heavy Oil Thermal & SRP Optimization</title>
+  <title>PETRO-TWIN | CSS + SRP digital twin, Baghewala</title>
   <script>
+    // Light is the default; dark only when explicitly chosen.
     (function () {
-      var saved = localStorage.getItem('petrotwin_theme');
-      if (saved === 'light') {
-        document.documentElement.classList.remove('dark');
-      } else {
-        document.documentElement.classList.add('dark');
-      }
+      if (localStorage.getItem('petrotwin_theme') === 'dark') document.documentElement.classList.add('dark');
     })();
   </script>
 </head>
 
-<body class="font-sans antialiased text-slate-800 bg-slate-50 dark:bg-[#060911] dark:text-slate-100">
+<body>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>

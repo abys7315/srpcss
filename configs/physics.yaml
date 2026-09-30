@@ -24,17 +24,14 @@ fluid:
   api_gravity: 18.0
   specific_gravity: 0.9465
   dead_oil_viscosity_47c_cp: 2400.0
-  dead_oil_viscosity_52c_cp: 1200.0
+  dead_oil_viscosity_150c_cp: 42.0
   dead_oil_density_kg_m3: 946.5
   formation_volume_factor_bo: 1.05
-  walther_a: 9.854
-  walther_b: 3.521
 
 css_thermal:
   default_steam_quality: 0.80
-  default_steam_temp_c: 260.0
-  latent_heat_vaporization_j_kg: 1650000.0
-  max_allowable_injection_pressure_bar: 125.0
+  # Steam temperature and latent heat come from IAPWS-IF97 at the bottomhole injection pressure.
+  # Injection pressure limit is derived from the fracture gradient (see field.yaml).
   min_soak_days: 3.0
   max_soak_days: 21.0
 

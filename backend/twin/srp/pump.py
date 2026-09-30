@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from typing import Tuple
 import numpy as np
 
+from core.config import canonical_config as _C
+
 @dataclass
 class PumpState:
     pump_displacement_bpd: float
@@ -29,7 +31,7 @@ class DownholePumpModel:
 
     def __init__(
         self,
-        pump_bore_diameter_inch: float = 2.25,
+        pump_bore_diameter_inch: float = _C.srp.pump_bore_inch,
         slippage_efficiency: float = 0.96
     ):
         self.bore_inch = pump_bore_diameter_inch

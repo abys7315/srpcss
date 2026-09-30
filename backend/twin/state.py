@@ -64,6 +64,8 @@ class DigitalTwinState:
     fluid_pound_severity: float
     wellhead_pressure_bar: float = 5.0   # Surface line backpressure (PROVENANCE: ASSUMED / SCENARIO INPUT)
     wellhead_pressure_provenance: str = "ASSUMED / SCENARIO INPUT"
+    recovery_factor_pct: float = 0.0     # cumulative (prior + current cycle) oil / drainage-area OOIP
+    heated_zone_oil_saturation: float = 0.0
     provenance: str = "SIMULATED"
 
     def to_dict(self) -> Dict[str, Any]:

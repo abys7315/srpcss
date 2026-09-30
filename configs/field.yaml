@@ -24,35 +24,30 @@ reservoir:
   rock_density_kg_m3: 2400.0
   overburden_conductivity_w_m_k: 1.8
   overburden_volumetric_heat_capacity_j_m3_k: 2.2e6
-  fracture_gradient_bar_per_m: 0.163 # ~0.72 psi/ft = ~171 bar at 1050m
+  fracture_gradient_bar_per_m: 0.163 # ~0.72 psi/ft -> 171 bar at 1050 m; limit = 0.9 x that = 154 bar
+  initial_water_saturation: 0.30     # ASSUMED
+  residual_oil_saturation_heated: 0.20 # ASSUMED, residual oil to hot-water displacement
+  thermal_loss_calibration: 2.6      # single calibration scalar: baseline cycle day-90 T ~ 80 degC (docs/physics.md)
 
 fluid:
   api_gravity: 18.0
   specific_gravity: 0.9465
   dead_oil_density_kg_m3: 946.5
+  # Andrade mu = A exp(B/T): A and B are derived in code from these two anchors only.
   dead_oil_viscosity_47c_cp: 2400.0
-  dead_oil_viscosity_52c_cp: 1200.0
   dead_oil_viscosity_150c_cp: 42.0
   formation_volume_factor_bo: 1.05
-  andrade_viscosity:
-    a: 0.0001556
-    b: 4850.0
-  walther_viscosity:
-    a: 9.854
-    b: 3.521
 
 css:
   default_steam_volume_tonnes: 3000.0
   default_injection_duration_days: 15.0
-  default_injection_pressure_bar: 125.0
-  default_steam_temp_c: 260.0
+  default_injection_pressure_bar: 125.0  # bottomhole; Tsat and h_fg from IAPWS-IF97
   default_steam_quality_wellhead: 0.80
-  wellbore_heat_loss_quality_drop: 0.08
   default_soak_days: 6.0
   default_production_cutoff_oil_rate_bpd: 8.0
-  latent_heat_steam_j_kg: 1650000.0
   water_specific_heat_j_kg_k: 4200.0
   oil_specific_heat_j_kg_k: 2100.0
+  fracture_safety_factor: 0.9
 
 srp:
   pump_depth_m: 980.0
@@ -71,6 +66,8 @@ srp:
   gearbox_rating_in_lbs: 456000.0
   motor_rating_kw: 45.0
   submerged_rod_weight_lbs: 5800.0
+  coupling_drag_factor: 4.5 # ASSUMED lumped coupling/guide drag multiplier (sensitivity-tested)
+  distributed_coupling_factor: 1.15 # ASSUMED form factor in depth-resolved Couette drag
 
 economics:
   crude_oil_benchmark_usd_bbl: 75.0
@@ -85,7 +82,7 @@ economics:
   sor_penalty_per_unit_excess_usd: 12000.0
 
 safety_limits:
-  max_allowable_injection_pressure_bar: 125.0
+  # max_allowable_injection_pressure_bar is derived: fracture_gradient x depth x fracture_safety_factor
   min_bottomhole_temperature_c: 47.0
   min_allowable_spm: 1.5
   max_allowable_spm: 7.5

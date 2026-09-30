@@ -265,7 +265,7 @@ def test_canonical_baghewala_configuration_invariance():
 
     assert data["fluid"]["api_gravity"] == 18.0
     assert data["reservoir"]["initial_temperature_c"] == 47.0
-    assert data["fluid"]["dead_oil_viscosity_52c_cp"] == 1200.0
+    assert data["fluid"]["dead_oil_viscosity_150c_cp"] == 42.0
 
 def test_sha256_verification_edge_cases():
     """Verify SHA-256 verification behaviors: matching, mismatching, missing artifact, no physical artifact."""

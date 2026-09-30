@@ -66,15 +66,18 @@ class FeedbackService:
             .all()
         )
 
-        baseline_res = [f.residual_error_bpd for f in past_feedbacks[5:]] if len(past_feedbacks) >= 10 else [-1.5, 1.2, -0.8, 0.9, -1.1]
-        recent_res = [f.residual_error_bpd for f in past_feedbacks[:5]] + [residual_error]
-
-        drift_report = self.drift_monitor.evaluate_residual_drift(
-            baseline_residuals=baseline_res,
-            recent_residuals=recent_res
-        )
-
-        is_drift = drift_report.drift_detected or abs(residual_error) > 8.0
+        # The KS drift test compares recent residuals with earlier ones from the same well. With fewer than 10
+        # stored observations there is no baseline, so the test is skipped (no placeholder residuals are invented).
+        drift_test_ran = len(past_feedbacks) >= 10
+        is_drift = False
+        if drift_test_ran:
+            baseline_res = [f.residual_error_bpd for f in past_feedbacks[5:]]
+            recent_res = [f.residual_error_bpd for f in past_feedbacks[:5]] + [residual_error]
+            drift_report = self.drift_monitor.evaluate_residual_drift(
+                baseline_residuals=baseline_res,
+                recent_residuals=recent_res
+            )
+            is_drift = bool(drift_report.drift_detected)
 
         # Save feedback to DB
         fb = FeedbackModel(
@@ -93,10 +96,13 @@ class FeedbackService:
         self.db.commit()
         self.db.refresh(fb)
 
-        msg = (
-            f"Observation recorded. Residual error: {residual_error:+.2f} BPD. "
-            + ("Statistical drift confirmed: Recalibration recommended." if is_drift else "Operating within expected model variance.")
-        )
+        if not drift_test_ran:
+            verdict = f"Drift test needs at least 10 stored observations for this well ({len(past_feedbacks)} so far)."
+        elif is_drift:
+            verdict = "Statistical drift confirmed: recalibration recommended."
+        else:
+            verdict = "No statistically significant drift."
+        msg = f"Observation recorded. Residual error: {residual_error:+.2f} BPD. {verdict}"
 
         return FeedbackSubmissionResponse(
             feedback_id=f"FB-{fb.id:04d}",
@@ -124,37 +130,32 @@ class FeedbackService:
             .all()
         )
 
+        # Recalibration runs only on observations that were actually recorded. The earlier synthetic "demo mode"
+        # (a hardcoded observed/expected table) is removed: it made the >20 % MAE claim true by construction.
         is_demo_mode = False
         unique_days = set(f.day for f in feedbacks)
         if len(feedbacks) < 8 or len(unique_days) < 4:
-            if not req.allow_synthetic_fallback:
-                return RecalibrationResponse(
-                    well_id=req.well_id,
-                    model_name="ResidualCorrector-HistogramGradientBoosting",
-                    previous_model_version="v1.2.0",
-                    new_model_version="v1.2.0",
-                    sample_points_used=len(feedbacks),
-                    train_mae_bpd=0.0,
-                    validation_mae_bpd=0.0,
-                    pre_recalibration_mae_bpd=0.0,
-                    post_recalibration_mae_bpd=0.0,
-                    mae_reduction_pct=0.0,
-                    drift_status_cleared=False,
-                    status="INSUFFICIENT_OBSERVATIONS",
-                    explanation=f"Insufficient distinct observations ({len(unique_days)}/4 distinct days, {len(feedbacks)}/8 required) for statistical model recalibration. Record more field gauge points or request SIMULATION DEMO MODE.",
-                    provenance=ProvenanceEnum.SIMULATED
-                )
-            # SIMULATION DEMO MODE with explicit provenance disclosure
-            is_demo_mode = True
-            days = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-            obs_rates = [48.0, 42.0, 37.0, 32.0, 26.0, 21.0, 17.0, 13.5, 10.5, 8.0]
-            exp_rates = [42.0, 36.0, 30.0, 25.0, 20.0, 15.5, 12.0, 9.0, 7.0, 5.5]
-            temps = [160.0, 142.0, 126.0, 110.0, 95.0, 82.0, 70.0, 60.0, 52.0, 48.0]
-        else:
-            days = [f.day for f in feedbacks]
-            obs_rates = [f.observed_oil_rate_bpd for f in feedbacks]
-            exp_rates = [f.physics_expected_oil_bpd for f in feedbacks]
-            temps = [f.observed_temperature_c for f in feedbacks]
+            return RecalibrationResponse(
+                well_id=req.well_id,
+                model_name="ResidualCorrector-HistogramGradientBoosting",
+                previous_model_version="v1.2.0",
+                new_model_version="v1.2.0",
+                sample_points_used=len(feedbacks),
+                train_mae_bpd=0.0,
+                validation_mae_bpd=0.0,
+                pre_recalibration_mae_bpd=0.0,
+                post_recalibration_mae_bpd=0.0,
+                mae_reduction_pct=0.0,
+                drift_status_cleared=False,
+                status="INSUFFICIENT_OBSERVATIONS",
+                explanation=(f"Insufficient distinct observations ({len(unique_days)}/4 distinct days, {len(feedbacks)}/8 required). "
+                             "Record more observations (POST /feedback or /telemetry/ingest) before recalibrating."),
+                provenance=ProvenanceEnum.SIMULATED
+            )
+        days = [f.day for f in feedbacks]
+        obs_rates = [f.observed_oil_rate_bpd for f in feedbacks]
+        exp_rates = [f.physics_expected_oil_bpd for f in feedbacks]
+        temps = [f.observed_temperature_c for f in feedbacks]
 
         # Features: [day, temp, spm]
         X = np.column_stack([

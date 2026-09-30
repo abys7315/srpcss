@@ -74,11 +74,12 @@ class WhatIfSimulator:
         # Default user perturbation scenarios if not provided:
         # A: Aggressive lift (higher SPM 5.5, standard steam)
         scen_a = scenario_a_cfg or {
-            "title": "Scenario A (Aggressive Lift)",
+            "title": "Scenario A (Aggressive lift, over-pressure)",
             "steam_volume_tonnes": current_cfg.get("steam_volume_tonnes", 3000.0),
+            "injection_pressure_bar": 180.0,  # above fracture limit (~154 bar) → INFEASIBLE
             "soak_days": 5.0,
-            "spm": 5.8,
-            "stroke_length_inch": 100.0,
+            "spm": 7.5,
+            "stroke_length_inch": 144.0,
             "vfd_downstroke_ratio": 1.0,
             "economic_cutoff_bpd": 7.0
         }
@@ -132,6 +133,7 @@ class WhatIfSimulator:
                 spm=cfg.get("spm", 4.5),
                 stroke_length_inch=cfg.get("stroke_length_inch", 100.0),
                 vfd_downstroke_ratio=cfg.get("vfd_downstroke_ratio", 1.0),
+                injection_pressure_bar=cfg.get("injection_pressure_bar", 125.0),
                 economic_cutoff_bpd=cfg.get("economic_cutoff_bpd", 7.0),
                 cooling_anomaly_day=cooling_anomaly_day,
                 cooling_anomaly_severity_pct=cooling_anomaly_severity_pct

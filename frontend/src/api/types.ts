@@ -91,6 +91,61 @@ export interface DailyTimeseriesPoint {
   peak_gearbox_torque_in_lbs: number;
   pump_intake_pressure_bar: number;
   pump_fillage_pct: number;
+  reservoir_pressure_bar?: number;
+  spm?: number;
+  vfd_downstroke_ratio?: number;
+  is_rod_floating?: boolean;
+  recovery_factor_pct?: number;
+  heated_zone_oil_saturation?: number;
+  srp_binding_limit?: string;
+  cycle_day?: number;
+}
+
+export interface PhaseBand { phase: 'INJECTION' | 'SOAK' | 'PRODUCTION' | string; start_day: number; end_day: number }
+
+export interface ThermalSummary {
+  steam_saturation_temp_c: number;
+  steam_latent_heat_kj_kg: number;
+  delivered_steam_quality: number;
+  heat_injected_gj: number;
+  heated_zone_radius_m: number;
+  injection_end_temp_c: number;
+  soak_end_temp_c: number;
+  ooip_m3: number;
+  recovery_factor_pct: number;
+  heated_pore_volume_m3: number;
+  final_heated_zone_oil_saturation: number;
+  fracture_limit_bar: number;
+}
+
+export interface WellboreProfilePoint { depth_m: number; temperature_c: number; viscosity_cp: number; pressure_bar: number }
+
+export interface CyclePlanRow {
+  cycle_number: number;
+  steam_volume_tonnes: number;
+  cumulative_oil_bbl: number;
+  steam_oil_ratio: number;
+  net_benefit_usd: number;
+  recovery_factor_pct: number;
+  heated_zone_oil_saturation_end: number;
+  float_days: number;
+  min_float_margin_index: number;
+  status: string;
+}
+
+export interface MulticyclePlan {
+  well_id: string;
+  n_cycles: number;
+  srp_policy: string;
+  optimized: CyclePlanRow[];
+  constant_steam: CyclePlanRow[];
+  optimized_total_net_benefit_usd: number;
+  constant_total_net_benefit_usd: number;
+  optimized_total_oil_bbl: number;
+  constant_total_oil_bbl: number;
+  evaluations: number;
+  execution_time_seconds: number;
+  method: string;
 }
 
 export interface DynacardData {
@@ -126,6 +181,8 @@ export interface SimulationResult {
     max_goodman_stress_ratio: number;
     min_float_margin_index: number;
     average_pump_fillage_pct: number;
+    recovery_factor_pct?: number;
+    float_days?: number;
   };
   constraints: {
     status: OperationalStatus;
@@ -137,6 +194,9 @@ export interface SimulationResult {
   };
   dynacards: Record<string, DynacardData>;
   timeseries: DailyTimeseriesPoint[];
+  phase_bands?: PhaseBand[];
+  thermal?: ThermalSummary;
+  wellbore_profile?: WellboreProfilePoint[];
   provenance: ProvenanceTier;
 }
 
@@ -159,6 +219,17 @@ export interface ParetoPoint {
   is_feasible?: boolean;
   status?: OperationalStatus;
   composite_score?: number;
+  injection_pressure_bar?: number;
+  injection_duration_days?: number;
+  srp_policy?: string;
+  srp_m_target?: number;
+  srp_min_fillage?: number;
+  max_spm?: number;
+  float_days?: number;
+  recovery_factor_pct?: number;
+  goodman_stress_ratio?: number;
+  peak_gearbox_torque_in_lbs?: number;
+  pump_intake_pressure_bar?: number;
   provenance?: ProvenanceTier;
 }
 
@@ -181,6 +252,12 @@ export interface OptimizationResult {
   contributing_factors: string[];
   constraints_checked: Array<Record<string, any>>;
   execution_time_seconds: number;
+  evaluations?: number;
+  seed?: number;
+  srp_policy?: string;
+  algorithm?: string;
+  evaluated_points?: ParetoPoint[];
+  pareto_options?: Record<string, ParetoPoint>;
   provenance: ProvenanceTier;
 }
 
@@ -250,6 +327,7 @@ export interface BenchmarkData {
     direction: string;
   }>;
   ablation_study: Array<{
+    key?: string;
     architecture: string;
     net_benefit_usd: number;
     steam_oil_ratio: number;
@@ -258,7 +336,20 @@ export interface BenchmarkData {
     computation_time_s: number;
     is_safe: boolean;
     notes: string;
+    n_runs?: number;
+    net_benefit_std_usd?: number;
+    delta_vs_baseline_usd?: number;
+    delta_vs_baseline_std_usd?: number;
+    oil_std_bbl?: number;
+    sor_std?: number;
+    float_days?: number;
+    float_days_std?: number;
+    min_float_margin?: number;
+    kwh_per_bbl?: number;
+    is_baseline?: boolean;
+    is_reference_only?: boolean;
   }>;
+  protocol?: Record<string, any>;
   oil_price_sensitivity: Array<{ multiplier: number; net_benefit_usd: number; oil_recovery_bbl: number; sor: number }>;
   steam_cost_sensitivity: Array<{ multiplier: number; net_benefit_usd: number; oil_recovery_bbl: number; sor: number }>;
   overall_net_benefit_gain_pct: number;

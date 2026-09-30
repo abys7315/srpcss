@@ -1,205 +1,133 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import type { PageId } from './components/layout/Sidebar';
 import { apiClient } from './api/client';
-import type { WellSummary } from './api/types';
+import type { WellDetail, WellSummary } from './api/types';
+import { AssistantDock } from './components/common/AICommandBar';
+import { useUnits, fmt } from './lib/units';
 
-// Pages
-import { CommandCenter } from './pages/CommandCenter';
-import { DigitalTwin } from './pages/DigitalTwin';
-import { JointOptimizer } from './pages/JointOptimizer';
-import { CSSOptimizer } from './pages/CSSOptimizer';
-import { SRPOptimizer } from './pages/SRPOptimizer';
-import { WhatIfSimulator } from './pages/WhatIfSimulator';
-import { Predictions } from './pages/Predictions';
-import { Economics } from './pages/Economics';
-import { RiskIntegrity } from './pages/RiskIntegrity';
-import { ModelRegistry } from './pages/ModelRegistry';
-import { Benchmarks } from './pages/Benchmarks';
-import { DataProvenance } from './pages/DataProvenance';
-import { AICommandBar } from './components/common/AICommandBar';
+// One chunk per page.
+const named = <K extends string>(loader: () => Promise<Record<K, React.ComponentType<any>>>, key: K) =>
+  lazy(() => loader().then((m) => ({ default: m[key] })));
+
+const CommandCenter = named(() => import('./pages/CommandCenter'), 'CommandCenter');
+const DigitalTwin = named(() => import('./pages/DigitalTwin'), 'DigitalTwin');
+const JointOptimizer = named(() => import('./pages/JointOptimizer'), 'JointOptimizer');
+const CSSOptimizer = named(() => import('./pages/CSSOptimizer'), 'CSSOptimizer');
+const SRPOptimizer = named(() => import('./pages/SRPOptimizer'), 'SRPOptimizer');
+const WhatIfSimulator = named(() => import('./pages/WhatIfSimulator'), 'WhatIfSimulator');
+const Predictions = named(() => import('./pages/Predictions'), 'Predictions');
+const Economics = named(() => import('./pages/Economics'), 'Economics');
+const RiskIntegrity = named(() => import('./pages/RiskIntegrity'), 'RiskIntegrity');
+const ModelRegistry = named(() => import('./pages/ModelRegistry'), 'ModelRegistry');
+const Benchmarks = named(() => import('./pages/Benchmarks'), 'Benchmarks');
+const DataProvenance = named(() => import('./pages/DataProvenance'), 'DataProvenance');
 
 export const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageId>('command-center');
   const [selectedWellId, setSelectedWellId] = useState<string>('BGW-01');
   const [wells, setWells] = useState<WellSummary[]>([]);
-  const [_loading, setLoading] = useState<boolean>(true);
-
+  const [detail, setDetail] = useState<WellDetail | null>(null);
+  const [readiness, setReadiness] = useState<Record<string, string> | null>(null);
   const [apiAvailable, setApiAvailable] = useState<boolean>(true);
-
-  useEffect(() => {
-    loadWells();
-  }, []);
+  const [assistantOpen, setAssistantOpen] = useState<boolean>(false);
+  const u = useUnits();
 
   const loadWells = async () => {
     try {
-      setLoading(true);
       const list = await apiClient.getWells();
       setWells(list);
       setApiAvailable(true);
-      if (list && list.length > 0 && !list.find((w) => w.well_id === selectedWellId)) {
-        setSelectedWellId(list[0].well_id);
-      }
-    } catch (e) {
-      console.error('Failed to load initial wells list:', e);
+      if (list.length > 0 && !list.find((w) => w.well_id === selectedWellId)) setSelectedWellId(list[0].well_id);
+    } catch {
+      // No fabricated fallback wells: show the offline state instead.
       setApiAvailable(false);
-      // Fallback 5 benchmark wells strictly labeled as SIMULATED DEMO DATA using canonical Baghewala configuration
-      const fallbackWells: WellSummary[] = Array.from({ length: 5 }, (_, i) => {
-        const id = `BGW-${(i + 1).toString().padStart(2, '0')}`;
-        return {
-          well_id: id,
-          well_name: `[DEMO] Baghewala Well ${i + 1}`,
-          field_name: 'Baghewala Field',
-          formation: 'Jodhpur Sandstone',
-          crude_api: 18.0,
-          depth_m: 1050.0,
-          current_cycle_number: 1,
-          cycle_phase: 'PRODUCTION',
-          status: i === 0 ? 'INFEASIBLE' : i === 2 ? 'NEAR_LIMIT' : 'FEASIBLE',
-          telemetry: {
-            current_day_in_cycle: 45,
-            current_temperature_c: 75.0,
-            current_viscosity_cp: 450.0,
-            current_oil_rate_bpd: 28.5,
-            current_water_cut_pct: 60.0,
-            current_float_margin_index: i === 0 ? 0.92 : 1.18,
-            current_goodman_stress_ratio: 0.68,
-            current_gearbox_load_pct: 65.0,
-            current_pump_intake_pressure_bar: 24.5,
-            latest_dynacard_label: i === 0 ? 'ROD_FLOATING' : 'NORMAL',
-          },
-          operating_parameters: {
-            steam_volume_tonnes: 3000.0,
-            injection_pressure_bar: 125.0,
-            steam_temp_celsius: 260.0,
-            soak_duration_days: 6.0,
-            spm: 4.5,
-            stroke_length_inch: 100.0,
-            vfd_downstroke_ratio: 1.0,
-            economic_cutoff_oil_rate_bpd: 8.0,
-          },
-          provenance: 'SIMULATED',
-        };
-      });
-      setWells(fallbackWells);
-    } finally {
-      setLoading(false);
+      setWells([]);
     }
+    apiClient.getSystemReadiness().then(setReadiness).catch(() => setReadiness(null));
   };
 
+  useEffect(() => { loadWells(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setDetail(null);
+    apiClient.getWell(selectedWellId).then(setDetail).catch(() => setDetail(null));
+  }, [selectedWellId]);
+
+  const well = wells.find((w) => w.well_id === selectedWellId);
   const activeAlertCount = wells.filter(
-    (w) => w.status === 'INFEASIBLE' || (w.telemetry?.current_float_margin_index || 2.0) < 1.0
+    (w) => w.status === 'INFEASIBLE' || (w.telemetry?.current_float_margin_index ?? 2) < 1.0,
   ).length;
 
-  const renderActivePage = () => {
+  const page = (() => {
+    const p = { selectedWellId, onNavigate: setCurrentPage };
     switch (currentPage) {
-      case 'command-center':
-        return (
-          <CommandCenter
-            selectedWellId={selectedWellId}
-            onSelectWell={setSelectedWellId}
-            onNavigate={setCurrentPage}
-          />
-        );
-      case 'digital-twin':
-        return <DigitalTwin selectedWellId={selectedWellId} />;
-      case 'joint-optimizer':
-        return <JointOptimizer selectedWellId={selectedWellId} onNavigate={setCurrentPage} />;
-      case 'css-optimizer':
-        return <CSSOptimizer selectedWellId={selectedWellId} onNavigate={setCurrentPage} />;
-      case 'srp-optimizer':
-        return <SRPOptimizer selectedWellId={selectedWellId} onNavigate={setCurrentPage} />;
-      case 'what-if':
-        return <WhatIfSimulator selectedWellId={selectedWellId} onNavigate={setCurrentPage} />;
-      case 'predictions':
-        return <Predictions selectedWellId={selectedWellId} onNavigate={setCurrentPage} />;
-      case 'economics':
-        return <Economics selectedWellId={selectedWellId} onNavigate={setCurrentPage} />;
-      case 'risk':
-        return <RiskIntegrity selectedWellId={selectedWellId} onNavigate={setCurrentPage} />;
-      case 'model-registry':
-        return <ModelRegistry onNavigate={setCurrentPage} />;
-      case 'benchmarks':
-        return <Benchmarks selectedWellId={selectedWellId} onNavigate={setCurrentPage} />;
-      case 'provenance':
-        return <DataProvenance onNavigate={setCurrentPage} />;
-      default:
-        return (
-          <CommandCenter
-            selectedWellId={selectedWellId}
-            onSelectWell={setSelectedWellId}
-            onNavigate={setCurrentPage}
-          />
-        );
+      case 'digital-twin': return <DigitalTwin selectedWellId={selectedWellId} />;
+      case 'joint-optimizer': return <JointOptimizer {...p} />;
+      case 'css-optimizer': return <CSSOptimizer {...p} />;
+      case 'srp-optimizer': return <SRPOptimizer {...p} />;
+      case 'what-if': return <WhatIfSimulator {...p} />;
+      case 'predictions': return <Predictions {...p} />;
+      case 'economics': return <Economics {...p} />;
+      case 'risk': return <RiskIntegrity {...p} />;
+      case 'model-registry': return <ModelRegistry onNavigate={setCurrentPage} />;
+      case 'benchmarks': return <Benchmarks {...p} />;
+      case 'provenance': return <DataProvenance onNavigate={setCurrentPage} />;
+      default: return <CommandCenter selectedWellId={selectedWellId} onSelectWell={setSelectedWellId} onNavigate={setCurrentPage} />;
     }
-  };
+  })();
+
+  const depth = detail ? u.lenFromM(detail.depth_m) : null;
+  const pump = detail ? u.lenFromM(detail.pump_depth_m) : null;
+  const temp = well ? u.tempFromC(well.telemetry.current_temperature_c) : null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#060911] text-slate-800 dark:text-slate-100 flex flex-col font-sans selection:bg-cyan-500/20 selection:text-cyan-200 transition-colors duration-200">
-      {/* Top Navigation */}
-      <Navbar
-        wells={wells}
-        selectedWellId={selectedWellId}
-        onSelectWell={setSelectedWellId}
-        activeAlertCount={activeAlertCount}
-      />
+    <div className="min-h-screen bg-bg text-ink flex flex-col">
+      <Navbar wells={wells} selectedWellId={selectedWellId} onSelectWell={setSelectedWellId} activeAlertCount={activeAlertCount} />
 
-      {/* Engineering Sub-header Telemetry Ribbon */}
-      <div className="bg-white dark:bg-[#080d19] border-b border-slate-200 dark:border-slate-800/80 px-4 lg:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-500 dark:text-slate-400 shadow-xs transition-colors duration-200">
-        <div className="flex flex-wrap items-center gap-3 lg:gap-5">
-          <span>Well <strong className="text-slate-900 dark:text-white font-semibold">{selectedWellId}</strong></span>
-          <span className="text-slate-300 dark:text-slate-700">·</span>
-          <span>Depth <strong className="text-slate-900 dark:text-white font-semibold">1,050 m TVD</strong></span>
-          <span className="text-slate-300 dark:text-slate-700">·</span>
-          <span>Viscosity <strong className="text-slate-900 dark:text-white font-semibold">450–1,200 cP</strong></span>
-          <span className="text-slate-300 dark:text-slate-700">·</span>
-          <span>Lift Unit <strong className="text-slate-900 dark:text-white font-semibold">API C-456 Beam + Sucker Rod</strong></span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 text-xs font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse" />
-            Synthetic Telemetry • 10 Hz
+      {/* Persistent provenance strip */}
+      <div role="note" className="bg-steam-t border-b border-steam-b px-4 py-1 text-[12px] text-ink flex flex-wrap items-center justify-between gap-2">
+        <span><span className="caps num text-[11px] text-steam font-medium mr-2">SIMULATED</span>Simulated data — not field measurements. Values marked † use assumed or scenario inputs.</span>
+        {!apiAvailable && (
+          <span className="text-alarm font-medium">
+            Backend unavailable. <button onClick={loadWells} className="underline hover:text-alarm">Retry</button>
           </span>
-        </div>
+        )}
       </div>
 
-      {/* Backend Offline Demo Banner */}
-      {!apiAvailable && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/50 px-4 py-2 text-xs font-mono text-amber-800 dark:text-amber-300 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/50 border border-amber-300 dark:border-amber-700 text-[10px] font-bold text-amber-900 dark:text-amber-200">
-              SIMULATED DEMO DATA
-            </span>
-            <span>BACKEND DATA UNAVAILABLE — Displaying simulated Baghewala demo dataset (API offline).</span>
-          </div>
-          <button
-            onClick={loadWells}
-            className="text-[11px] underline hover:text-amber-900 dark:hover:text-amber-100 font-semibold"
-          >
-            Retry Connection
-          </button>
+      {/* Selected-well ribbon */}
+      <div className="bg-panel border-b border-rule px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[13px] text-muted">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          <span>Well <span className="num text-ink font-semibold">{selectedWellId}</span></span>
+          <span className="hidden sm:inline">Depth <span className="num text-ink">{depth ? `${fmt(depth.value, 0)} ${depth.unit}` : '—'} <span className="caps text-[10px]">TVD</span></span></span>
+          <span className="hidden md:inline">Pump <span className="num text-ink">{pump ? `${fmt(pump.value, 0)} ${pump.unit}` : '—'}</span></span>
+          <span>BHT <span className="num text-accent font-medium">{temp ? `${fmt(temp.value)} ${temp.unit}` : '—'}</span></span>
+          <span>Viscosity <span className="num text-accent font-medium">{well ? `${fmt(well.telemetry.current_viscosity_cp, 0)}` : '—'} <span className="caps text-[10px] text-muted">CP</span></span></span>
+          <span className="hidden lg:inline">Formation <span className="text-ink">{well?.formation ?? '—'}</span></span>
         </div>
-      )}
+        <button
+          onClick={() => setAssistantOpen((o) => !o)}
+          aria-expanded={assistantOpen}
+          className={`h-6 px-3 border rounded-sm text-[12px] font-medium transition-colors ${
+            assistantOpen ? 'border-accent text-accent bg-accent-t hover:bg-accent-b' : 'border-rule text-ink hover:bg-highlight'
+          }`}
+        >
+          {assistantOpen ? 'Hide assistant' : 'Assistant'}
+        </button>
+      </div>
 
-      {/* Main Body with Sidebar + Content */}
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
-
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-24 bg-slate-50 dark:bg-[#060911] transition-colors duration-200">
-          <div className="max-w-7xl mx-auto space-y-6">
-            {renderActivePage()}
+      <div className="flex-1 flex min-h-0">
+        <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} wells={wells} selectedWell={well} readiness={readiness} />
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 lg:p-5">
+          <div key={currentPage} className="max-w-7xl mx-auto space-y-4 animate-enter">
+            <Suspense fallback={<div className="text-muted text-[13px] py-8">Loading page…</div>}>{page}</Suspense>
           </div>
         </main>
+        {assistantOpen && (
+          <AssistantDock selectedWellId={selectedWellId} onClose={() => setAssistantOpen(false)} />
+        )}
       </div>
-
-      {/* Floating AI Command Bar matching the reference UI */}
-      <AICommandBar
-        selectedWellId={selectedWellId}
-        onNavigate={setCurrentPage}
-        wellData={wells.find((w) => w.well_id === selectedWellId)}
-        activeTab={currentPage}
-      />
     </div>
   );
 };

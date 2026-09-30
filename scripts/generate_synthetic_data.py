@@ -80,7 +80,7 @@ def generate_field_history(wells: List[Dict[str, Any]], output_dir: Path):
         cycle_num = w["active_cycle"]
         
         # Configure cycle with slight variations
-        spm_choice = 5.2 if w_id == "BGW-01" else random.choice([3.8, 4.2, 4.8, 5.2])
+        spm_choice = random.choice([3.8, 4.2, 4.8, 5.2])
         steam_choice = random.choice([2600.0, 3000.0, 3400.0])
         
         cfg = CycleConfig(

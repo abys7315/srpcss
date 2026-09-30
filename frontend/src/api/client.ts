@@ -9,7 +9,8 @@ import type {
   RiskResult,
   RecalibrationResult,
   BenchmarkData,
-  ProvenanceManifest
+  ProvenanceManifest,
+  MulticyclePlan
 } from './types';
 
 // Support VITE_API_URL, VITE_API_BASE_URL, relative /api/v1 (Vite dev proxy), and direct fallbacks
@@ -208,6 +209,19 @@ export const apiClient = {
   getModels: async (): Promise<any> => {
     const res = await api.get<APIResponse<any>>('/models');
     return res.data.data;
+  },
+
+  optimizeMulticycle: async (params: { well_id: string; n_cycles?: number; srp_policy?: string; base_configuration?: any }): Promise<MulticyclePlan> => {
+    const res = await api.post<APIResponse<MulticyclePlan>>('/optimize/multicycle', params);
+    return res.data.data;
+  },
+
+  // Copilot (server-side LLM proxy)
+  copilot: async (params: { well_id: string; query: string; provider?: string; day?: number }): Promise<{
+    answer: string; provider: string; model: string; latency_ms: number; context: Record<string, unknown>;
+  }> => {
+    const res = await api.post('/copilot', params, { timeout: 45000 });
+    return res.data;
   },
 
   // System Readiness

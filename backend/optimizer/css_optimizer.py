@@ -1,8 +1,5 @@
 """
-Standalone CSS Thermal Cycle Optimizer (Slow Loop).
-
-Optimizes steam volume, soak duration, and production cutoff
-assuming fixed conventional pumping schedule.
+CSS-only optimizer: SRP settings frozen at the current configuration (policy and values).
 
 PROVENANCE: SIMULATED.
 """
@@ -10,9 +7,8 @@ PROVENANCE: SIMULATED.
 from typing import Dict, Any, Optional
 from .joint_optimizer import JointOptimizer, OptimizationRunResult
 
-class CSSOptimizer:
-    """Slow loop optimizer for CSS parameters alone."""
 
+class CSSOptimizer:
     def __init__(self, joint_optimizer: Optional[JointOptimizer] = None):
         self.joint_opt = joint_optimizer or JointOptimizer()
 
@@ -20,14 +16,16 @@ class CSSOptimizer:
         self,
         well_id: str,
         current_cfg: Dict[str, Any],
-        fixed_spm: float = 3.0
+        fixed_spm: Optional[float] = None,
+        cooling_anomaly_day: Optional[int] = None,
+        cooling_anomaly_severity_pct: float = 0.0,
+        seed: int = 42,
     ) -> OptimizationRunResult:
-        """Optimizes CSS thermal parameters while holding SRP parameters strictly fixed at safe conventional rate."""
         cfg = dict(current_cfg)
-        cfg["spm"] = fixed_spm
-        cfg["vfd_downstroke_ratio"] = 1.0 # Conventional unshaped downstroke
+        if fixed_spm is not None:
+            cfg["spm"] = fixed_spm
         return self.joint_opt.optimize_well(
-            well_id=well_id,
-            current_cfg=cfg,
-            mode="CSS_ONLY"
+            well_id=well_id, current_cfg=cfg, mode="CSS_ONLY",
+            cooling_anomaly_day=cooling_anomaly_day, cooling_anomaly_severity_pct=cooling_anomaly_severity_pct,
+            seed=seed,
         )

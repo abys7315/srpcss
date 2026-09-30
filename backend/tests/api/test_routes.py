@@ -209,55 +209,42 @@ def test_risk_evaluation_endpoints(client):
     res_well = client.get("/api/v1/risks/BGW-01")
     assert res_well.status_code == 200
 
-def test_continuous_feedback_and_recalibration_loop(client):
+def test_continuous_feedback_and_recalibration_loop(client, post_plant_feedback):
     """
-    CRITICAL SIH 26120 REQUIREMENT:
-    Demonstrates the closed-loop continuous adaptation cycle:
-    1. Operator records field gauge observation
-    2. API computes residual physics error and checks for drift
-    3. Operator requests online model recalibration
-    4. API retrains residual model and verifies measurable error reduction (> 20%).
-    """
-    # 1. Ingest observation with mild drift
-    fb_payload = {
-        "well_id": "BGW-01",
-        "day": 45,
-        "observed_oil_rate_bpd": 29.5,
-        "observed_temperature_c": 74.0,
-        "observed_float_events": 0,
-        "observed_dynacard_label": "NORMAL",
-        "operator_notes": "Tested production rate at separator."
-    }
-    res_fb = client.post("/api/v1/feedback", json=fb_payload)
-    assert res_fb.status_code == 200
-    fb_data = res_fb.json()["data"]
-    assert "feedback_id" in fb_data
-    assert "residual_error_bpd" in fb_data
+    Closed-loop adaptation with honest bookkeeping.
 
-    # 2. Trigger online recalibration
-    recal_payload = {
-        "well_id": "BGW-01",
-        "force_recalibrate": True
-    }
-    res_recal = client.post("/api/v1/recalibrate", json=recal_payload)
+    Observations come from an independent plant (same simulator, different thermal kappa, 3 % noise) and are
+    posted through /feedback. /recalibrate then fits a residual model on the first 70 % of days and reports error
+    on the last 30 %. Whether a residual model helps depends on the data, so this test does NOT assert a fixed
+    improvement; it asserts that the reported numbers are consistent and that promotion follows the decision rule.
+    """
+    obs = post_plant_feedback(client, well_id="BGW-01")
+    assert len(obs) >= 8
+
+    res_recal = client.post("/api/v1/recalibrate", json={"well_id": "BGW-01"})
     assert res_recal.status_code == 200
-    recal_data = res_recal.json()["data"]
-    assert recal_data["status"] in ["SUCCESS", "PROMOTED_CHAMPION"]
-    assert recal_data["sample_points_used"] > 0
-    assert recal_data["pre_recalibration_mae_bpd"] > 0.0
-    assert recal_data["post_recalibration_mae_bpd"] < recal_data["pre_recalibration_mae_bpd"]
-    assert recal_data["mae_reduction_pct"] >= 20.0, f"Expected >20% MAE reduction, got {recal_data['mae_reduction_pct']}%"
-    assert recal_data["drift_status_cleared"] is True
+    d = res_recal.json()["data"]
+    assert d["status"] in ["PROMOTED_CHAMPION", "REJECTED_CHALLENGER"]
+    assert d["sample_points_used"] >= 8
+    pre, post = d["pre_recalibration_mae_bpd"], d["post_recalibration_mae_bpd"]
+    assert pre > 0.0
+    expected = max(0.0, (pre - post) / max(pre, 0.01) * 100.0)
+    assert d["mae_reduction_pct"] == pytest.approx(expected, abs=1.0)
+    assert d["drift_status_cleared"] == (d["status"] == "PROMOTED_CHAMPION")
+    assert (d["status"] == "PROMOTED_CHAMPION") == (d["mae_reduction_pct"] >= 20.0)
 
 def test_benchmarks_and_provenance(client):
     """Verify performance benchmarks and data provenance manifest."""
     res_bench = client.get("/api/v1/benchmarks")
     assert res_bench.status_code == 200
     b_data = res_bench.json()["data"]
-    assert len(b_data["baseline_vs_optimized"]) > 0
-    assert b_data["overall_net_benefit_gain_pct"] is not None
-    assert b_data["overall_sor_reduction_pct"] > 0.0
-    assert b_data["float_events_eliminated"] > 0
+    if b_data["execution_timestamp"] == "UNAVAILABLE":
+        # Valid state before the first run of scripts/run_benchmark.py; the endpoint must say so, not invent numbers.
+        assert b_data["baseline_vs_optimized"] == []
+    else:
+        assert len(b_data["baseline_vs_optimized"]) > 0
+        assert b_data["overall_net_benefit_gain_pct"] is not None
+        assert b_data["float_events_eliminated"] is not None  # sign and size are results, not requirements
 
     res_prov = client.get("/api/v1/provenance")
     assert res_prov.status_code == 200

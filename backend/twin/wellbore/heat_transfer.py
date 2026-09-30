@@ -36,17 +36,17 @@ class WellboreHeatTransferModel:
         self,
         steam_temp_celsius: float,
         steam_quality_wellhead: float,
-        steam_rate_kg_s: float
+        steam_rate_kg_s: float,
+        latent_heat_j_kg: float = 1.163e6
     ) -> WellboreHeatTransferResult:
-        """Computes heat loss and delivered steam quality downhole."""
-        # Quality drop ~5-10% along 1000m wellbore:
-        delta_q = 0.075 * (self.depth_m / 1000.0)
-        delivered_quality = max(0.10, steam_quality_wellhead - delta_q)
-        
-        # Tubing heat loss rate:
+        """Computes tubing heat loss and the resulting sandface steam quality.
+        Quality drop = Q_loss / (m_dot * h_fg): condensation supplies the lost heat."""
+        # Tubing heat loss rate through the insulated annulus (steady radial conduction):
         delta_t = steam_temp_celsius - 40.0 # geothermal average
         thermal_resistance = np.log(self.casing_id / self.tubing_od) / (2.0 * np.pi * self.k_ins * self.depth_m)
         q_loss_watts = delta_t / max(thermal_resistance, 1e-4)
+        delta_q = q_loss_watts / max(steam_rate_kg_s * latent_heat_j_kg, 1.0)
+        delivered_quality = float(np.clip(steam_quality_wellhead - delta_q, 0.0, 1.0))
 
         # Casing thermal expansion: delta_L = L * alpha * delta_T
         # alpha_steel ~ 1.2e-5 1/C
@@ -56,7 +56,7 @@ class WellboreHeatTransferModel:
             wellhead_temperature_c=steam_temp_celsius,
             sandface_temperature_c=steam_temp_celsius - 4.5,
             tubing_heat_loss_watts=round(float(q_loss_watts), 1),
-            delivered_steam_quality=round(float(delivered_quality), 3),
+            delivered_steam_quality=round(delivered_quality, 3),
             casing_thermal_expansion_m=round(float(expansion_m), 4),
             provenance="SIMULATED"
         )

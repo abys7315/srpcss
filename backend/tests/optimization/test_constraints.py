@@ -33,10 +33,12 @@ def test_unsafe_injection_pressure_rejected():
     """Verify that injection pressure above fracture limit is marked INFEASIBLE."""
     engine = ConstraintEngine()
     
-    # 135 bar > max allowable canonical 125 bar
+    # 10 bar above the fracture-gradient-derived limit
+    from core.config import canonical_config
+    p_limit = canonical_config.safety_limits.max_allowable_injection_pressure_bar
     res = engine.evaluate_candidate(
         steam_volume_tonnes=3000.0,
-        injection_pressure_bar=135.0, # VIOLATION!
+        injection_pressure_bar=p_limit + 10.0, # VIOLATION!
         steam_temp_celsius=260.0,
         soak_days=6.0,
         spm=4.5,
@@ -141,10 +143,12 @@ def test_near_limit_warning_generation():
     """Verify parameter within 8-10% of limit triggers NEAR_LIMIT status."""
     engine = ConstraintEngine()
     
-    # Injection pressure at 118 bar (within 8% of 125 bar limit: 125 * 0.92 = 115)
+    # Injection pressure at 96% of the fracture-derived limit
+    from core.config import canonical_config
+    p_limit = canonical_config.safety_limits.max_allowable_injection_pressure_bar
     res = engine.evaluate_candidate(
         steam_volume_tonnes=3000.0,
-        injection_pressure_bar=118.0, # Near limit
+        injection_pressure_bar=0.96 * p_limit, # Near limit
         steam_temp_celsius=260.0,
         soak_days=6.0,
         spm=4.0,

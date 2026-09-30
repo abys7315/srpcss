@@ -35,7 +35,7 @@ class FeedbackSubmissionResponse(BaseModel):
 class RecalibrationRequest(BaseModel):
     well_id: str = "BGW-01"
     force_recalibrate: bool = False
-    allow_synthetic_fallback: bool = True # Clearly disclosed SIMULATION DEMO MODE if requested
+    allow_synthetic_fallback: bool = False  # Deprecated and ignored: the synthetic demo fallback was removed.
 
 class RecalibrationResponse(BaseModel):
     well_id: str
