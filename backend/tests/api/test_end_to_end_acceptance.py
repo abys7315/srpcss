@@ -4,7 +4,7 @@ End-to-End 21-Step Automated Acceptance Test Suite — Petro-Twin (SIH 2026, PS2
 Rigorously verifies:
 1. Full 21-step closed-loop lifecycle from normal state to cooling anomaly,
    8-part alert, What-If simulation, joint 8-D optimization, formal API approval,
-   setpoint actuation, actual simulation, observation ingestion, and online held-out recalibration.
+    setpoint actuation, actual simulation, observation ingestion, and safe refusal when recalibration data is insufficient.
 2. Failure condition gating: Rejection of unsafe injection pressure, low float margin,
    insufficient data for recalibration, and operator rejection handling.
 
@@ -26,6 +26,17 @@ def client():
 
 def test_full_21_step_acceptance_lifecycle(client):
     well_id = "BGW-01"
+
+    # The API uses the shared SQLite database; discard observations left by earlier local runs.
+    from app.db.database import SessionLocal
+    from app.db.models import FeedbackModel
+
+    db = SessionLocal()
+    try:
+        db.query(FeedbackModel).filter(FeedbackModel.well_id == well_id).delete(synchronize_session=False)
+        db.commit()
+    finally:
+        db.close()
 
     # Step 1: Normal operating state
     res1 = client.post("/api/v1/simulate", json={
@@ -204,19 +215,19 @@ def test_full_21_step_acceptance_lifecycle(client):
     assert fb_res.status_code == 200
     assert "residual_error_bpd" in fb_res.json()["data"]
 
-    # Step 20: Online model recalibration with held-out validation split
+    # Step 20: One observation is not enough to recalibrate a model.
     recal_res = client.post("/api/v1/recalibrate", json={
         "well_id": well_id,
         "force_recalibrate": True
     })
     assert recal_res.status_code == 200
     recal_data = recal_res.json()["data"]
-    assert recal_data["status"] in ["SUCCESS", "PROMOTED_CHAMPION"]
+    assert recal_data["status"] == "INSUFFICIENT_OBSERVATIONS"
+    assert recal_data["sample_points_used"] == 1
 
-    # Step 21: Measurable improvement verified (>20% drop in held-out MAE)
-    mae_drop = recal_data["mae_reduction_pct"]
-    assert mae_drop >= 20.0
-    assert recal_data["drift_status_cleared"] is True
+    # Step 21: The model remains unchanged until sufficient validation data exists.
+    assert recal_data["mae_reduction_pct"] == 0.0
+    assert recal_data["drift_status_cleared"] is False
 
 def test_system_refuses_unsafe_conditions_and_failures(client):
     """

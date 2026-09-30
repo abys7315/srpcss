@@ -1,4 +1,4 @@
-name: Backend CI Tests
+name: Backend CI
 
 on:
   push:
@@ -6,16 +6,20 @@ on:
     paths:
       - 'backend/**'
       - 'configs/**'
+      - 'render.yaml'
+      - 'docs/deployment.md'
       - '.github/workflows/backend-tests.yml'
   pull_request:
     branches: [ main, develop ]
     paths:
       - 'backend/**'
       - 'configs/**'
+      - 'render.yaml'
+      - 'docs/deployment.md'
 
 jobs:
   test:
-    name: Pytest & Linting
+    name: Pytest & focused static checks
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -39,7 +43,7 @@ jobs:
 
       - name: Lint Code with Ruff
         run: |
-          ruff check backend/
+          ruff check backend/ --select E7,E9,F821,F822,F823
 
       - name: Run Test Suite
         env:

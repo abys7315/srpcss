@@ -253,14 +253,14 @@ class JointOptimizer:
             return RecommendationComparison(name, f.format(a), f.format(b), unit, d.format(b - a))
 
         comparison = [
-            row("Steam volume", curr_point.steam_volume_tonnes, best.steam_volume_tonnes, "t", "{:.0f}", "{:+.0f}"),
-            row("Injection pressure (bottomhole)", curr_point.injection_pressure_bar, best.injection_pressure_bar, "bar"),
-            row("Injection duration", curr_point.injection_duration_days, best.injection_duration_days, "d"),
-            row("Soak duration", curr_point.soak_days, best.soak_days, "d"),
-            row("Pumping speed (cycle mean)", curr_point.spm, best.spm, "SPM", "{:.2f}", "{:+.2f}"),
-            row("Stroke length", curr_point.stroke_length_inch, best.stroke_length_inch, "in", "{:.0f}", "{:+.0f}"),
-            row("VFD downstroke ratio", curr_point.vfd_downstroke_ratio, best.vfd_downstroke_ratio, "-", "{:.2f}", "{:+.2f}"),
-            row("Economic cutoff", curr_point.economic_cutoff_bpd, best.economic_cutoff_bpd, "bbl/d"),
+            row("Steam Volume", curr_point.steam_volume_tonnes, best.steam_volume_tonnes, "t", "{:.0f}", "{:+.0f}"),
+            row("Injection Pressure", curr_point.injection_pressure_bar, best.injection_pressure_bar, "bar"),
+            row("Injection Duration", curr_point.injection_duration_days, best.injection_duration_days, "d"),
+            row("Soak Duration", curr_point.soak_days, best.soak_days, "d"),
+            row("Pumping Speed", curr_point.spm, best.spm, "SPM", "{:.2f}", "{:+.2f}"),
+            row("Stroke Length", curr_point.stroke_length_inch, best.stroke_length_inch, "in", "{:.0f}", "{:+.0f}"),
+            row("VFD Downstroke Ratio", curr_point.vfd_downstroke_ratio, best.vfd_downstroke_ratio, "-", "{:.2f}", "{:+.2f}"),
+            row("Economic Cutoff", curr_point.economic_cutoff_bpd, best.economic_cutoff_bpd, "bbl/d"),
             row("Cumulative oil", curr_point.cumulative_oil_bbl, best.cumulative_oil_bbl, "bbl", "{:.0f}", "{:+.0f}"),
             row("Steam-oil ratio", curr_point.steam_oil_ratio, best.steam_oil_ratio, "t/t", "{:.2f}", "{:+.2f}"),
             row("Net benefit", curr_point.net_benefit_usd, best.net_benefit_usd, "USD", "{:,.0f}", "{:+,.0f}"),
