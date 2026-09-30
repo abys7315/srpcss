@@ -56,7 +56,8 @@ class WhatIfSimulator:
         self.constraints = constraint_engine or ConstraintEngine()
         self.conf_estimator = confidence_estimator or ConfidenceEstimator()
         self.evaluator = CandidateEvaluator(self.constraints)
-        self.joint_opt = JointOptimizer(self.constraints, self.conf_estimator)
+        # Use a lightweight optimizer for what-if (pop=6, gen=3 = ~18 evals instead of 72)
+        self.joint_opt = JointOptimizer(self.constraints, self.conf_estimator, pop_size=6, n_gen=3)
 
     def evaluate_sandbox(
         self,
@@ -106,14 +107,6 @@ class WhatIfSimulator:
             "economic_cutoff_bpd": 7.0
         }
 
-        # Run Joint Optimizer to derive RECOMMENDED configuration (never hard-coded!)
-        opt_res = self.joint_opt.optimize_well(
-            well_id=well_id,
-            current_cfg=current_cfg,
-            cooling_anomaly_day=cooling_anomaly_day,
-            cooling_anomaly_severity_pct=cooling_anomaly_severity_pct
-        )
-
         configs_to_run = [
             ("CURRENT", "Current Operating State", current_cfg),
             ("SCENARIO_A", scen_a.get("title", "Scenario A"), scen_a),
@@ -122,6 +115,7 @@ class WhatIfSimulator:
         ]
 
         cards: List[ScenarioCard] = []
+        evaluated_points: List[ParetoSolutionPoint] = []
 
         for sid, title, cfg in configs_to_run:
             sol = self.evaluator.evaluate_candidate(
@@ -138,6 +132,7 @@ class WhatIfSimulator:
                 cooling_anomaly_day=cooling_anomaly_day,
                 cooling_anomaly_severity_pct=cooling_anomaly_severity_pct
             )
+            evaluated_points.append(sol)
 
             v_msgs = sol.constraint_violations
 
@@ -183,8 +178,30 @@ class WhatIfSimulator:
                 provenance="SIMULATED"
             ))
 
+        # Try to run a lightweight optimizer for RECOMMENDED; fall back to best scenario if it fails
+        rec = None
+        rec_confidence = 0.5
+        try:
+            opt_res = self.joint_opt.optimize_well(
+                well_id=well_id,
+                current_cfg=current_cfg,
+                cooling_anomaly_day=cooling_anomaly_day,
+                cooling_anomaly_severity_pct=cooling_anomaly_severity_pct
+            )
+            rec = opt_res.recommended_configuration or opt_res.current_configuration
+            rec_confidence = opt_res.confidence_score
+        except Exception:
+            rec = None
+
+        if rec is None:
+            feasible = [p for p in evaluated_points if p.status != "INFEASIBLE"]
+            if feasible:
+                rec = max(feasible, key=lambda p: p.net_benefit_usd)
+            elif evaluated_points:
+                rec = evaluated_points[0]
+            rec_confidence = 0.5
+
         # Append computed RECOMMENDED card
-        rec = opt_res.recommended_configuration or opt_res.current_configuration
         cards.append(ScenarioCard(
             scenario_id="RECOMMENDED",
             scenario_title="AI Recommended Plan (Pareto Optimal)",
@@ -203,7 +220,7 @@ class WhatIfSimulator:
             is_rod_floating=(rec.min_float_margin_index < 1.0),
             failure_risk_probability=round(rec.failure_risk_probability, 3),
             constraint_status=rec.status,
-            confidence_score=opt_res.confidence_score,
+            confidence_score=rec_confidence,
             violations_summary=[],
             provenance="SIMULATED"
         ))

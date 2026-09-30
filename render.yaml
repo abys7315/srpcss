@@ -3,7 +3,7 @@ services:
     name: petro-twin-api
     runtime: python
     buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT --timeout-keep-alive 180
     healthCheckPath: /api/v1/health
     autoDeployTrigger: commit
     envVars:

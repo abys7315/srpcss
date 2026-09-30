@@ -30,4 +30,6 @@ def run_what_if_analysis(req: WhatIfRequest):
             data=result
         )
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("What-if evaluation error: %s", e)
         raise HTTPException(status_code=500, detail=f"What-if evaluation error: {str(e)}")
