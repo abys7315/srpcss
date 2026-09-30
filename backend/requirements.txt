@@ -17,4 +17,4 @@ requests>=2.31.0
 matplotlib>=3.8.0
 python-multipart>=0.0.9
 iapws==1.5.4
-pymoo==0.6.1.5
+pymoo==0.6.2
