@@ -59,8 +59,8 @@ export const apiClient = {
   checkConnection: async (): Promise<{ connected: boolean; version?: string; service?: string }> => {
     // 1. Try through the active base URL (e.g. Vite dev proxy /api/v1 or configured env)
     try {
-      const res = await api.get('/health', { timeout: 3000 });
-      if (res.data?.status === 'HEALTHY' || res.status === 200) {
+      const res = await api.get('/health', { timeout: 8000 });
+      if (res.status >= 200 && res.status < 300) {
         return {
           connected: true,
           version: res.data?.version || '1.0.0',
@@ -74,8 +74,8 @@ export const apiClient = {
         : [];
       for (const target of fallbackTargets) {
         try {
-          const directRes = await axios.get(`${target}/health`, { timeout: 2500 });
-          if (directRes.data?.status === 'HEALTHY' || directRes.status === 200) {
+          const directRes = await axios.get(`${target}/health`, { timeout: 6000 });
+          if (directRes.status >= 200 && directRes.status < 300) {
             api.defaults.baseURL = target;
             return {
               connected: true,

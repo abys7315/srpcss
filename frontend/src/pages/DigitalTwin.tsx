@@ -75,21 +75,16 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
   const loadWellAndSimulate = async () => {
     try {
       setLoading(true);
-      const [w, opt] = await Promise.all([
-        apiClient.getWell(selectedWellId),
-        apiClient.optimizeJoint({ well_id: selectedWellId }).catch(() => null),
-      ]);
+      const w = await apiClient.getWell(selectedWellId);
       setWell(w);
-      if (opt?.recommended_configuration) {
-        setOptRecommendation(opt.recommended_configuration);
-      }
       if (w.operating_parameters) {
         setSteamVolume(w.operating_parameters.steam_volume_tonnes || 2500);
         setSoakDays(w.operating_parameters.soak_duration_days || 5);
         setSpm(w.operating_parameters.spm || 4.2);
         setVfdRatio(w.operating_parameters.vfd_downstroke_ratio || 0.85);
       }
-      const res = await apiClient.simulateCycle({
+      // Fire simulation and optimization in parallel, but don't block the page on optimization
+      const simPromise = apiClient.simulateCycle({
         well_id: selectedWellId,
         cycle_number: 1,
         steam_volume_tonnes: w.operating_parameters?.steam_volume_tonnes || 2500,
@@ -105,6 +100,15 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
         cooling_anomaly_day: null,
         cooling_anomaly_severity_pct: 0.0,
       });
+      // Fire optimization in the background — don't block the page
+      apiClient.optimizeJoint({ well_id: selectedWellId })
+        .then((opt) => {
+          if (opt?.recommended_configuration) {
+            setOptRecommendation(opt.recommended_configuration);
+          }
+        })
+        .catch(() => {/* optional recommendation — ignore failures */});
+      const res = await simPromise;
       setSimResult(res);
     } catch (e) {
       console.error('Failed to load digital twin data:', e);

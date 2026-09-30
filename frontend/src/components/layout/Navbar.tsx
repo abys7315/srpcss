@@ -30,11 +30,16 @@ export const Navbar: React.FC<NavbarProps> = ({ wells, selectedWellId, onSelectW
   useEffect(() => {
     let mounted = true;
     const probe = async () => {
-      const res = await apiClient.checkConnection();
+      // Try twice with a short gap to tolerate cold-start / proxy hiccups
+      let res = await apiClient.checkConnection();
+      if (!res.connected) {
+        await new Promise((r) => setTimeout(r, 1500));
+        res = await apiClient.checkConnection();
+      }
       if (mounted) setBackend(res.connected ? 'connected' : 'disconnected');
     };
     probe();
-    const t = setInterval(probe, 15000);
+    const t = setInterval(probe, 30000);
     return () => { mounted = false; clearInterval(t); };
   }, []);
 
@@ -48,7 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({ wells, selectedWellId, onSelectW
           <div className="text-[11px] text-muted">CSS + SRP well-to-surface twin</div>
         </div>
 
-        <label className="hidden sm:flex items-center gap-2 text-[13px] text-muted">
+        <label className="flex items-center gap-2 text-[13px] text-muted">
           Well
           <select
             value={selectedWellId}

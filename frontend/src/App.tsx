@@ -25,7 +25,7 @@ const Benchmarks = named(() => import('./pages/Benchmarks'), 'Benchmarks');
 const DataProvenance = named(() => import('./pages/DataProvenance'), 'DataProvenance');
 
 export const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<PageId>('command-center');
+  const [currentPage, setCurrentPage] = useState<PageId>('digital-twin');
   const [selectedWellId, setSelectedWellId] = useState<string>('BGW-01');
   const [wells, setWells] = useState<WellSummary[]>([]);
   const [detail, setDetail] = useState<WellDetail | null>(null);
@@ -63,7 +63,7 @@ export const App: React.FC = () => {
   const page = (() => {
     const p = { selectedWellId, onNavigate: setCurrentPage };
     switch (currentPage) {
-      case 'digital-twin': return <DigitalTwin selectedWellId={selectedWellId} />;
+      case 'command-center': return <CommandCenter selectedWellId={selectedWellId} onSelectWell={setSelectedWellId} onNavigate={setCurrentPage} />;
       case 'joint-optimizer': return <JointOptimizer {...p} />;
       case 'css-optimizer': return <CSSOptimizer {...p} />;
       case 'srp-optimizer': return <SRPOptimizer {...p} />;
@@ -74,7 +74,7 @@ export const App: React.FC = () => {
       case 'model-registry': return <ModelRegistry onNavigate={setCurrentPage} />;
       case 'benchmarks': return <Benchmarks {...p} />;
       case 'provenance': return <DataProvenance onNavigate={setCurrentPage} />;
-      default: return <CommandCenter selectedWellId={selectedWellId} onSelectWell={setSelectedWellId} onNavigate={setCurrentPage} />;
+      default: return <DigitalTwin selectedWellId={selectedWellId} />;
     }
   })();
 

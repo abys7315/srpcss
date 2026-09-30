@@ -27,8 +27,8 @@ interface SidebarProps {
 const SECTIONS: { n: number; title: string; items: { id: PageId; label: string }[] }[] = [
   {
     n: 1, title: 'Operate', items: [
-      { id: 'command-center', label: 'Field overview' },
       { id: 'digital-twin', label: 'Well digital twin' },
+      { id: 'command-center', label: 'Field overview' },
       { id: 'css-optimizer', label: 'CSS thermal model' },
       { id: 'srp-optimizer', label: 'SRP dynamics' },
       { id: 'joint-optimizer', label: 'Joint optimizer' },
