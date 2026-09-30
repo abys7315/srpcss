@@ -33,13 +33,14 @@ const api = axios.create({
   timeout: 120000,
 });
 
-// Automatic failover to direct backend URL if proxy encounters network error
+// Loopback failover is only valid for a local Vite development server.
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
     if (
       (!error.response || error.code === 'ERR_NETWORK' || error.response?.status === 502 || error.response?.status === 504) &&
+      import.meta.env.DEV &&
       !originalRequest._retry &&
       api.defaults.baseURL !== DIRECT_BACKEND_URL
     ) {
@@ -68,10 +69,9 @@ export const apiClient = {
       }
     } catch {
       // 2. Try direct fallback targets if proxy fails
-      const fallbackTargets = [
-        'http://127.0.0.1:8000/api/v1',
-        'http://localhost:8000/api/v1'
-      ];
+      const fallbackTargets = import.meta.env.DEV
+        ? ['http://127.0.0.1:8000/api/v1', 'http://localhost:8000/api/v1']
+        : [];
       for (const target of fallbackTargets) {
         try {
           const directRes = await axios.get(`${target}/health`, { timeout: 2500 });
