@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { TrendingDown, BarChart3 } from "lucide-react";
+import React, { useEffect, useRef } from "react";
+import { BarChart3 } from "lucide-react";
 
 interface ProductionPulseProps {
   wellId: string;

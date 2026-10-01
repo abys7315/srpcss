@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Droplets, Thermometer, Gauge } from "lucide-react";
+import React, { useEffect, useRef } from "react";
+import { Droplets } from "lucide-react";
 
 interface FluidFlowVisualizationProps {
   wellId: string;
@@ -35,7 +35,6 @@ export const FluidFlowVisualization: React.FC<FluidFlowVisualizationProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const animRef = useRef<number | null>(null);
-  const [hoveredParticle, setHoveredParticle] = useState<string | null>(null);
 
   // Normalize flow speed based on oil rate
   const flowSpeed = Math.max(0.3, Math.min(2.0, oilRateBpd / 50));

@@ -49,6 +49,7 @@ jobs:
         env:
           ENVIRONMENT: testing
           DATABASE_URL: sqlite:///./test.db
+          PYTHONPATH: .
         run: |
           cd backend
           pytest tests/ -v --cov=app --cov=twin --cov=optimizer --cov=constraints

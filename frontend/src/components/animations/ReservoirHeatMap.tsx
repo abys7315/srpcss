@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Zap, TrendingUp, AlertTriangle } from "lucide-react";
+import React, { useEffect, useRef } from "react";
+import { Zap } from "lucide-react";
 
 interface ReservoirHeatMapProps {
   wellId: string;
   temperatureC: number;
   steamVolumeTonnes: number;
-  soakDays: number;
+  soakDays?: number;
   heatingRadiusM: number;
   simDay: number;
   isPlaying: boolean;
@@ -15,7 +15,6 @@ export const ReservoirHeatMap: React.FC<ReservoirHeatMapProps> = ({
   wellId,
   temperatureC,
   steamVolumeTonnes,
-  soakDays,
   heatingRadiusM,
   simDay,
   isPlaying,

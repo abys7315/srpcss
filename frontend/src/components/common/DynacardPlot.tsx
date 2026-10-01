@@ -22,21 +22,13 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
   const animFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
 
-  if (!card || !card.surface_position_inch || card.surface_position_inch.length === 0) {
-    return (
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-center h-64 text-slate-400 font-mono text-xs">
-        No dynacard telemetry loaded
-      </div>
-    );
-  }
-
-  const numPoints = card.surface_position_inch.length;
+  const numPoints = card?.surface_position_inch?.length || 0;
+  const spm = card?.spm || 4.5;
 
   useEffect(() => {
     if (!isLiveAnimating || numPoints === 0) return;
 
     // Speed: SPM determines full cycle duration (60 / SPM seconds)
-    const spm = card.spm || 4.5;
     const cycleDurationSec = 60.0 / spm;
 
     const animate = (timestamp: number) => {
@@ -56,7 +48,15 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isLiveAnimating, numPoints, card.spm]);
+  }, [isLiveAnimating, numPoints, spm]);
+
+  if (!card || !card.surface_position_inch || card.surface_position_inch.length === 0) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-center h-64 text-slate-400 font-mono text-xs">
+        No dynacard telemetry loaded
+      </div>
+    );
+  }
 
   const padding = { top: 30, right: 30, bottom: 40, left: 60 };
   const plotWidth = width - padding.left - padding.right;

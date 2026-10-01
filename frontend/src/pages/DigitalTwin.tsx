@@ -6,10 +6,6 @@ import { ProvenanceBadge } from '../components/common/ProvenanceBadge';
 import { KinematicPumpjackVisualizer } from '../components/animations/KinematicPumpjackVisualizer';
 import { DownholePumpShockAnimation } from '../components/animations/DownholePumpShockAnimation';
 import { ThermalSteamChestVisualizer } from '../components/animations/ThermalSteamChestVisualizer';
-import { FluidFlowVisualization } from '../components/animations/FluidFlowVisualization';
-import { ReservoirHeatMap } from '../components/animations/ReservoirHeatMap';
-import { DynacardLiveAnimation } from '../components/animations/DynacardLiveAnimation';
-import { ProductionPulse } from '../components/animations/ProductionPulse';
 import {
   Flame,
   Droplets,
