@@ -251,3 +251,36 @@ def test_benchmarks_and_provenance(client):
     p_data = res_prov.json()["data"]
     assert "mandatory_disclaimer" in p_data
     assert len(p_data["data_items"]) > 0
+
+def test_setpoint_constraint_enforcement(client):
+    """Verify that ConstraintEngine blocks unfeasible/hazardous setpoints with HTTP 422."""
+    res_bad = client.post("/api/v1/wells/BGW-01/setpoint", json={
+        "spm": 25.0,
+        "stroke_length_inch": 100.0,
+        "applied_by": "Test Engineer"
+    })
+    assert res_bad.status_code == 422
+    assert "constraint violation" in res_bad.json()["detail"].lower()
+
+    res_good = client.post("/api/v1/wells/BGW-01/setpoint", json={
+        "spm": 4.0,
+        "stroke_length_inch": 100.0,
+        "applied_by": "Test Engineer"
+    })
+    assert res_good.status_code == 200
+    assert res_good.json()["data"]["applied_status"] == "APPLIED_SUCCESS"
+
+def test_external_datasets_api(client):
+    """Verify external benchmark datasets endpoint returns authentic metadata & Andrade verification."""
+    res = client.get("/api/v1/datasets")
+    assert res.status_code == 200
+    data = res.json()
+    assert "datasets" in data
+    assert len(data["datasets"]) >= 4
+    keys = [d["id"] for d in data["datasets"]]
+    assert "everitt_jennings" in keys
+    assert "baghewala_lab_pvt" in keys
+    assert "volve_telemetry" in keys
+    assert "petrobras_3w" in keys
+    assert "andrade_verification" in data
+    assert data["andrade_verification"]["rmse_cp"] < 10.0

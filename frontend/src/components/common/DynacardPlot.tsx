@@ -1,19 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { DynacardData } from '../../api/types';
+import { Play, Pause } from 'lucide-react';
 
 interface DynacardPlotProps {
   card?: DynacardData;
   title?: string;
   width?: number;
   height?: number;
+  enableLiveAnimation?: boolean;
 }
 
 export const DynacardPlot: React.FC<DynacardPlotProps> = ({
   card,
   title = "Surface & Downhole Dynamometer Card",
   width = 500,
-  height = 320
+  height = 320,
+  enableLiveAnimation = true,
 }) => {
+  const [isLiveAnimating, setIsLiveAnimating] = useState(false);
+  const [tracerIndex, setTracerIndex] = useState(0);
+  const animFrameRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number | null>(null);
+
   if (!card || !card.surface_position_inch || card.surface_position_inch.length === 0) {
     return (
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-center h-64 text-slate-400 font-mono text-xs">
@@ -21,6 +29,34 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
       </div>
     );
   }
+
+  const numPoints = card.surface_position_inch.length;
+
+  useEffect(() => {
+    if (!isLiveAnimating || numPoints === 0) return;
+
+    // Speed: SPM determines full cycle duration (60 / SPM seconds)
+    const spm = card.spm || 4.5;
+    const cycleDurationSec = 60.0 / spm;
+
+    const animate = (timestamp: number) => {
+      if (lastTimeRef.current === null) lastTimeRef.current = timestamp;
+      const dt = (timestamp - lastTimeRef.current) / 1000.0;
+      lastTimeRef.current = timestamp;
+
+      setTracerIndex((prev) => {
+        const step = (dt / cycleDurationSec) * numPoints;
+        return (prev + step) % numPoints;
+      });
+
+      animFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animFrameRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [isLiveAnimating, numPoints, card.spm]);
 
   const padding = { top: 30, right: 30, bottom: 40, left: 60 };
   const plotWidth = width - padding.left - padding.right;
@@ -58,6 +94,19 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {enableLiveAnimation && (
+            <button
+              onClick={() => setIsLiveAnimating(!isLiveAnimating)}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-medium border transition-colors ${
+                isLiveAnimating
+                  ? 'bg-cyan-950/60 text-cyan-300 border-cyan-500/40'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {isLiveAnimating ? <Pause className="w-3 h-3 text-cyan-400" /> : <Play className="w-3 h-3 text-emerald-400" />}
+              {isLiveAnimating ? 'Tracing' : 'Live Trace'}
+            </button>
+          )}
           <span className={`px-2 py-0.5 rounded text-xs font-mono font-semibold border ${
             isFloating
               ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60'
@@ -192,6 +241,27 @@ export const DynacardPlot: React.FC<DynacardPlotProps> = ({
           >
             PPRL: {card.peak_polished_rod_load_lbs.toLocaleString()} lbs
           </text>
+
+          {/* Live Animated Tracer Dot on Surface Dynacard Loop */}
+          {isLiveAnimating && numPoints > 0 && (() => {
+            const idx = Math.floor(tracerIndex) % numPoints;
+            const curX = scaleX(card.surface_position_inch[idx]);
+            const curY = scaleY(card.surface_load_lbs[idx]);
+            return (
+              <g>
+                <circle cx={curX} cy={curY} r="8" fill="none" stroke="#00f0ff" strokeWidth="2" opacity="0.6" className="animate-ping" />
+                <circle cx={curX} cy={curY} r="5" fill="#00f0ff" stroke="#ffffff" strokeWidth="1.5" />
+                {/* Instantaneous coordinate tooltip */}
+                <text
+                  x={curX + 8}
+                  y={curY - 8}
+                  className="fill-cyan-400 text-[9px] font-mono font-bold"
+                >
+                  {card.surface_load_lbs[idx].toFixed(0)} lbs
+                </text>
+              </g>
+            );
+          })()}
         </svg>
       </div>
 

@@ -3,6 +3,7 @@ import { apiClient } from '../api/client';
 import type { OptimizationResult, ParetoPoint } from '../api/types';
 import { ProvenanceBadge } from '../components/common/ProvenanceBadge';
 import { DomainShiftWarning } from '../components/common/DomainShiftWarning';
+import { RodFloatRiskEnvelope } from '../components/animations/RodFloatRiskEnvelope';
 import {
   Compass,
   Sliders,
@@ -641,6 +642,14 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
             </p>
           </div>
         </div>
+      </div>
+
+      {/* 2D Rod Float Mechanical Risk Envelope */}
+      <div className="space-y-2">
+        <RodFloatRiskEnvelope
+          currentSpm={recommended?.spm || 4.5}
+          currentViscosityCp={1200}
+        />
       </div>
 
       {/* Setpoint Implementation Table */}

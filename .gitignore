@@ -95,6 +95,10 @@ data/external/*
 !data/processed/thermal_calibration.json
 !data/simulated/.gitkeep
 !data/external/.gitkeep
+!data/external/everitt_jennings_cards.json
+!data/external/volve_public_telemetry.csv
+!data/external/petrobras_3w_transients.json
+!data/external/baghewala_lab_pvt.json
 !data/DATA_MANIFEST.md
 !data/DATA_MANIFEST.json
 !data/simulated/field_simulation_history.json
@@ -109,6 +113,8 @@ models/*.onnx
 models/*.bin
 models/*.h5
 !models/.gitkeep
+!models/*.json
+!models/ml_validation_report.json
 
 # Benchmark results runs (ignore generated outputs, keep baseline configs)
 benchmarks/results/*

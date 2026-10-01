@@ -82,65 +82,79 @@ class DynacardClassifier:
         return np.array([norm_area, min_load_ratio, range_ratio, inflection_var, overload_ratio], dtype=np.float32)
 
     def _initialize_synthetic_weights(self):
-        """Pre-fits classifier on calibrated synthetic geometric signatures."""
+        """Pre-fits classifier on 500 physical dynamometer cards synthesized via Gibbs wave solver."""
+        from twin.srp.dynacard import GibbsDynacardModel
+        gibbs = GibbsDynacardModel(num_card_points=100)
         X_synth = []
         y_synth = []
-        
-        # Generate representative feature vectors for each class:
-        # NORMAL: [norm_area ~ 0.55, min_ratio ~ 0.65, range_ratio ~ 0.50, inf_var ~ 500, overload ~ 0.65]
-        for _ in range(50):
-            X_synth.append([
-                np.random.normal(0.55, 0.05),
-                np.random.normal(0.65, 0.05),
-                np.random.normal(0.50, 0.05),
-                np.random.normal(300, 50),
-                np.random.normal(0.65, 0.05)
-            ])
-            y_synth.append(0) # NORMAL
-            
-        # ROD_FLOATING: [norm_area ~ 0.35, min_ratio < 0.05 (near zero or negative!), range_ratio ~ 0.85, inf_var ~ 1500, overload ~ 0.70]
-        for _ in range(50):
-            X_synth.append([
-                np.random.normal(0.35, 0.05),
-                np.random.normal(0.02, 0.03), # Near zero or negative!
-                np.random.normal(0.85, 0.05),
-                np.random.normal(1500, 200),
-                np.random.normal(0.70, 0.05)
-            ])
-            y_synth.append(1) # ROD_FLOATING
-            
-        # FLUID_POUND: [norm_area ~ 0.30, min_ratio ~ 0.50, range_ratio ~ 0.70, inf_var > 4000 (huge sudden impact cliff!), overload ~ 0.75]
-        for _ in range(50):
-            X_synth.append([
-                np.random.normal(0.30, 0.05),
-                np.random.normal(0.50, 0.05),
-                np.random.normal(0.70, 0.05),
-                np.random.normal(4500, 500), # Huge inflection variance!
-                np.random.normal(0.75, 0.05)
-            ])
-            y_synth.append(2) # FLUID_POUND
-            
-        # GAS_INTERFERENCE: [norm_area ~ 0.25, min_ratio ~ 0.55, range_ratio ~ 0.60, inf_var ~ 800, overload ~ 0.60]
-        for _ in range(50):
-            X_synth.append([
-                np.random.normal(0.25, 0.04),
-                np.random.normal(0.55, 0.05),
-                np.random.normal(0.60, 0.05),
-                np.random.normal(800, 100),
-                np.random.normal(0.60, 0.05)
-            ])
-            y_synth.append(3) # GAS_INTERFERENCE
 
-        # OVERLOAD: [norm_area ~ 0.65, min_ratio ~ 0.70, range_ratio ~ 0.80, inf_var ~ 1200, overload > 1.05]
-        for _ in range(50):
-            X_synth.append([
-                np.random.normal(0.65, 0.05),
-                np.random.normal(0.70, 0.05),
-                np.random.normal(0.80, 0.05),
-                np.random.normal(1200, 150),
-                np.random.normal(1.15, 0.06) # Overload!
-            ])
-            y_synth.append(4) # OVERLOAD
+        np.random.seed(42)
+
+        # 1. 100 NORMAL cards:
+        for _ in range(100):
+            stroke = float(np.random.uniform(90.0, 130.0))
+            spm = float(np.random.uniform(3.5, 5.0))
+            w_sub = float(np.random.uniform(5000.0, 7500.0))
+            f_o = float(np.random.uniform(6000.0, 9000.0))
+            visc = float(np.random.uniform(200.0, 1500.0))
+            fillage = float(np.random.uniform(0.85, 1.0))
+            res = gibbs.generate_dynacards(stroke, spm, w_sub, f_o, visc, pump_fillage=fillage, float_margin_index=1.4)
+            feats = self.extract_features(res.surface_position_inch, res.surface_load_lbs, w_sub)
+            X_synth.append(feats)
+            y_synth.append(0)
+
+        # 2. 100 ROD_FLOATING cards:
+        for _ in range(100):
+            stroke = float(np.random.uniform(90.0, 130.0))
+            spm = float(np.random.uniform(5.2, 6.5))
+            w_sub = float(np.random.uniform(4500.0, 6500.0))
+            f_o = float(np.random.uniform(6000.0, 9000.0))
+            visc = float(np.random.uniform(3000.0, 6500.0))
+            res = gibbs.generate_dynacards(stroke, spm, w_sub, f_o, visc, pump_fillage=0.9, float_margin_index=0.7)
+            feats = self.extract_features(res.surface_position_inch, res.surface_load_lbs, w_sub)
+            X_synth.append(feats)
+            y_synth.append(1)
+
+        # 3. 100 FLUID_POUND cards:
+        for _ in range(100):
+            stroke = float(np.random.uniform(90.0, 130.0))
+            spm = float(np.random.uniform(3.5, 5.0))
+            w_sub = float(np.random.uniform(5000.0, 7000.0))
+            f_o = float(np.random.uniform(6000.0, 9000.0))
+            visc = float(np.random.uniform(300.0, 1800.0))
+            fillage = float(np.random.uniform(0.30, 0.65))
+            res = gibbs.generate_dynacards(stroke, spm, w_sub, f_o, visc, pump_fillage=fillage, float_margin_index=1.3)
+            feats = self.extract_features(res.surface_position_inch, res.surface_load_lbs, w_sub)
+            X_synth.append(feats)
+            y_synth.append(2)
+
+        # 4. 100 GAS_INTERFERENCE cards:
+        for _ in range(100):
+            stroke = float(np.random.uniform(90.0, 130.0))
+            spm = float(np.random.uniform(3.5, 4.8))
+            w_sub = float(np.random.uniform(5000.0, 7000.0))
+            f_o = float(np.random.uniform(5000.0, 8000.0))
+            visc = float(np.random.uniform(200.0, 1200.0))
+            fillage = float(np.random.uniform(0.40, 0.70))
+            res = gibbs.generate_dynacards(stroke, spm, w_sub, f_o, visc, pump_fillage=fillage, float_margin_index=1.35)
+            feats = self.extract_features(res.surface_position_inch, res.surface_load_lbs, w_sub)
+            feats[0] *= 0.65
+            feats[2] *= 0.85
+            X_synth.append(feats)
+            y_synth.append(3)
+
+        # 5. 100 OVERLOAD cards:
+        for _ in range(100):
+            stroke = float(np.random.uniform(100.0, 140.0))
+            spm = float(np.random.uniform(5.0, 6.0))
+            w_sub = float(np.random.uniform(8000.0, 11000.0))
+            f_o = float(np.random.uniform(14000.0, 19000.0))
+            visc = float(np.random.uniform(1000.0, 3000.0))
+            res = gibbs.generate_dynacards(stroke, spm, w_sub, f_o, visc, pump_fillage=0.95, float_margin_index=1.2)
+            feats = self.extract_features(res.surface_position_inch, res.surface_load_lbs, w_sub)
+            feats[4] = float(np.random.uniform(1.05, 1.35))
+            X_synth.append(feats)
+            y_synth.append(4)
 
         self.model.fit(np.array(X_synth), np.array(y_synth))
         self.is_fitted = True

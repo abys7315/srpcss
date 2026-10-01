@@ -77,3 +77,22 @@ class HybridResidualCorrector:
             final_hybrid_prediction=round(float(final_val), 2),
             residual_uncertainty_std=round(max(0.2, self.training_mae), 2)
         )
+
+    def save(self, filepath: Any) -> str:
+        """Serializes fitted corrector to disk via joblib."""
+        import joblib
+        from pathlib import Path
+        p = Path(filepath)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(self, p)
+        return str(p)
+
+    @classmethod
+    def load(cls, filepath: Any) -> "HybridResidualCorrector":
+        """Loads serialized corrector from disk."""
+        import joblib
+        from pathlib import Path
+        p = Path(filepath)
+        if not p.is_file():
+            raise FileNotFoundError(f"Model file not found: {p}")
+        return joblib.load(p)

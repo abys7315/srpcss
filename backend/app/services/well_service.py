@@ -165,6 +165,36 @@ class WellService:
             sp["soak_duration_days"] = req.soak_duration_days
         actor_name = req.applied_by or req.actor
 
+        # Validate candidate setpoint with ConstraintEngine
+        from constraints.constraint_engine import ConstraintEngine
+        engine = ConstraintEngine()
+        candidate_spm = float(sp.get("spm", w.spm))
+        candidate_stroke = float(sp.get("stroke_length_inch", w.stroke_length_inch))
+        candidate_vfd = float(sp.get("vfd_downstroke_ratio", w.vfd_downstroke_ratio))
+        candidate_steam = float(sp.get("steam_volume_tonnes", w.steam_volume_tonnes))
+        candidate_soak = float(sp.get("soak_duration_days", sp.get("soak_days", w.soak_duration_days)))
+
+        eval_res = engine.evaluate(
+            steam_volume_tonnes=candidate_steam,
+            soak_days=candidate_soak,
+            spm=candidate_spm,
+            stroke_length_inch=candidate_stroke,
+            vfd_downstroke_ratio=candidate_vfd
+        )
+
+        if not eval_res.is_feasible:
+            # Audit the rejection
+            rejection_audit = WellAuditLogModel(
+                well_id=well_id,
+                event_type="SETPOINT_REJECTED_VIOLATION",
+                actor=actor_name,
+                description=f"Setpoint rejected due to {len(eval_res.violations)} safety constraint violation(s).",
+                details=json.dumps({"attempted_setpoint": sp, "violations": eval_res.violations})
+            )
+            self.db.add(rejection_audit)
+            self.db.commit()
+            raise ValueError(f"Operational constraint violation: {'; '.join(v['message'] for v in eval_res.violations)}")
+
         if "steam_volume_tonnes" in sp:
             w.steam_volume_tonnes = float(sp["steam_volume_tonnes"])
         if "soak_duration_days" in sp or "soak_days" in sp:

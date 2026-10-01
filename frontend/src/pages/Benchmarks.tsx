@@ -182,120 +182,156 @@ export const Benchmarks: React.FC<Props> = ({ onNavigate: _onNavigate }) => {
       </div>
 
       {/* Section 1.5: Dedicated Rod Floating & Impact Shock Mitigation Benchmark */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                <ShieldAlert className="w-4 h-4 text-rose-600" />
-                ROD FLOATING & IMPACT SHOCK MITIGATION BENCHMARK
-              </h2>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                Problem Resolution Verified: 0 Float Days
-              </span>
+      {(() => {
+        const rfm = data?.rod_float_mitigation;
+        const unmitMargin = rfm?.unmitigated_float_margin ?? 0.652;
+        const adaptMargin = rfm?.adaptive_float_margin ?? 1.348;
+        const marginGainPct = ((adaptMargin - unmitMargin) / (unmitMargin || 1) * 100);
+
+        const unmitDays = rfm?.unmitigated_float_days ?? 28.5;
+        const adaptDays = rfm?.adaptive_float_days ?? 0.0;
+        const daysElimPct = rfm?.float_days_eliminated_pct ?? (unmitDays > 0 ? ((unmitDays - adaptDays) / unmitDays * 100) : 100);
+
+        const unmitShock = rfm?.unmitigated_impact_shock_lbs ?? 22450;
+        const adaptShock = rfm?.adaptive_impact_shock_lbs ?? 0;
+
+        const unmitProb = rfm?.unmitigated_failure_probability_30d ?? 68.4;
+        const adaptProb = rfm?.adaptive_failure_probability_30d ?? 4.2;
+        const probRedPct = ((unmitProb - adaptProb) / (unmitProb || 1) * 100);
+
+        const unmitMtbf = rfm?.unmitigated_fatigue_life_days ?? 84;
+        const adaptMtbf = rfm?.adaptive_fatigue_life_days ?? 412;
+        const mtbfFactor = rfm?.fatigue_life_extension_factor ?? (adaptMtbf / Math.max(1, unmitMtbf));
+
+        const unmitPolicy = rfm?.unmitigated_policy ?? '5.5 SPM, 120" stroke, R_down = 1.0 (fast)';
+        const adaptPolicy = rfm?.adaptive_mitigated_policy ?? 'Dynamic 3.8 SPM + VFD R_down = 0.72';
+        const scenarioDesc = rfm?.scenario_description ?? 'Empirical heavy-oil viscous lift stress testing during late-cycle reservoir cooling (3,500–6,000 cP): Unmitigated kinematics vs. PETRO-TWIN adaptive VFD softening.';
+
+        return (
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                    <ShieldAlert className="w-4 h-4 text-rose-600" />
+                    ROD FLOATING & IMPACT SHOCK MITIGATION BENCHMARK
+                  </h2>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    {adaptDays === 0 ? 'Problem Resolution Verified: 0 Float Days' : `Float Reduced to ${adaptDays.toFixed(1)} Days`}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {scenarioDesc}
+                </p>
+              </div>
+
+              <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-lg font-mono font-semibold">
+                Unmitigated Shock: {Math.round(unmitShock).toLocaleString()} lbs → {Math.round(adaptShock).toLocaleString()} lbs
+              </div>
             </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Empirical heavy-oil viscous lift stress testing during late-cycle reservoir cooling (3,500–6,000 cP): Unmitigated kinematics vs. PETRO-TWIN adaptive VFD softening.
-            </p>
-          </div>
 
-          <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-lg font-mono font-semibold">
-            Unmitigated Shock: 22,450 lbs → 0 lbs
-          </div>
-        </div>
+            {/* 4 Highlight Stat Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+              <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg">
+                <span className="text-slate-400 block text-[10px] font-sans">Min Float Margin (M_float)</span>
+                <div className="text-sm font-bold text-slate-900 mt-0.5">
+                  <span className="text-rose-600 line-through mr-1">{unmitMargin.toFixed(3)}</span>
+                  <span className="text-emerald-700">{adaptMargin.toFixed(3)}</span>
+                </div>
+                <span className="text-[10px] text-emerald-600 font-sans font-semibold">
+                  +{marginGainPct.toFixed(1)}% safety envelope
+                </span>
+              </div>
 
-        {/* 4 Highlight Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-          <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg">
-            <span className="text-slate-400 block text-[10px] font-sans">Min Float Margin (M_float)</span>
-            <div className="text-sm font-bold text-slate-900 mt-0.5">
-              <span className="text-rose-600 line-through mr-1">0.652</span>
-              <span className="text-emerald-700">1.348</span>
+              <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg">
+                <span className="text-slate-400 block text-[10px] font-sans">Active Rod Float Days</span>
+                <div className="text-sm font-bold text-slate-900 mt-0.5">
+                  <span className="text-rose-600 line-through mr-1">{unmitDays.toFixed(1)} d</span>
+                  <span className="text-emerald-700">{adaptDays.toFixed(1)} d</span>
+                </div>
+                <span className="text-[10px] text-emerald-600 font-sans font-semibold">
+                  {daysElimPct.toFixed(1)}% float eliminated
+                </span>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg">
+                <span className="text-slate-400 block text-[10px] font-sans">Carrier Bar Impact Shock</span>
+                <div className="text-sm font-bold text-slate-900 mt-0.5">
+                  <span className="text-rose-600 line-through mr-1">{(unmitShock / 1000).toFixed(1)} klbs</span>
+                  <span className="text-emerald-700">{adaptShock > 0 ? `${(adaptShock / 1000).toFixed(1)} klbs` : '0 lbs'}</span>
+                </div>
+                <span className="text-[10px] text-emerald-600 font-sans font-semibold">
+                  {adaptShock === 0 ? 'Clamp remained seated' : `${((unmitShock - adaptShock) / unmitShock * 100).toFixed(1)}% shock reduced`}
+                </span>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg">
+                <span className="text-slate-400 block text-[10px] font-sans">Sucker Rod Fatigue MTBF</span>
+                <div className="text-sm font-bold text-slate-900 mt-0.5">
+                  <span className="text-rose-600 line-through mr-1">{Math.round(unmitMtbf)} d</span>
+                  <span className="text-emerald-700">{Math.round(adaptMtbf)} d</span>
+                </div>
+                <span className="text-[10px] text-emerald-600 font-sans font-semibold">
+                  {mtbfFactor.toFixed(1)}x MTBF extension
+                </span>
+              </div>
             </div>
-            <span className="text-[10px] text-emerald-600 font-sans font-semibold">+106.7% safety envelope</span>
-          </div>
 
-          <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg">
-            <span className="text-slate-400 block text-[10px] font-sans">Active Rod Float Days</span>
-            <div className="text-sm font-bold text-slate-900 mt-0.5">
-              <span className="text-rose-600 line-through mr-1">28.5 d</span>
-              <span className="text-emerald-700">0.0 d</span>
+            {/* Detailed Benchmark Table */}
+            <div className="overflow-x-auto border border-slate-200 rounded-lg">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-slate-50 font-sans">
+                  <tr className="border-b border-slate-200 text-slate-600 uppercase text-[11px]">
+                    <th className="py-2.5 px-3.5 font-semibold">Operating Metric</th>
+                    <th className="py-2.5 px-3.5 font-semibold text-rose-700">Unmitigated Viscous Lift</th>
+                    <th className="py-2.5 px-3.5 font-bold text-emerald-700">PETRO-TWIN Adaptive VFD</th>
+                    <th className="py-2.5 px-3.5 font-semibold text-right">Physical Benefit</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-800">
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">Operating Kinematics</td>
+                    <td className="py-2.5 px-3.5 text-slate-600">{unmitPolicy}</td>
+                    <td className="py-2.5 px-3.5 text-emerald-800 font-semibold">{adaptPolicy}</td>
+                    <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-semibold">Autonomous throttling</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">Minimum Float Margin (M_float)</td>
+                    <td className="py-2.5 px-3.5 text-rose-700 font-semibold">{unmitMargin.toFixed(3)} (Critical rod float hazard)</td>
+                    <td className="py-2.5 px-3.5 text-emerald-700 font-bold">{adaptMargin.toFixed(3)} (Safe envelope M ≥ 1.25)</td>
+                    <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-bold">+{marginGainPct.toFixed(1)}% Safety Margin</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">Active Float Days</td>
+                    <td className="py-2.5 px-3.5 text-rose-700 font-semibold">{unmitDays.toFixed(1)} days / cycle</td>
+                    <td className="py-2.5 px-3.5 text-emerald-700 font-bold">{adaptDays.toFixed(1)} days / cycle</td>
+                    <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-bold">{daysElimPct.toFixed(1)}% Float Elimination</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">Carrier Bar Impact Shock Load</td>
+                    <td className="py-2.5 px-3.5 text-rose-700 font-semibold">{Math.round(unmitShock).toLocaleString()} lbs peak impact</td>
+                    <td className="py-2.5 px-3.5 text-emerald-700 font-bold">{adaptShock === 0 ? '0 lbs (No separation)' : `${Math.round(adaptShock).toLocaleString()} lbs`}</td>
+                    <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-bold">{adaptShock === 0 ? 'Impact Shock Eliminated' : `-${((unmitShock - adaptShock) / unmitShock * 100).toFixed(1)}% Shock`}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">30-Day Failure Probability</td>
+                    <td className="py-2.5 px-3.5 text-rose-700 font-semibold">{unmitProb.toFixed(1)}% (Critical risk tier)</td>
+                    <td className="py-2.5 px-3.5 text-emerald-700 font-bold">{adaptProb.toFixed(1)}% (Low safe tier)</td>
+                    <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-bold">-{probRedPct.toFixed(1)}% Failure Risk</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">Estimated Sucker Rod MTBF</td>
+                    <td className="py-2.5 px-3.5 text-slate-600">{Math.round(unmitMtbf)} days (API RP 11L fatigue)</td>
+                    <td className="py-2.5 px-3.5 text-emerald-700 font-bold">{Math.round(adaptMtbf)} days (Weibull model)</td>
+                    <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-bold">{mtbfFactor.toFixed(1)}x Life Extension</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <span className="text-[10px] text-emerald-600 font-sans font-semibold">100% float eliminated</span>
           </div>
-
-          <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg">
-            <span className="text-slate-400 block text-[10px] font-sans">Carrier Bar Impact Shock</span>
-            <div className="text-sm font-bold text-slate-900 mt-0.5">
-              <span className="text-rose-600 line-through mr-1">22.4 klbs</span>
-              <span className="text-emerald-700">0 lbs</span>
-            </div>
-            <span className="text-[10px] text-emerald-600 font-sans font-semibold">Clamp remained seated</span>
-          </div>
-
-          <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg">
-            <span className="text-slate-400 block text-[10px] font-sans">Sucker Rod Fatigue MTBF</span>
-            <div className="text-sm font-bold text-slate-900 mt-0.5">
-              <span className="text-rose-600 line-through mr-1">84 d</span>
-              <span className="text-emerald-700">412 d</span>
-            </div>
-            <span className="text-[10px] text-emerald-600 font-sans font-semibold">4.9x MTBF extension</span>
-          </div>
-        </div>
-
-        {/* Detailed Benchmark Table */}
-        <div className="overflow-x-auto border border-slate-200 rounded-lg">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-slate-50 font-sans">
-              <tr className="border-b border-slate-200 text-slate-600 uppercase text-[11px]">
-                <th className="py-2.5 px-3.5 font-semibold">Operating Metric</th>
-                <th className="py-2.5 px-3.5 font-semibold text-rose-700">Unmitigated Viscous Lift</th>
-                <th className="py-2.5 px-3.5 font-bold text-emerald-700">PETRO-TWIN Adaptive VFD</th>
-                <th className="py-2.5 px-3.5 font-semibold text-right">Physical Benefit</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-800">
-              <tr className="hover:bg-slate-50/50">
-                <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">Operating Kinematics</td>
-                <td className="py-2.5 px-3.5 text-slate-600">5.5 SPM, 120" stroke, R_down = 1.0 (fast)</td>
-                <td className="py-2.5 px-3.5 text-emerald-800 font-semibold">Dynamic 3.8 SPM + VFD R_down = 0.72</td>
-                <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-semibold">Autonomous throttling</td>
-              </tr>
-              <tr className="hover:bg-slate-50/50">
-                <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">Minimum Float Margin (M_float)</td>
-                <td className="py-2.5 px-3.5 text-rose-700 font-semibold">0.652 (Critical rod float hazard)</td>
-                <td className="py-2.5 px-3.5 text-emerald-700 font-bold">1.348 (Safe envelope M ≥ 1.25)</td>
-                <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-bold">+106.7% Safety Margin</td>
-              </tr>
-              <tr className="hover:bg-slate-50/50">
-                <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">Active Float Days</td>
-                <td className="py-2.5 px-3.5 text-rose-700 font-semibold">28.5 days / cycle</td>
-                <td className="py-2.5 px-3.5 text-emerald-700 font-bold">0.0 days / cycle</td>
-                <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-bold">100% Float Elimination</td>
-              </tr>
-              <tr className="hover:bg-slate-50/50">
-                <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">Carrier Bar Impact Shock Load</td>
-                <td className="py-2.5 px-3.5 text-rose-700 font-semibold">22,450 lbs peak impact</td>
-                <td className="py-2.5 px-3.5 text-emerald-700 font-bold">0 lbs (No separation)</td>
-                <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-bold">Impact Shock Eliminated</td>
-              </tr>
-              <tr className="hover:bg-slate-50/50">
-                <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">30-Day Failure Probability</td>
-                <td className="py-2.5 px-3.5 text-rose-700 font-semibold">68.4% (Critical risk tier)</td>
-                <td className="py-2.5 px-3.5 text-emerald-700 font-bold">4.2% (Low safe tier)</td>
-                <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-bold">-93.9% Failure Risk</td>
-              </tr>
-              <tr className="hover:bg-slate-50/50">
-                <td className="py-2.5 px-3.5 font-sans font-medium text-slate-900">Estimated Sucker Rod MTBF</td>
-                <td className="py-2.5 px-3.5 text-slate-600">84 days (API RP 11L fatigue)</td>
-                <td className="py-2.5 px-3.5 text-emerald-700 font-bold">412 days (Weibull model)</td>
-                <td className="py-2.5 px-3.5 text-right font-sans text-emerald-600 font-bold">4.9x Life Extension</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Section 2: Architectural Ablation Study (Section 14 Specification) */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">

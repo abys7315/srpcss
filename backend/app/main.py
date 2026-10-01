@@ -29,7 +29,8 @@ try:
         recommendations,
         models,
         copilot,
-        field_data
+        field_data,
+        datasets
     )
 except ImportError:
     from .db.init_db import init_db
@@ -47,7 +48,8 @@ except ImportError:
         recommendations,
         models,
         copilot,
-        field_data
+        field_data,
+        datasets
     )
 
 @asynccontextmanager
@@ -157,6 +159,7 @@ app.include_router(provenance.router, prefix="/api/v1")
 app.include_router(models.router, prefix="/api/v1")
 app.include_router(copilot.router, prefix="/api/v1")
 app.include_router(field_data.router, prefix="/api/v1")
+app.include_router(datasets.router, prefix="/api/v1")
 
 @app.get("/")
 def root():

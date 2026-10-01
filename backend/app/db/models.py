@@ -158,3 +158,45 @@ class CalibrationRunModel(Base):
     message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now)
 
+
+class CSSCycleRecordModel(Base):
+    """Historical or simulated CSS cycle production logs for reservoir decline tracking."""
+    __tablename__ = "css_cycle_records"
+    __table_args__ = (UniqueConstraint("well_id", "cycle_number", name="uq_well_cycle_record"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    well_id = Column(String(32), index=True, nullable=False)
+    cycle_number = Column(Integer, nullable=False)
+    steam_injected_tonnes = Column(Float, nullable=False)
+    injection_duration_days = Column(Float, default=12.0)
+    steam_temperature_c = Column(Float, default=260.0)
+    injection_pressure_bar = Column(Float, default=125.0)
+    soak_duration_days = Column(Float, default=6.0)
+    production_duration_days = Column(Float, default=120.0)
+    cumulative_oil_bbl = Column(Float, nullable=False)
+    cumulative_water_bbl = Column(Float, nullable=False)
+    cysor = Column(Float, nullable=False)  # Cycle Steam-to-Oil Ratio
+    peak_oil_rate_bpd = Column(Float, nullable=False)
+    final_oil_rate_bpd = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=utc_now)
+
+
+class EquipmentFailureRecordModel(Base):
+    """Historical equipment failures and Weibull hazard tracking records."""
+    __tablename__ = "equipment_failure_records"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    well_id = Column(String(32), index=True, nullable=False)
+    cycle_number = Column(Integer, default=1)
+    failure_date = Column(DateTime, default=utc_now)
+    component = Column(String(64), nullable=False)  # "SUCKER_ROD", "DOWNHOLE_PUMP", "GEARBOX", etc.
+    failure_mode = Column(String(64), nullable=False)  # "FATIGUE_PARTING", "FLUID_POUND_DAMAGE", etc.
+    cycles_to_failure = Column(Integer, nullable=False)
+    runtime_days = Column(Float, nullable=False)
+    peak_stress_ratio = Column(Float, default=0.85)
+    root_cause = Column(Text, nullable=True)
+    repair_cost_usd = Column(Float, default=15000.0)
+    downtime_hours = Column(Float, default=36.0)
+    created_at = Column(DateTime, default=utc_now)
+
+

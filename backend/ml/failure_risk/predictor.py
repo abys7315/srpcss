@@ -31,6 +31,28 @@ class FailureRiskAssessment:
 class FailureRiskPredictor:
     """Evaluates equipment damage risk combining mechanical stresses, impact shocks, and thermal factors."""
 
+    def __init__(self, beta: float = 2.1, eta_baseline: float = 1150.0):
+        self.beta = beta
+        self.eta_baseline = eta_baseline
+
+    def fit_from_failure_history(self, failure_runtimes_days: List[float]):
+        """
+        Calibrates Weibull parameters (eta, beta) from empirical failure records
+        using linear regression on the Weibull CDF log-log transform:
+        ln(-ln(1 - F(t))) = beta * ln(t) - beta * ln(eta)
+        """
+        if len(failure_runtimes_days) < 4:
+            return
+        t = np.sort(np.asarray(failure_runtimes_days, dtype=float))
+        n = len(t)
+        # Median rank approximation: F(i) = (i - 0.3) / (n + 0.4)
+        ranks = (np.arange(1, n + 1) - 0.3) / (n + 0.4)
+        y = np.log(-np.log(1.0 - ranks))
+        x = np.log(t)
+        slope, intercept = np.polyfit(x, y, deg=1)
+        self.beta = float(np.clip(slope, 1.1, 4.5))
+        self.eta_baseline = float(np.clip(np.exp(-intercept / self.beta), 100.0, 5000.0))
+
     def evaluate_risk(
         self,
         float_margin_index: float,
@@ -95,8 +117,8 @@ class FailureRiskPredictor:
         # 2-Parameter Weibull run-life formulation (calibrated against heavy oil SRP failure data):
         # Characteristic life eta (days) under combined stresses:
         raw_score = sum(val * w for val, w, _, _ in weights.values())
-        eta_days = max(40.0, 1150.0 * np.exp(-3.2 * raw_score))
-        beta = 2.1 # Weibull wearout/fatigue shape parameter
+        eta_days = max(40.0, self.eta_baseline * np.exp(-3.2 * raw_score))
+        beta = self.beta
         prob = 1.0 - np.exp(-((30.0 / eta_days) ** beta))
 
         # Single hazard promotion (severe float or severe overload):

@@ -139,7 +139,7 @@ class GibbsDynacardModel:
             surface_load[sc2] = submerged_rod_weight_lbs * 0.5 + impact_magnitude * np.sin(np.pi * spike_progress)
         else:
             down_drag = f_down_nominal * np.sin(theta[down_mask] - np.pi)
-            surface_load[down_mask] = np.maximum(400.0, submerged_rod_weight_lbs - down_drag + inertia_load[down_mask])
+            surface_load[down_mask] = np.maximum(400.0, submerged_rod_weight_lbs + downhole_load[down_mask] - down_drag + inertia_load[down_mask])
 
         # Polish rod load extrema:
         pprl = float(np.max(surface_load))

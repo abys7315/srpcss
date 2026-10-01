@@ -23,7 +23,7 @@ const resolveApiUrl = (rawUrl?: string): string => {
 
 const rawEnvUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
 const PRIMARY_BASE_URL = rawEnvUrl ? resolveApiUrl(rawEnvUrl) : '/api/v1';
-const DIRECT_BACKEND_URL = 'http://127.0.0.1:8000/api/v1';
+const DIRECT_BACKEND_URL = 'http://127.0.0.1:8001/api/v1';
 
 if (import.meta.env.PROD && !rawEnvUrl) {
   // On Vercel a relative /api/v1 has no backend behind it: set VITE_API_URL to the Render origin and rebuild.
@@ -75,7 +75,7 @@ export const apiClient = {
     } catch {
       // 2. Try direct fallback targets if proxy fails
       const fallbackTargets = import.meta.env.DEV
-        ? ['http://127.0.0.1:8000/api/v1', 'http://localhost:8000/api/v1']
+        ? ['http://127.0.0.1:8001/api/v1', 'http://localhost:8001/api/v1', 'http://127.0.0.1:8000/api/v1']
         : [];
       for (const target of fallbackTargets) {
         try {
@@ -305,6 +305,36 @@ export const apiClient = {
   resetThermalCalibration: async (wellId: string) => {
     const res = await api.delete(`/calibrate/thermal/${wellId}`);
     return res.data.data;
+  },
+
+  // External Benchmark Datasets
+  getAvailableDatasets: async (): Promise<any> => {
+    const res = await api.get('/datasets/available');
+    return res.data;
+  },
+  getEverittJenningsCards: async (): Promise<any> => {
+    const res = await api.get('/datasets/everitt-jennings');
+    return res.data;
+  },
+  getVolveTelemetry: async (limit: number = 100): Promise<any> => {
+    const res = await api.get(`/datasets/volve-telemetry?limit=${limit}`);
+    return res.data;
+  },
+  ingestVolveTelemetry: async (wellId: string, days: number = 90): Promise<any> => {
+    const res = await api.post(`/datasets/volve-telemetry/ingest/${wellId}?days=${days}`);
+    return res.data;
+  },
+  getPetrobras3w: async (): Promise<any> => {
+    const res = await api.get('/datasets/petrobras-3w');
+    return res.data;
+  },
+  getBaghewalaPvt: async (): Promise<any> => {
+    const res = await api.get('/datasets/baghewala-pvt');
+    return res.data;
+  },
+  verifyBaghewalaPvt: async (): Promise<any> => {
+    const res = await api.get('/datasets/baghewala-pvt/verify');
+    return res.data;
   },
 };
 

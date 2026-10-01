@@ -31,6 +31,16 @@ def get_model_registry():
     dataset_sha = sha256_file(field_data_path) if field_data_path.is_file() else compute_sha256("baghewala_synthetic_dataset")
     config_sha = sha256_file(field_cfg_path) if field_cfg_path.is_file() else compute_sha256("field_config_v1")
 
+    dyna_file = repo_root / "backend" / "ml" / "dynacard_classification" / "classifier.py"
+    res_file = repo_root / "backend" / "ml" / "residual_models" / "corrector.py"
+    risk_file = repo_root / "backend" / "ml" / "failure_risk" / "predictor.py"
+    physics_file = repo_root / "backend" / "twin" / "cycle.py"
+
+    dyna_sha = sha256_file(dyna_file) if dyna_file.is_file() else compute_sha256("dynacard_classifier:v1")
+    res_sha = sha256_file(res_file) if res_file.is_file() else compute_sha256("residual_corrector:v1")
+    risk_sha = sha256_file(risk_file) if risk_file.is_file() else compute_sha256("failure_risk_predictor:v1")
+    physics_sha = sha256_file(physics_file) if physics_file.is_file() else config_sha
+
     val_report = {}
     if val_report_path.is_file():
         try:
@@ -66,8 +76,8 @@ def get_model_registry():
             "status": "CHAMPION",
             "training_dataset": "Analytical Thermodynamics & Wave Mechanics (Marx-Langenheim / Boberg-Lantz / Gibbs)",
             "dataset_hash": config_sha,
-            "artifact_path": "backend/twin/",
-            "artifact_sha256": config_sha,
+            "artifact_path": "backend/twin/cycle.py",
+            "artifact_sha256": physics_sha,
             "training_timestamp": "2026-09-28T00:00:00Z",
             "feature_schema": [
                 "reservoir_depth_m", "initial_temperature_c", "initial_pressure_bar",
@@ -94,7 +104,7 @@ def get_model_registry():
             "training_dataset": "data/simulated/field_simulation_history.json",
             "dataset_hash": dataset_sha,
             "artifact_path": "backend/ml/dynacard_classification/classifier.py",
-            "artifact_sha256": compute_sha256("dynacard_classifier:v1.0.0-sim:artifact"),
+            "artifact_sha256": dyna_sha,
             "training_timestamp": "2026-09-28T12:00:00Z",
             "feature_schema": [
                 "normalized_area", "min_load_ratio", "load_range_ratio",
@@ -122,7 +132,7 @@ def get_model_registry():
             "training_dataset": "data/simulated/field_simulation_history.json",
             "dataset_hash": dataset_sha,
             "artifact_path": "backend/ml/residual_models/corrector.py",
-            "artifact_sha256": compute_sha256("residual_corrector:v1.2.0-sim:artifact"),
+            "artifact_sha256": res_sha,
             "training_timestamp": "2026-09-28T12:30:00Z",
             "feature_schema": ["day", "temperature_c", "viscosity_cp", "flowing_bottomhole_pressure_bar", "pump_fillage_pct"],
             "target_schema": ["residual_oil_rate_bpd"],
@@ -147,7 +157,7 @@ def get_model_registry():
             "training_dataset": "data/simulated/field_simulation_history.json",
             "dataset_hash": dataset_sha,
             "artifact_path": "backend/ml/failure_risk/predictor.py",
-            "artifact_sha256": compute_sha256("failure_risk_predictor:v1.0.0-sim:artifact"),
+            "artifact_sha256": risk_sha,
             "training_timestamp": "2026-09-28T12:00:00Z",
             "feature_schema": [
                 "float_margin_index", "goodman_stress_ratio", "fluid_pound_severity",

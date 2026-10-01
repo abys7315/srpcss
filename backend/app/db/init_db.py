@@ -160,6 +160,71 @@ def seed_wells(db):
                 db.add(WellModel(**fallback_attrs))
         db.commit()
 
+    # Seed historical CSS cycles if empty
+    from .models import CSSCycleRecordModel, EquipmentFailureRecordModel
+    if db.query(CSSCycleRecordModel).count() == 0:
+        for i in range(1, 11):
+            w_id = f"BGW-{i:02d}"
+            # Cycle 1 for all wells
+            db.add(CSSCycleRecordModel(
+                well_id=w_id,
+                cycle_number=1,
+                steam_injected_tonnes=3000.0 + (i * 50.0),
+                injection_duration_days=12.0,
+                steam_temperature_c=260.0,
+                injection_pressure_bar=120.0 + i,
+                soak_duration_days=6.0,
+                production_duration_days=120.0,
+                cumulative_oil_bbl=round(4850.0 - i * 85.0, 1),
+                cumulative_water_bbl=round(11200.0 + i * 150.0, 1),
+                cysor=round((3000.0 + i * 50.0) / (4850.0 - i * 85.0), 3),
+                peak_oil_rate_bpd=round(68.0 - i * 1.2, 1),
+                final_oil_rate_bpd=round(7.5 + (i % 2) * 0.5, 1)
+            ))
+            # Cycle 2 for wells 1 to 5
+            if i <= 5:
+                db.add(CSSCycleRecordModel(
+                    well_id=w_id,
+                    cycle_number=2,
+                    steam_injected_tonnes=3200.0 + (i * 60.0),
+                    injection_duration_days=13.0,
+                    steam_temperature_c=262.0,
+                    injection_pressure_bar=122.0 + i,
+                    soak_duration_days=7.0,
+                    production_duration_days=110.0,
+                    cumulative_oil_bbl=round(4150.0 - i * 90.0, 1),
+                    cumulative_water_bbl=round(12800.0 + i * 180.0, 1),
+                    cysor=round((3200.0 + i * 60.0) / (4150.0 - i * 90.0), 3),
+                    peak_oil_rate_bpd=round(59.0 - i * 1.5, 1),
+                    final_oil_rate_bpd=round(7.2, 1)
+                ))
+        db.commit()
+
+    # Seed equipment failure history if empty
+    if db.query(EquipmentFailureRecordModel).count() == 0:
+        failures = [
+            ("BGW-04", 1, "SUCKER_ROD", "FATIGUE_PARTING", 2450000, 185.0, 0.96, "High compressive downstroke rod float slap at bottom dead center.", 18500.0, 42.0),
+            ("BGW-08", 1, "DOWNHOLE_PUMP", "FLUID_POUND_DAMAGE", 1820000, 142.0, 0.91, "Severe fluid pound impact cracked traveling valve ball cage.", 14200.0, 36.0),
+            ("BGW-02", 2, "STUFFING_BOX", "THERMAL_PACKING_WEAR", 3980000, 298.0, 0.74, "High wellhead temperature (88 C) degraded elastomer seals.", 4500.0, 12.0),
+            ("BGW-07", 1, "SUCKER_ROD", "CORROSION_FATIGUE", 2150000, 160.0, 0.88, "H2S / CO2 pitting combined with alternating cyclic stress.", 17500.0, 38.0),
+            ("BGW-09", 2, "DOWNHOLE_PUMP", "BARREL_SAND_ABRASION", 2850000, 215.0, 0.79, "Fines migration from Jodhpur sandstone eroded plunger clearance.", 15800.0, 40.0),
+        ]
+        for f in failures:
+            db.add(EquipmentFailureRecordModel(
+                well_id=f[0],
+                cycle_number=f[1],
+                component=f[2],
+                failure_mode=f[3],
+                cycles_to_failure=f[4],
+                runtime_days=f[5],
+                peak_stress_ratio=f[6],
+                root_cause=f[7],
+                repair_cost_usd=f[8],
+                downtime_hours=f[9]
+            ))
+        db.commit()
+
 if __name__ == "__main__":
     init_db(force_reseed=True)
     print("Database initialized and reseeded successfully.")
+

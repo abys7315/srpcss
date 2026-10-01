@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../api/client';
 import type { SimulationResult, WellDetail } from '../api/types';
 import { WellboreSchematic } from '../components/common/WellboreSchematic';
 import { ProvenanceBadge } from '../components/common/ProvenanceBadge';
+import { KinematicPumpjackVisualizer } from '../components/animations/KinematicPumpjackVisualizer';
+import { DownholePumpShockAnimation } from '../components/animations/DownholePumpShockAnimation';
+import { ThermalSteamChestVisualizer } from '../components/animations/ThermalSteamChestVisualizer';
+import { FluidFlowVisualization } from '../components/animations/FluidFlowVisualization';
+import { ReservoirHeatMap } from '../components/animations/ReservoirHeatMap';
+import { DynacardLiveAnimation } from '../components/animations/DynacardLiveAnimation';
+import { ProductionPulse } from '../components/animations/ProductionPulse';
 import {
   Flame,
   Droplets,
@@ -51,7 +58,27 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(5); // 1x, 5x, 15x
   const [optRecommendation, setOptRecommendation] = useState<any>(null);
 
+  // Track previous well's last-known sim result for delta comparison
+  const prevSimRef = useRef<{wellId: string; oilRate: number; sor: number; benefit: number} | null>(null);
+
   useEffect(() => {
+    // Save current state as 'previous' before switching
+    if (simResult && well) {
+      const ts = simResult.timeseries;
+      const lastDay = ts.length > 0 ? ts[ts.length - 1] : null;
+      prevSimRef.current = {
+        wellId: well.well_id ?? selectedWellId,
+        oilRate: lastDay?.oil_rate_bpd ?? oilRateBpd,
+        sor: simResult.kpis.steam_oil_ratio ?? currentSOR,
+        benefit: (simResult.kpis as any)?.net_economic_benefit_usd ?? netBenefitUsd,
+      };
+    }
+    // Reset simulation state for the new well
+    setSimResult(null);
+    setOptRecommendation(null);
+    setSimulationMode('static');
+    setSimDay(1);
+    setIsPlaying(false);
     loadWellAndSimulate();
   }, [selectedWellId]);
 
@@ -160,7 +187,7 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
   const liquidRateBpd = currentWaterCut < 100 ? (oilRateBpd / (1 - currentWaterCut / 100)) : oilRateBpd;
   const currentLiquidRateM3 = parseFloat((liquidRateBpd / 6.2898).toFixed(1));
   const currentSOR = simResult?.kpis.steam_oil_ratio ? parseFloat(simResult.kpis.steam_oil_ratio.toFixed(2)) : 3.14;
-  const netBenefitUsd = (simResult?.kpis as any)?.net_benefit_usd ?? (simResult as any)?.economics?.net_benefit_usd ?? 144302;
+  const netBenefitUsd = (simResult?.kpis as any)?.net_economic_benefit_usd ?? (simResult?.kpis as any)?.net_benefit_usd ?? (simResult as any)?.economics?.net_benefit_usd ?? 144302;
   const netBenefitLakhs = parseFloat(((netBenefitUsd * 83.0) / 100000 / 90).toFixed(2));
   const goodmanRatio = activePoint ? activePoint.goodman_stress_ratio : (well?.telemetry?.current_goodman_stress_ratio ?? simResult?.kpis.max_goodman_stress_ratio ?? 0.452);
   const floatMargin = activePoint ? activePoint.float_margin_index : (well?.telemetry?.current_float_margin_index ?? simResult?.kpis.min_float_margin_index ?? 0.910);
@@ -169,11 +196,32 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
   const crudeApi = well?.crude_api ?? 18.0;
   const reservoirPressure = (simResult?.timeseries?.slice(-1)[0] as any)?.flowing_bottomhole_pressure_bar ?? 63.6;
   const intakePressure = activePoint ? activePoint.pump_intake_pressure_bar : (simResult?.timeseries?.slice(-1)[0]?.pump_intake_pressure_bar ?? 24.3);
-  const heatingRadius = (simResult as any)?.thermal_profile?.heated_radius_m ?? 12.8;
+  const heatingRadius = (simResult as any)?.thermal?.heated_zone_radius_m ?? (simResult as any)?.thermal_profile?.heated_radius_m ?? 12.8;
+
+  // Compute dynamic KPI deltas (compare to previous well or baseline)
+  const prev = prevSimRef.current;
+  const oilDeltaPct = prev && prev.oilRate > 0 ? ((oilRateBpd - prev.oilRate) / prev.oilRate * 100) : null;
+  const sorDeltaPct = prev && prev.sor > 0 ? ((currentSOR - prev.sor) / prev.sor * 100) : null;
+  const benefitDeltaPct = prev && prev.benefit > 0 ? ((netBenefitUsd - prev.benefit) / prev.benefit * 100) : null;
+
+  // Format delta as display string
+  const fmtDelta = (pct: number | null): { text: string; positive: boolean } => {
+    if (pct === null) return { text: 'vs. baseline', positive: true };
+    const sign = pct >= 0 ? '+' : '';
+    return { text: `${sign}${pct.toFixed(1)}%`, positive: pct >= 0 };
+  };
+  const oilDelta = fmtDelta(oilDeltaPct);
+  const sorDelta = fmtDelta(sorDeltaPct);
+  const benefitDelta = fmtDelta(benefitDeltaPct);
+
+  // Mechanical risk label derived from physics, not hardcoded
+  const mechRiskLabel = goodmanRatio > 0.85 ? 'High' : goodmanRatio > 0.65 ? 'Medium' : 'Low';
+  const mechRiskColor = goodmanRatio > 0.85 ? 'text-rose-600 dark:text-rose-400' : goodmanRatio > 0.65 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400';
 
   // Sub-navigation tabs list from reference image
   const subTabs = [
     { id: 'digital-twin', label: 'Digital Twin' },
+    { id: 'kinematics-studio', label: 'Interactive Physics Studio ⚡' },
     { id: 'sensor-simulation', label: 'Sensor Simulation' },
     { id: 'thermal-profile', label: 'Thermal Profile' },
     { id: 'pressure-profile', label: 'Pressure Profile' },
@@ -213,13 +261,13 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
               </div>
 
               <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Heavy Oil Well
+                {well?.well_name ?? `Baghewala Well ${selectedWellId.slice(-2)}`}
               </div>
 
               <div className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5 pt-0.5">
                 <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                   <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>Baghewala Field, Rajasthan</span>
+                  <span>{well?.field_name ?? 'Baghewala'} Field, Rajasthan</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
                   <div>
@@ -253,8 +301,8 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
                 <div className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
                   {currentOilRateM3} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">m³/day</span>
                 </div>
-                <div className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-0.5 mt-0.5">
-                  <span>↑ +12.5%</span>
+                <div className={`text-[11px] font-medium flex items-center gap-0.5 mt-0.5 ${oilDelta.positive ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                  <span>{oilDelta.positive ? '↑' : '↓'} {oilDelta.text}</span>
                   <span className="text-slate-400 font-normal">vs. prev</span>
                 </div>
               </div>
@@ -272,8 +320,8 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
                 <div className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
                   {currentSOR}
                 </div>
-                <div className="text-[11px] font-medium text-blue-700 dark:text-cyan-400 flex items-center gap-0.5 mt-0.5">
-                  <span>↓ -15.2%</span>
+                <div className={`text-[11px] font-medium flex items-center gap-0.5 mt-0.5 ${!sorDelta.positive ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                  <span>{sorDelta.positive ? '↑' : '↓'} {sorDelta.text}</span>
                   <span className="text-slate-400 font-normal">vs. prev</span>
                 </div>
               </div>
@@ -291,8 +339,8 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
                 <div className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
                   ₹ {netBenefitLakhs} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">L/day</span>
                 </div>
-                <div className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-0.5 mt-0.5">
-                  <span>↑ +18.6%</span>
+                <div className={`text-[11px] font-medium flex items-center gap-0.5 mt-0.5 ${benefitDelta.positive ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                  <span>{benefitDelta.positive ? '↑' : '↓'} {benefitDelta.text}</span>
                   <span className="text-slate-400 font-normal">vs. prev</span>
                 </div>
               </div>
@@ -307,12 +355,12 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
                 </div>
               </div>
               <div className="mt-2">
-                <div className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-                  Low
+                <div className={`text-lg font-bold tracking-tight ${mechRiskColor}`}>
+                  {mechRiskLabel}
                 </div>
-                <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Goodman: {goodmanRatio}</span>
+                <div className={`text-[11px] font-semibold ${mechRiskColor} flex items-center gap-1 mt-0.5`}>
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${mechRiskColor}`} />
+                  <span>Goodman: {typeof goodmanRatio === 'number' ? goodmanRatio.toFixed(3) : goodmanRatio}</span>
                 </div>
               </div>
             </div>
@@ -349,8 +397,86 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
         </nav>
       </div>
 
-      {/* 2.5 MULTIPHYSICS COUPLING CHAIN RIBBON (Section 4 Specification) */}
-      <div className="bg-white dark:bg-[#0c1322] border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
+      {/* INTERACTIVE PHYSICS & KINEMATICS STUDIO VIEW */}
+      {activeTab === 'kinematics-studio' ? (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-cyan-950 border border-cyan-500/40 rounded-xl p-5 shadow-2xl flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse" />
+                <h2 className="text-base font-bold text-white tracking-wide uppercase">
+                  Coupled Multiphysics Kinematics & Subsurface Shock Studio
+                </h2>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">
+                  Well: {selectedWellId}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                Directly interact with the four-bar walking beam linkage, test VFD asymmetric downstroke speed modulation, trigger fluid pound acoustic shockwaves in the subsurface pump, and watch the 2D radial thermal steam chest expand in the Jodhpur Sandstone.
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveTab('digital-twin')}
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-lg text-xs font-semibold transition-colors"
+            >
+              ← Back to Digital Twin Overview
+            </button>
+          </div>
+
+          {/* Module 1: Kinematic Walking Beam Surface Unit */}
+          <KinematicPumpjackVisualizer
+            initialSpm={spm}
+            initialStrokeLengthInch={strokeLength}
+            initialDownstrokeRatio={vfdRatio}
+            isFloating={floatMargin < 1.0}
+            onStateChange={(state) => {
+              setSpm(state.spm);
+              setStrokeLength(state.strokeLengthInch);
+              setVfdRatio(state.downstrokeRatio);
+            }}
+          />
+
+          {/* 2-Column Grid: Subsurface Pump Cutaway & 2D Radial Thermal Steam Chest */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <DownholePumpShockAnimation
+              initialFillage={0.55}
+              spm={spm}
+              depthM={well?.pump_depth_m || 950}
+            />
+            <ThermalSteamChestVisualizer
+              initialPhase="PRODUCTION"
+              initialSteamTonnes={steamVolume}
+              initialSoakDays={soakDays}
+              initialProductionDay={Math.min(120, simDay)}
+            />
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Studio Quick-Launch Callout Banner */}
+          <div className="bg-gradient-to-r from-blue-950/60 via-slate-900 to-cyan-950/60 border border-cyan-500/30 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+              <div>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Interactive Physics & Kinematics Studio Active
+                </h4>
+                <p className="text-[11px] text-slate-300">
+                  Four-bar walking beam linkage, downhole valve cutaway with fluid pound shockwaves, and 2D radial steam chest.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab('kinematics-studio')}
+              className="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <span>Launch Studio</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* 2.5 MULTIPHYSICS COUPLING CHAIN RIBBON (Section 4 Specification) */}
+          <div className="bg-white dark:bg-[#0c1322] border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
             <Cpu className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400" />
@@ -385,7 +511,9 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
         </div>
       </div>
 
+
       {/* 3. MAIN DASHBOARD CONTENT GRID (2 COLUMNS) */}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* LEFT COLUMN: WELLBORE & GEOLOGICAL STRATA SCHEMATIC + TWIN STATE (5 Cols) */}
         <div className="lg:col-span-5 flex flex-col space-y-4">
@@ -1001,6 +1129,52 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
         </div>
       </div>
 
+      {/* ── INTERACTIVE PHYSICS ANIMATIONS SHOWCASE ── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-2 h-2 rounded-full bg-cyan-500 animate-ping" />
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+              Live Physics Simulations & Kinematics Studio
+            </h2>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-mono">
+              REAL-TIME SVG PHYSICS
+            </span>
+          </div>
+          <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
+            Interactive 4-bar linkage kinematics, downhole fluid pound acoustic shockwaves & 2D thermal steam chest
+          </span>
+        </div>
+
+        {/* Module 1: Kinematic Walking Beam Surface Unit */}
+        <KinematicPumpjackVisualizer
+          initialSpm={spm}
+          initialStrokeLengthInch={strokeLength}
+          initialDownstrokeRatio={vfdRatio}
+          isFloating={floatMargin < 1.0}
+          onStateChange={(state) => {
+            setSpm(state.spm);
+            setStrokeLength(state.strokeLengthInch);
+            setVfdRatio(state.downstrokeRatio);
+          }}
+        />
+
+        {/* 2-Column Grid: Subsurface Pump Cutaway & 2D Radial Thermal Steam Chest */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <DownholePumpShockAnimation
+            initialFillage={0.55}
+            spm={spm}
+            depthM={well?.pump_depth_m || 950}
+          />
+          <ThermalSteamChestVisualizer
+            initialPhase="PRODUCTION"
+            initialSteamTonnes={steamVolume}
+            initialSoakDays={soakDays}
+            initialProductionDay={Math.min(120, simDay)}
+          />
+        </div>
+      </div>
+
       {/* 4. BOTTOM ROW - 2 LARGE CARDS (AI RECOMMENDATION & GOODMAN DIAGRAM) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Card Left: AI Optimization Recommendation (7 Cols) */}
@@ -1180,6 +1354,8 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
           </div>
         </div>
       </div>
+      </>
+    )}
 
       {/* 5. EDIT OPERATING CONDITIONS MODAL */}
       {isEditModalOpen && (

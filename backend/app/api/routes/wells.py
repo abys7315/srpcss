@@ -58,6 +58,8 @@ def update_well_setpoint(well_id: str, req: SetpointUpdateRequest, db: Session =
             provenance=ProvenanceEnum.SIMULATED,
             data=res
         )
+    except ValueError as ve:
+        raise HTTPException(status_code=422, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

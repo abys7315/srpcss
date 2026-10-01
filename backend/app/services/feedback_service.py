@@ -152,6 +152,9 @@ class FeedbackService:
                              "Record more observations (POST /feedback or /telemetry/ingest) before recalibrating."),
                 provenance=ProvenanceEnum.SIMULATED
             )
+        well = self.db.query(WellModel).filter(WellModel.well_id == req.well_id).first()
+        well_spm = float(well.spm) if well and well.spm is not None else 4.5
+
         days = [f.day for f in feedbacks]
         obs_rates = [f.observed_oil_rate_bpd for f in feedbacks]
         exp_rates = [f.physics_expected_oil_bpd for f in feedbacks]
@@ -161,7 +164,7 @@ class FeedbackService:
         X = np.column_stack([
             np.array(days, dtype=float),
             np.array(temps, dtype=float),
-            np.full(len(days), 4.5, dtype=float)
+            np.full(len(days), well_spm, dtype=float)
         ])
         y_obs = np.array(obs_rates, dtype=float)
         y_exp = np.array(exp_rates, dtype=float)
@@ -205,14 +208,24 @@ class FeedbackService:
         is_promoted = reduction_pct >= canonical_threshold
         model_status = "PROMOTED_CHAMPION" if is_promoted else "REJECTED_CHALLENGER"
 
+        artifact_save_info = ""
         if is_promoted:
             self.residual_corrector = challenger
+            try:
+                from pathlib import Path
+                models_dir = Path(__file__).resolve().parents[3] / "models"
+                models_dir.mkdir(parents=True, exist_ok=True)
+                artifact_file = models_dir / f"champion_residual_{req.well_id}.joblib"
+                challenger.save(artifact_file)
+                artifact_save_info = f" Serialized artifact saved to {artifact_file.name}."
+            except Exception as e:
+                artifact_save_info = f" (Artifact serialization warning: {e})"
 
         demo_prefix = "[SIMULATION DEMO MODE] " if is_demo_mode else ""
         explanation_msg = (
             f"{demo_prefix}Online challenger model trained on {len(X_train)} samples, evaluated on {len(X_val)} held-out validation points. "
             f"Held-out Validation MAE reduced by {reduction_pct:.1f}% ({pre_val_mae:.2f} -> {post_val_mae:.2f} BPD). "
-            f"Status: {model_status}."
+            f"Status: {model_status}.{artifact_save_info}"
         )
 
         # Record recalibration event

@@ -27,6 +27,8 @@ from ml.residual_models.corrector import HybridResidualCorrector
 from ml.dynacard_classification.classifier import DynacardClassifier
 from ml.failure_risk.predictor import FailureRiskPredictor
 from ml.confidence.estimator import ConfidenceEstimator
+from twin.reservoir.inflow import ThermalInflowModel, ReservoirParameters
+from twin.srp.dynacard import GibbsDynacardModel
 
 def run_honest_validation():
     print("=" * 70)
@@ -49,8 +51,17 @@ def run_honest_validation():
     print(f"Testing on 4 Held-Out Wells (Deliberately Mismatched Parameters): {test_wells}\n")
 
     # -------------------------------------------------------------------------
-    # 1. Train Residual Corrector
+    # 1. Train Residual Corrector (Ground Truth from Real Baseline Physics Model)
     # -------------------------------------------------------------------------
+    # Nominal baseline physics model (with canonical uncalibrated reservoir parameters)
+    baseline_physics = ThermalInflowModel(params=ReservoirParameters(
+        initial_pressure_bar=65.0,
+        reference_temp_celsius=47.0,
+        reference_pi_m3_d_bar=0.08,
+        permeability_md=250.0,
+        skin_factor=2.0
+    ), ref_viscosity_cp=2400.0)
+
     X_train, y_obs_train, y_phys_train = [], [], []
     
     for wid in train_wells:
@@ -67,8 +78,15 @@ def run_honest_validation():
                 ]
                 X_train.append(feats)
                 y_obs_train.append(pt["oil_rate_bpd"])
-                # Deliberately mis-specified physical baseline (e.g. 8% bias to represent unmodeled friction)
-                phys_sim = pt["oil_rate_bpd"] * 0.92
+                
+                # First-principles physical prediction from baseline uncalibrated physics model
+                state = baseline_physics.evaluate_reservoir_state(
+                    current_temp_c=pt["temperature_c"],
+                    current_viscosity_cp=pt["viscosity_cp"],
+                    reservoir_pressure_bar=65.0
+                )
+                q_m3_d = baseline_physics.compute_oil_rate_vogel(state, pt["flowing_bottomhole_pressure_bar"])
+                phys_sim = float(max(1.0, q_m3_d * 6.2898))
                 y_phys_train.append(phys_sim)
 
     X_train = np.array(X_train)
@@ -97,7 +115,14 @@ def run_honest_validation():
                 ]
                 X_test.append(feats)
                 y_obs_test.append(pt["oil_rate_bpd"])
-                phys_sim = pt["oil_rate_bpd"] * 0.90 # Mismatched baseline in unseen reservoir
+                
+                state = baseline_physics.evaluate_reservoir_state(
+                    current_temp_c=pt["temperature_c"],
+                    current_viscosity_cp=pt["viscosity_cp"],
+                    reservoir_pressure_bar=65.0
+                )
+                q_m3_d = baseline_physics.compute_oil_rate_vogel(state, pt["flowing_bottomhole_pressure_bar"])
+                phys_sim = float(max(1.0, q_m3_d * 6.2898))
                 y_phys_test.append(phys_sim)
                 
                 # Hybrid prediction = physics + residual ML
@@ -116,7 +141,7 @@ def run_honest_validation():
     mae_hybrid = float(mean_absolute_error(y_obs_test, y_hybrid_test))
     rmse_hybrid = float(np.sqrt(mean_squared_error(y_obs_test, y_hybrid_test)))
     
-    mae_improvement_pct = ((mae_phys - mae_hybrid) / mae_phys) * 100.0
+    mae_improvement_pct = ((mae_phys - mae_hybrid) / max(mae_phys, 0.01)) * 100.0
 
     print("--- 1. Residual Model Forecasting Performance (Held-Out Test Wells) ---")
     print(f"Physics-Only Baseline:   MAE = {mae_phys:.2f} BPD | RMSE = {rmse_phys:.2f} BPD")
@@ -124,29 +149,40 @@ def run_honest_validation():
     print(f"Error Reduction:         {mae_improvement_pct:.1f}% improvement over pure physics baseline!\n")
 
     # -------------------------------------------------------------------------
-    # 3. Dynacard Classifier Evaluation
+    # 3. Dynacard Classifier Evaluation (Tested on Real Physical Wave-Synthesized Cards)
     # -------------------------------------------------------------------------
     classifier = DynacardClassifier()
-    # Test across 100 simulated test cards
+    gibbs_gen = GibbsDynacardModel(num_card_points=100)
+    
     y_true_cls = []
     y_pred_cls = []
     
-    for _ in range(50):
-        # Normal
+    # 40 Normal Cards:
+    for _ in range(40):
         y_true_cls.append(0)
-        c = classifier.classify_card([0, 50, 100, 50], [8000, 15000, 15000, 8000], submerged_weight_lbs=5500)
+        c_res = gibbs_gen.generate_dynacards(100.0, 4.0, 5500.0, 7000.0, 500.0, pump_fillage=0.95, float_margin_index=1.45)
+        c = classifier.classify_card(c_res.surface_position_inch, c_res.surface_load_lbs, submerged_weight_lbs=5500.0)
         y_pred_cls.append(classifier.CLASSES.index(c.predicted_class))
         
-    for _ in range(30):
-        # Rod Floating
+    # 25 Rod Floating Cards:
+    for _ in range(25):
         y_true_cls.append(1)
-        c = classifier.classify_card([0, 50, 100, 50], [50, 200, 14000, -100], submerged_weight_lbs=5500, known_float_margin=0.6)
+        c_res = gibbs_gen.generate_dynacards(100.0, 5.8, 5000.0, 7000.0, 4200.0, pump_fillage=0.9, float_margin_index=0.72)
+        c = classifier.classify_card(c_res.surface_position_inch, c_res.surface_load_lbs, submerged_weight_lbs=5000.0, known_float_margin=0.72)
         y_pred_cls.append(classifier.CLASSES.index(c.predicted_class))
 
+    # 20 Fluid Pound Cards:
     for _ in range(20):
-        # Fluid Pound
         y_true_cls.append(2)
-        c = classifier.classify_card([0, 30, 70, 100], [5000, 14000, 12000, 2000], submerged_weight_lbs=5500)
+        c_res = gibbs_gen.generate_dynacards(100.0, 4.2, 5500.0, 7000.0, 600.0, pump_fillage=0.45, float_margin_index=1.35)
+        c = classifier.classify_card(c_res.surface_position_inch, c_res.surface_load_lbs, submerged_weight_lbs=5500.0)
+        y_pred_cls.append(classifier.CLASSES.index(c.predicted_class))
+
+    # 15 Overload Cards:
+    for _ in range(15):
+        y_true_cls.append(4)
+        c_res = gibbs_gen.generate_dynacards(120.0, 5.5, 9500.0, 16000.0, 1800.0, pump_fillage=0.95, float_margin_index=1.2)
+        c = classifier.classify_card(c_res.surface_position_inch, c_res.surface_load_lbs, submerged_weight_lbs=9500.0)
         y_pred_cls.append(classifier.CLASSES.index(c.predicted_class))
 
     prec, rec, f1, _ = precision_recall_fscore_support(y_true_cls, y_pred_cls, average='weighted', zero_division=0)
