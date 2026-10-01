@@ -35,6 +35,13 @@ class QuantileForecastResponse(BaseModel):
     p50: List[float] = Field(default_factory=list)
     p90: List[float] = Field(default_factory=list)
     cumulative_p50_bbl: float = 0.0
+    is_calibrated: bool = True
+    active_kappa: float = 2.0
+    holdout_accuracy_improvement_pct: Optional[float] = None
+    calibration_status: str = "CALIBRATED"
+    predicted_temperatures_c: List[float] = Field(default_factory=list)
+    predicted_viscosities_cp: List[float] = Field(default_factory=list)
+    uncalibrated_baseline_p50: List[float] = Field(default_factory=list)
     provenance: ProvenanceEnum = ProvenanceEnum.SIMULATED
 
 class DynacardClassifyRequest(BaseModel):

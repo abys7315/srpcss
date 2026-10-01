@@ -67,7 +67,8 @@ def compute_pareto_front(
     weight_net_benefit: float = 0.45,
     weight_oil_recovery: float = 0.25,
     weight_sor_minimization: float = 0.15,
-    weight_risk_minimization: float = 0.15
+    weight_risk_minimization: float = 0.15,
+    weight_energy_minimization: float = 0.15
 ) -> Tuple[List[ParetoSolutionPoint], List[ParetoSolutionPoint]]:
     """
     Computes non-dominated front and ranks feasible solutions.
@@ -82,9 +83,10 @@ def compute_pareto_front(
     # Obj 1: -Oil (min)
     # Obj 2: -NetBenefit (min)
     # Obj 3: +SOR (min)
-    # Obj 4: +Risk (min)
+    # Obj 4: +Energy intensity kWh/bbl (min)
+    # Obj 5: +Risk (min)
     objs = np.array([
-        [-c.cumulative_oil_bbl, -c.net_benefit_usd, c.steam_oil_ratio, c.failure_risk_probability]
+        [-c.cumulative_oil_bbl, -c.net_benefit_usd, c.steam_oil_ratio, c.energy_intensity_kwh_per_bbl, c.failure_risk_probability]
         for c in feasible_cands
     ])
 
@@ -103,17 +105,20 @@ def compute_pareto_front(
     oil_vals = np.array([c.cumulative_oil_bbl for c in feasible_cands])
     nb_vals = np.array([c.net_benefit_usd for c in feasible_cands])
     sor_vals = np.array([c.steam_oil_ratio for c in feasible_cands])
+    energy_vals = np.array([c.energy_intensity_kwh_per_bbl for c in feasible_cands])
     risk_vals = np.array([c.failure_risk_probability for c in feasible_cands])
 
     norm_oil = (oil_vals - np.min(oil_vals)) / max(np.ptp(oil_vals), 1.0)
     norm_nb = (nb_vals - np.min(nb_vals)) / max(np.ptp(nb_vals), 1.0)
     norm_sor = 1.0 - (sor_vals - np.min(sor_vals)) / max(np.ptp(sor_vals), 0.1) # Inverse: lower is better
+    norm_energy = 1.0 - (energy_vals - np.min(energy_vals)) / max(np.ptp(energy_vals), 0.1) # Inverse: lower kWh/bbl is better
     norm_risk = 1.0 - (risk_vals - np.min(risk_vals)) / max(np.ptp(risk_vals), 0.05)
 
     composite_scores = (
         weight_oil_recovery * norm_oil +
         weight_net_benefit * norm_nb +
         weight_sor_minimization * norm_sor +
+        weight_energy_minimization * norm_energy +
         weight_risk_minimization * norm_risk
     )
 

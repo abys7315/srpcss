@@ -50,6 +50,14 @@ def get_kappa(well_id: str) -> Optional[float]:
         return None
 
 
+def get_calibration_details(well_id: str) -> Optional[Dict[str, Any]]:
+    """Returns full metadata for the calibrated kappa if present."""
+    entry = load_all().get(well_id)
+    if not entry:
+        return None
+    return dict(entry)
+
+
 def set_calibration(well_id: str, kappa: float, metadata: Optional[Dict[str, Any]] = None) -> None:
     p = _path()
     if p is None:

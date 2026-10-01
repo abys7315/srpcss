@@ -72,6 +72,12 @@ pnpm-debug.log*
 *.download
 frontend/.env*
 !frontend/.env.example
+backend/.env*
+!backend/.env.example
+brag-output/
+*.mp4
+*.wav
+*.mp3
 
 # SQLite & local databases
 *.db
@@ -86,6 +92,7 @@ data/simulated/*
 data/external/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+!data/processed/thermal_calibration.json
 !data/simulated/.gitkeep
 !data/external/.gitkeep
 !data/DATA_MANIFEST.md

@@ -46,5 +46,8 @@ class RiskService:
             factor_attributions=factors,
             dominant_failure_mode=dominant,
             suggested_mitigations=mitigations,
+            fatigue_damage_fraction=getattr(res, "fatigue_damage_fraction", None),
+            mtbf_days_estimated=getattr(res, "mtbf_days_estimated", None),
+            reliability_calibration_source=getattr(res, "reliability_calibration_source", "API RP 11L / Empirical Heavy Oil Weibull Benchmark"),
             provenance=ProvenanceEnum.SIMULATED
         )

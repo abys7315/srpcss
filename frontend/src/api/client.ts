@@ -25,6 +25,11 @@ const rawEnvUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_
 const PRIMARY_BASE_URL = rawEnvUrl ? resolveApiUrl(rawEnvUrl) : '/api/v1';
 const DIRECT_BACKEND_URL = 'http://127.0.0.1:8000/api/v1';
 
+if (import.meta.env.PROD && !rawEnvUrl) {
+  // On Vercel a relative /api/v1 has no backend behind it: set VITE_API_URL to the Render origin and rebuild.
+  console.error('[PETRO-TWIN] VITE_API_URL is not set for this production build; API calls will fail.');
+}
+
 const api = axios.create({
   baseURL: PRIMARY_BASE_URL,
   headers: {
@@ -96,6 +101,11 @@ export const apiClient = {
     return res.data;
   },
 
+  getDatabaseHealth: async (): Promise<{ database: string; timestamp: string; autosuspend_safe: boolean }> => {
+    const res = await api.get('/health/db');
+    return res.data;
+  },
+
   // Wells
   getWells: async (): Promise<WellSummary[]> => {
     const res = await api.get<APIResponse<WellSummary[]>>('/wells');
@@ -117,6 +127,50 @@ export const apiClient = {
   optimizeJoint: async (params: any): Promise<OptimizationResult> => {
     const res = await api.post<APIResponse<OptimizationResult>>('/optimize/joint', params);
     return res.data.data;
+  },
+
+  // Long-running joint optimization as a background job (avoids one long HTTP request on Render).
+  startJointJob: async (params: any): Promise<string> => {
+    const res = await api.post<{ job_id: string }>('/optimize/joint/jobs', params, { timeout: 60000 });
+    return res.data.job_id;
+  },
+
+  getOptimizationJob: async (jobId: string): Promise<{
+    job_id: string; label: string; status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+    done: number; total: number; elapsed_s: number; result: APIResponse<OptimizationResult> | null; error: string | null;
+  }> => {
+    const res = await api.get(`/optimize/jobs/${jobId}`, { timeout: 30000 });
+    return res.data;
+  },
+
+  /** Start a joint-optimization job and poll until it finishes. Rejects with the server-side error message. */
+  optimizeJointWithProgress: async (
+    params: any,
+    onProgress?: (p: { status: string; done: number; total: number; elapsed_s: number }) => void,
+    opts: { intervalMs?: number; maxWaitMs?: number } = {},
+  ): Promise<OptimizationResult> => {
+    const intervalMs = opts.intervalMs ?? 2000;
+    const maxWaitMs = opts.maxWaitMs ?? 15 * 60 * 1000;
+    const jobId = await apiClient.startJointJob(params);
+    const t0 = Date.now();
+    let transientFailures = 0;
+    while (Date.now() - t0 < maxWaitMs) {
+      await new Promise((r) => setTimeout(r, intervalMs));
+      let job;
+      try {
+        job = await apiClient.getOptimizationJob(jobId);
+        transientFailures = 0;
+      } catch (e: any) {
+        // 404 = job lost (server restarted / free instance slept); anything else is retried a few times.
+        if (e?.response?.status === 404) throw new Error('Optimization job was lost (the backend restarted). Please run it again.');
+        if (++transientFailures >= 5) throw e;
+        continue;
+      }
+      onProgress?.({ status: job.status, done: job.done, total: job.total, elapsed_s: job.elapsed_s });
+      if (job.status === 'FAILED') throw new Error(job.error || 'Optimization job failed.');
+      if (job.status === 'COMPLETED' && job.result) return job.result.data;
+    }
+    throw new Error('Optimization timed out while waiting for the backend.');
   },
 
   optimizeCSS: async (params: any): Promise<OptimizationResult> => {

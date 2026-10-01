@@ -74,30 +74,64 @@ _default_origins = [
 # Never use '*' while allow_credentials is enabled.
 _configured_origins = [o.strip().rstrip("/") for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
 
+# Optional extra regex, e.g. to allow Vercel preview deployments:
+#   CORS_ORIGIN_REGEX=^https://petro-twin(-[a-z0-9-]+)?\.vercel\.app$
+# Keep it anchored and specific; never use a catch-all pattern.
+_LOCAL_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+_extra_regex = os.getenv("CORS_ORIGIN_REGEX", "").strip()
+_origin_regex = f"(?:{_LOCAL_ORIGIN_REGEX})|(?:{_extra_regex})" if _extra_regex else _LOCAL_ORIGIN_REGEX
+_ALLOWED_ORIGINS = _default_origins + _configured_origins
+
+
+def _origin_allowed(origin: str) -> bool:
+    import re
+    return bool(origin) and (origin in _ALLOWED_ORIGINS or re.match(_origin_regex, origin) is not None)
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_default_origins + _configured_origins,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_origin_regex=_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Optimizer responses carry full Pareto/evaluated-point lists; compress them (big win on Render's egress).
+from fastapi.middleware.gzip import GZipMiddleware
+
+
+class _SelectiveGZip(GZipMiddleware):
+    """GZip everything except Server-Sent-Event streams, which must not be buffered."""
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and "/stream/" in scope.get("path", ""):
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
+
+app.add_middleware(_SelectiveGZip, minimum_size=1024)
+
 @app.middleware("http")
 async def add_cors_pna_headers(request, call_next):
+    # Private Network Access preflight (public page -> localhost). Only answered for allow-listed origins;
+    # previously any origin was echoed back with credentials enabled.
     if request.method == "OPTIONS" and request.headers.get("access-control-request-private-network"):
-        from fastapi.responses import Response
-        origin = request.headers.get("origin", "*")
-        res = Response(status_code=204)
-        res.headers["Access-Control-Allow-Origin"] = origin
-        res.headers["Access-Control-Allow-Methods"] = "*"
-        res.headers["Access-Control-Allow-Headers"] = "*"
-        res.headers["Access-Control-Allow-Credentials"] = "true"
-        res.headers["Access-Control-Allow-Private-Network"] = "true"
-        return res
+        origin = request.headers.get("origin", "")
+        if _origin_allowed(origin):
+            from fastapi.responses import Response
+            res = Response(status_code=204)
+            res.headers["Access-Control-Allow-Origin"] = origin
+            res.headers["Access-Control-Allow-Methods"] = "*"
+            res.headers["Access-Control-Allow-Headers"] = "*"
+            res.headers["Access-Control-Allow-Credentials"] = "true"
+            res.headers["Access-Control-Allow-Private-Network"] = "true"
+            res.headers["Vary"] = "Origin"
+            return res
 
     res = await call_next(request)
-    if request.headers.get("access-control-request-private-network") == "true":
+    if request.headers.get("access-control-request-private-network") == "true" and _origin_allowed(request.headers.get("origin", "")):
         res.headers["Access-Control-Allow-Private-Network"] = "true"
     return res
 

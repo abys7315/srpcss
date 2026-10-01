@@ -37,9 +37,9 @@ class SimulationService:
             spm=req.spm,
             stroke_length_inch=req.stroke_length_inch,
             vfd_downstroke_ratio=req.vfd_downstroke_ratio,
-            srp_policy=req.srp_policy,
-            srp_m_target=req.srp_m_target,
-            srp_min_fillage=req.srp_min_fillage,
+            srp_policy=getattr(req, "srp_policy", "fixed"),
+            srp_m_target=getattr(req, "srp_m_target", 1.15),
+            srp_min_fillage=getattr(req, "srp_min_fillage", 0.85),
             cooling_anomaly_day=req.cooling_anomaly_day,
             cooling_anomaly_severity_pct=req.cooling_anomaly_severity_pct
         )

@@ -58,9 +58,10 @@ class DownholePumpModel:
         wellhead_pressure_bar: float,
         pump_depth_m: float,
         fluid_density_kg_m3: float,
-        gas_cut_fraction: float = 0.05
+        gas_cut_fraction: float = 0.05,
+        viscosity_cp: float = 100.0
     ) -> PumpState:
-        """Evaluates pump fillage, fluid pound, and plunger fluid load."""
+        """Evaluates pump fillage, fluid pound, and plunger fluid load with viscous valve delay."""
         disp_bpd, disp_m3 = self.compute_displacement(spm, stroke_length_inch)
         
         # Pump fillage fraction based on reservoir inflow vs pump stroke volume:
@@ -73,8 +74,14 @@ class DownholePumpModel:
         is_pounding = fillage < 0.85
         pound_severity = max(0.0, (0.85 - fillage) / 0.85) if is_pounding else 0.0
         
+        # Viscous valve throttling & ball delay correction (Takacs/Patterson model for heavy crude):
+        if viscosity_cp > 0.0 and spm > 0.0:
+            eta_visc = 1.0 / (1.0 + 0.035 * ((max(viscosity_cp, 10.0) / 1000.0) ** 0.55) * ((max(0.5, spm) / 5.0) ** 0.7))
+        else:
+            eta_visc = 1.0
+
         # Volumetric efficiency:
-        vol_eff = fillage * self.slippage_efficiency * 100.0
+        vol_eff = fillage * self.slippage_efficiency * eta_visc * 100.0
         effective_lifted_m3 = disp_m3 * (vol_eff / 100.0)
 
         # Plunger fluid load (Fo):

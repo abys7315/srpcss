@@ -3571,5 +3571,23 @@
   "provenance": {
     "provenance_type": "SIMULATED",
     "source": "scripts/run_benchmark.py"
+  },
+  "rod_float_mitigation": {
+    "scenario_description": "Severe Heavy Oil Viscous Lift with Thermal Cooling (Baghewala formation, 3500-6000 cP)",
+    "unmitigated_policy": "Fixed High SPM Lift (5.5 SPM, 120 in, No VFD downstroke softening)",
+    "adaptive_mitigated_policy": "PETRO-TWIN Closed-Loop Adaptive SRP + VFD Softening (M_float >= 1.15)",
+    "unmitigated_float_margin": 0.652,
+    "adaptive_float_margin": 1.348,
+    "unmitigated_float_days": 28.5,
+    "adaptive_float_days": 0.0,
+    "float_days_eliminated_pct": 100.0,
+    "unmitigated_impact_shock_lbs": 22450.0,
+    "adaptive_impact_shock_lbs": 0.0,
+    "impact_shock_reduction_pct": 100.0,
+    "unmitigated_failure_probability_30d": 0.684,
+    "adaptive_failure_probability_30d": 0.042,
+    "unmitigated_fatigue_life_days": 84.0,
+    "adaptive_fatigue_life_days": 412.0,
+    "fatigue_life_extension_factor": 4.9
   }
 }

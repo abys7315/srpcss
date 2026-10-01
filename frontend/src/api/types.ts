@@ -376,6 +376,24 @@ export interface BenchmarkData {
   overall_net_benefit_gain_pct: number;
   overall_sor_reduction_pct: number;
   float_events_eliminated: number;
+  rod_float_mitigation?: {
+    scenario_description: string;
+    unmitigated_policy: string;
+    adaptive_mitigated_policy: string;
+    unmitigated_float_margin: number;
+    adaptive_float_margin: number;
+    unmitigated_float_days: number;
+    adaptive_float_days: number;
+    float_days_eliminated_pct: number;
+    unmitigated_impact_shock_lbs: number;
+    adaptive_impact_shock_lbs: number;
+    impact_shock_reduction_pct: number;
+    unmitigated_failure_probability_30d: number;
+    adaptive_failure_probability_30d: number;
+    unmitigated_fatigue_life_days: number;
+    adaptive_fatigue_life_days: number;
+    fatigue_life_extension_factor: number;
+  };
   provenance: ProvenanceTier;
 }
 

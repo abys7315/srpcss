@@ -136,8 +136,24 @@ def template_summary(ctx: Dict[str, Any]) -> str:
     )
 
 
+_CALL_HISTORY: list[float] = []
+_MAX_CALLS_PER_MINUTE = 20
+
+def _check_rate_limit():
+    now = time.time()
+    global _CALL_HISTORY
+    _CALL_HISTORY = [t for t in _CALL_HISTORY if now - t < 60.0]
+    if len(_CALL_HISTORY) >= _MAX_CALLS_PER_MINUTE:
+        raise HTTPException(
+            status_code=429,
+            detail="Copilot query rate limit exceeded (maximum 20 queries/minute). Please wait a moment."
+        )
+    _CALL_HISTORY.append(now)
+
+
 @router.post("", response_model=CopilotResponse)
 def copilot(req: CopilotRequest, db: Session = Depends(get_db)) -> CopilotResponse:
+    _check_rate_limit()
     t0 = time.time()
     well = db.query(WellModel).filter(WellModel.well_id == req.well_id).first()
     if not well:

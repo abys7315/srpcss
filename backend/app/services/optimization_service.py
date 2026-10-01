@@ -40,8 +40,9 @@ class OptimizationService:
         }
 
         w_benefit = req.weight_net_benefit if req.weight_net_benefit is not None else req.weights.weight_net_benefit
-        w_oil = req.weight_oil_recovery if req.weight_oil_recovery is not None else (req.weight_energy if req.weight_energy is not None else req.weights.weight_oil_recovery)
+        w_oil = req.weight_oil_recovery if req.weight_oil_recovery is not None else req.weights.weight_oil_recovery
         w_sor = req.weight_sor if req.weight_sor is not None else req.weights.weight_sor_minimization
+        w_energy = req.weight_energy if req.weight_energy is not None else getattr(req.weights, "weight_energy_minimization", 0.15)
         w_risk = req.weight_failure_risk if req.weight_failure_risk is not None else req.weights.weight_risk_minimization
 
         res = self.joint_opt.optimize_well(
@@ -52,6 +53,7 @@ class OptimizationService:
             weight_oil_recovery=w_oil,
             weight_sor_minimization=w_sor,
             weight_risk_minimization=w_risk,
+            weight_energy_minimization=w_energy,
             cooling_anomaly_day=req.cooling_anomaly_day,
             cooling_anomaly_severity_pct=req.cooling_anomaly_severity_pct,
             srp_policy=req.srp_policy,

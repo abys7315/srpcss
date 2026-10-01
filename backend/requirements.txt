@@ -1,4 +1,5 @@
-# SIH 26120 — Petro-Twin Backend Dependencies
+# SIH 26120 — Petro-Twin Backend (runtime) Dependencies
+# Runtime only: this file is what Render installs. Test/lint tools live in requirements-dev.txt.
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
 pydantic>=2.6.0
@@ -9,10 +10,8 @@ pandas>=2.2.0
 scikit-learn>=1.4.0
 pyyaml>=6.0.1
 sqlalchemy>=2.0.25
+# PostgreSQL driver (psycopg v3). database.py rewrites postgres:// and postgresql:// URLs to postgresql+psycopg://
 psycopg[binary]>=3.2
-psycopg2-binary>=2.9.9
-pytest>=8.0.0
-pytest-cov>=4.1.0
 requests>=2.31.0
 matplotlib>=3.8.0
 python-multipart>=0.0.9

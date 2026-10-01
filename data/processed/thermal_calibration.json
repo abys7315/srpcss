@@ -1,0 +1,92 @@
+{
+  "BGW-01": {
+    "kappa": 2.60,
+    "n_observations": 45,
+    "holdout_improvement_pct": 18.2,
+    "source_label": "Baghewala Reference Calibration Profile",
+    "status": "ACCEPTED",
+    "holdout_rmse_default_bpd": 7.42,
+    "holdout_rmse_fitted_bpd": 6.07
+  },
+  "BGW-02": {
+    "kappa": 2.64,
+    "n_observations": 40,
+    "holdout_improvement_pct": 16.4,
+    "source_label": "Baghewala Reference Calibration Profile",
+    "status": "ACCEPTED",
+    "holdout_rmse_default_bpd": 8.10,
+    "holdout_rmse_fitted_bpd": 6.77
+  },
+  "BGW-03": {
+    "kappa": 2.55,
+    "n_observations": 42,
+    "holdout_improvement_pct": 21.0,
+    "source_label": "Baghewala Reference Calibration Profile",
+    "status": "ACCEPTED",
+    "holdout_rmse_default_bpd": 6.95,
+    "holdout_rmse_fitted_bpd": 5.49
+  },
+  "BGW-04": {
+    "kappa": 2.68,
+    "n_observations": 38,
+    "holdout_improvement_pct": 14.8,
+    "source_label": "Baghewala Reference Calibration Profile",
+    "status": "ACCEPTED",
+    "holdout_rmse_default_bpd": 8.65,
+    "holdout_rmse_fitted_bpd": 7.37
+  },
+  "BGW-05": {
+    "kappa": 2.58,
+    "n_observations": 45,
+    "holdout_improvement_pct": 19.5,
+    "source_label": "Baghewala Reference Calibration Profile",
+    "status": "ACCEPTED",
+    "holdout_rmse_default_bpd": 7.80,
+    "holdout_rmse_fitted_bpd": 6.28
+  },
+  "BGW-06": {
+    "kappa": 2.62,
+    "n_observations": 40,
+    "holdout_improvement_pct": 17.1,
+    "source_label": "Baghewala Reference Calibration Profile",
+    "status": "ACCEPTED",
+    "holdout_rmse_default_bpd": 7.95,
+    "holdout_rmse_fitted_bpd": 6.59
+  },
+  "BGW-07": {
+    "kappa": 2.65,
+    "n_observations": 35,
+    "holdout_improvement_pct": 15.6,
+    "source_label": "Baghewala Reference Calibration Profile",
+    "status": "ACCEPTED",
+    "holdout_rmse_default_bpd": 8.20,
+    "holdout_rmse_fitted_bpd": 6.92
+  },
+  "BGW-08": {
+    "kappa": 2.54,
+    "n_observations": 44,
+    "holdout_improvement_pct": 20.3,
+    "source_label": "Baghewala Reference Calibration Profile",
+    "status": "ACCEPTED",
+    "holdout_rmse_default_bpd": 7.15,
+    "holdout_rmse_fitted_bpd": 5.70
+  },
+  "BGW-09": {
+    "kappa": 2.59,
+    "n_observations": 42,
+    "holdout_improvement_pct": 18.7,
+    "source_label": "Baghewala Reference Calibration Profile",
+    "status": "ACCEPTED",
+    "holdout_rmse_default_bpd": 7.60,
+    "holdout_rmse_fitted_bpd": 6.18
+  },
+  "BGW-10": {
+    "kappa": 2.61,
+    "n_observations": 40,
+    "holdout_improvement_pct": 17.5,
+    "source_label": "Baghewala Reference Calibration Profile",
+    "status": "ACCEPTED",
+    "holdout_rmse_default_bpd": 7.85,
+    "holdout_rmse_fitted_bpd": 6.48
+  }
+}

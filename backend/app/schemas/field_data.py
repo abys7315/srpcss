@@ -40,3 +40,13 @@ class CalibrateRequest(BaseModel):
     source_label: Optional[str] = Field(default=None, description="Restrict to one source; default uses all rows for the well and cycle.")
     apply_if_accepted: bool = True
     cycle_config: Optional[Dict[str, Any]] = Field(default=None, description="Overrides for the simulated cycle (steam volume, SPM, ...).")
+
+
+class CsvImportRequest(BaseModel):
+    csv_content: str = Field(..., description="Raw CSV string content including header")
+    data_type: str = Field(default="daily_telemetry", description="'daily_telemetry' | 'css_cycles' | 'failure_history'")
+    well_id: Optional[str] = Field(default=None, description="Well ID if not specified in CSV rows")
+    cycle_number: int = Field(default=1, ge=1)
+    source_label: str = Field(default="csv_import", min_length=2, max_length=64)
+    replace_existing: bool = False
+

@@ -145,14 +145,18 @@ class FieldDataService:
         calibration_store.clear_calibration(well_id)
 
     # ------------------------------------------------------------------ replay
-    def replay_series(self, well_id: str, cycle_number: int = 1) -> List[Dict[str, Any]]:
+    def replay_series(self, well_id: str, cycle_number: int = 1, srp_policy: str = "fixed",
+                      srp_m_target: float = 1.15, srp_min_fillage: float = 0.85) -> List[Dict[str, Any]]:
         """Daily twin output for the well's current setpoints, joined with any ingested observation."""
         well = self._well(well_id)
+        cal_kappa = calibration_store.get_kappa(well_id)
         sim = CSSCycleSimulator(CycleConfig(
             well_id=well_id, cycle_number=cycle_number, steam_volume_tonnes=well.steam_volume_tonnes,
             injection_pressure_bar=well.injection_pressure_bar, soak_duration_days=well.soak_duration_days,
             spm=well.spm, stroke_length_inch=well.stroke_length_inch, vfd_downstroke_ratio=well.vfd_downstroke_ratio,
-            economic_cutoff_oil_rate_bpd=well.economic_cutoff_oil_rate_bpd)).run_simulation()
+            economic_cutoff_oil_rate_bpd=well.economic_cutoff_oil_rate_bpd,
+            srp_policy=srp_policy, srp_m_target=srp_m_target, srp_min_fillage=srp_min_fillage,
+            thermal_loss_calibration=cal_kappa)).run_simulation()
         obs: Dict[int, List[float]] = defaultdict(list)
         for r in self.db.query(TelemetryObservationModel).filter(
                 TelemetryObservationModel.well_id == well_id, TelemetryObservationModel.cycle_number == cycle_number).all():
@@ -165,8 +169,12 @@ class FieldDataService:
                 "day": pt.day, "phase": pt.cycle_phase, "oil_rate_bpd": round(pt.oil_rate_bpd, 2),
                 "water_rate_bpd": round(pt.water_rate_bpd, 2), "temperature_c": round(pt.temperature_c, 2),
                 "viscosity_cp": round(pt.viscosity_cp, 1), "float_margin_index": round(pt.float_margin_index, 3),
+                "is_rod_floating": pt.is_rod_floating,
                 "goodman_stress_ratio": round(pt.goodman_stress_ratio, 3), "pump_fillage_pct": round(pt.pump_fillage_pct, 1),
-                "spm": round(pt.spm, 2), "observed_oil_rate_bpd": observed,
+                "spm": round(pt.spm, 3), "vfd_downstroke_ratio": round(pt.vfd_downstroke_ratio, 2),
+                "daily_electricity_kwh": round(pt.daily_electricity_kwh, 2),
+                "srp_binding_limit": getattr(pt, "srp_binding_limit", "fixed"),
+                "observed_oil_rate_bpd": observed,
                 "residual_bpd": None if observed is None else round(observed - pt.oil_rate_bpd, 2),
             })
         return out

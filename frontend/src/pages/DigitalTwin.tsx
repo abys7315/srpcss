@@ -882,18 +882,28 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
               );
             })()}
 
-            {/* Live Telemetry Readout Strip */}
+            {/* Live Telemetry Readout Strip with Adaptive Closed-Loop Indicator */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-900 text-white rounded-lg text-xs font-mono">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <span className="text-blue-400 font-bold">
                   {simulationMode === 'realtime' ? `DAY ${simDay} REAL-TIME STATE:` : 'CYCLE CANONICAL STATE:'}
                 </span>
                 <span>Oil: <strong className="text-emerald-400 font-bold">{currentOilRateM3} m³/d</strong> ({oilRateBpd.toFixed(0)} bpd)</span>
+                {simulationMode === 'realtime' && (
+                  <span className="px-2 py-0.5 rounded bg-blue-900/60 border border-blue-500/40 text-blue-300 text-[10px] font-semibold">
+                    SPM: <strong className="text-white font-bold">{activePoint?.spm ? activePoint.spm.toFixed(2) : spm.toFixed(1)}</strong> | VFD: <strong className="text-white font-bold">{activePoint?.vfd_downstroke_ratio ? activePoint.vfd_downstroke_ratio.toFixed(2) : vfdRatio.toFixed(2)}x</strong>
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-3 text-slate-300">
                 <span>Temp: <strong className="text-rose-400 font-semibold">{reservoirTemp.toFixed(1)} °C</strong></span>
                 <span>Viscosity: <strong className="text-amber-400 font-semibold">{crudeViscosity.toFixed(0)} cP</strong></span>
                 <span>Float Margin: <strong className={floatMargin >= 1.0 ? "text-emerald-400 font-semibold" : "text-rose-400 font-bold"}>{floatMargin.toFixed(3)}</strong></span>
+                {simulationMode === 'realtime' && activePoint?.srp_binding_limit && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-semibold">
+                    Constraint: {activePoint.srp_binding_limit.toUpperCase()}
+                  </span>
+                )}
               </div>
             </div>
           </div>

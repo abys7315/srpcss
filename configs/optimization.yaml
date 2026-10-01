@@ -1,33 +1,36 @@
 # Optimization Framework Configuration — SIH 26120
-# Constrained Multi-Objective Coarse-to-Fine Grid Search + Pareto Optimization
+# Constrained Multi-Objective NSGA-II + Pareto Optimization
 
 algorithm:
-  primary: "constrained_pareto"
-  method: "coarse_to_fine_grid_pareto"
+  primary: "nsga2"
+  method: "multi_objective_genetic_nsga2"
+  population_size: 8
+  generations: 4
   random_seed: 42
 
 decision_variables:
   css:
     steam_volume_tonnes: [1500.0, 4500.0]
-    injection_pressure_bar: [90.0, 125.0]
-    injection_duration_days: [10.0, 25.0]
-    soak_duration_days: [3.0, 14.0]
-    economic_cutoff_oil_rate_bpd: [5.0, 18.0]
+    injection_pressure_bar: [60.0, 154.0]
+    injection_duration_days: [8.0, 25.0]
+    soak_duration_days: [2.0, 14.0]
+    economic_cutoff_oil_rate_bpd: [4.0, 12.0]
   srp:
     spm: [1.8, 6.5]
     stroke_length_inch: [64.0, 120.0]
-    vfd_downstroke_ratio: [0.5, 1.0]
+    vfd_downstroke_ratio: [0.6, 1.0]
 
 objectives:
   weights:
     net_benefit: 0.45
     oil_recovery: 0.25
     sor_minimization: 0.15
+    energy_minimization: 0.15
     risk_minimization: 0.15
 
 constraints:
   enforce_strict: true
-  max_allowable_injection_pressure_bar: 125.0
+  max_allowable_injection_pressure_bar: 154.0
   min_rod_float_margin_index: 1.000
   max_goodman_stress_ratio: 0.85
   max_gearbox_torque_in_lbs: 456000.0

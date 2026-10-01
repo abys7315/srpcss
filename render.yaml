@@ -2,14 +2,36 @@ services:
   - type: web
     name: petro-twin-api
     runtime: python
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT --timeout-keep-alive 180
-    healthCheckPath: /api/v1/health
+    plan: free                       # upgrade to "starter" for always-on (no cold starts)
+    buildCommand: pip install --upgrade pip && pip install -r backend/requirements.txt
+    # One worker: optimization jobs live in process memory (see backend/app/services/job_manager.py).
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 180
+    healthCheckPath: /health         # matches docs/deployment.md; /api/v1/health also works
     autoDeployTrigger: commit
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
-      - key: CORS_ORIGINS
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: OMP_NUM_THREADS         # keep BLAS from oversubscribing the small shared CPU
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      - key: CORS_ORIGINS            # exact Vercel origin(s), comma-separated, no trailing slash
         sync: false
-      - key: DATABASE_URL
+      - key: CORS_ORIGIN_REGEX       # optional: allow Vercel preview URLs, e.g. ^https://petro-twin(-[a-z0-9-]+)?\.vercel\.app$
         sync: false
+      - key: DATABASE_URL            # Neon Serverless PostgreSQL connection string (pooled recommended)
+        sync: false
+      - key: GEMINI_API_KEY          # optional, server-side only
+        sync: false
+      - key: GROQ_API_KEY            # optional, server-side only
+        sync: false
+      - key: DEMO_MODE               # optional: set "true" to lock down operational mutations on public demo
+        value: "false"
+
+# Database Architecture:
+# PETRO-TWIN runs against Neon Serverless PostgreSQL (or any external PostgreSQL).
+# Neon instances automatically autosuspend when idle to conserve compute hours.
+# Connection dropouts after suspend are automatically handled via pool_pre_ping=True in database.py.
+# The /health check is intentionally lightweight and avoids database queries to preserve Neon compute.

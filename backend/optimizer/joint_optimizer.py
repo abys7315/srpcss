@@ -115,13 +115,13 @@ class _CycleProblem(ElementwiseProblem):
         self.run_one = run_one
         xl = np.array([bounds[n][0] for n in names])
         xu = np.array([bounds[n][1] for n in names])
-        super().__init__(n_var=len(names), n_obj=3, n_ieq_constr=6, xl=xl, xu=xu)
+        super().__init__(n_var=len(names), n_obj=4, n_ieq_constr=6, xl=xl, xu=xu)
 
     def _evaluate(self, x, out, *args, **kwargs):
         vals = dict(self.frozen)
         vals.update({n: float(v) for n, v in zip(self.names, x)})
         pt = self.run_one(vals)
-        out["F"] = [-pt.net_benefit_usd, pt.steam_oil_ratio, pt.failure_risk_probability]
+        out["F"] = [-pt.net_benefit_usd, pt.steam_oil_ratio, pt.energy_intensity_kwh_per_bbl, pt.failure_risk_probability]
         out["G"] = [
             _SL.min_rod_float_margin_index - pt.min_float_margin_index,
             pt.goodman_stress_ratio - _SL.max_goodman_stress_ratio,
@@ -137,12 +137,13 @@ class JointOptimizer:
 
     def __init__(self, constraint_engine: Optional[ConstraintEngine] = None,
                  confidence_estimator: Optional[ConfidenceEstimator] = None,
-                 pop_size: int = 8, n_gen: int = 4):
+                 pop_size: Optional[int] = None, n_gen: Optional[int] = None):
+        import os
         self.constraints = constraint_engine or ConstraintEngine()
         self.conf_estimator = confidence_estimator or ConfidenceEstimator()
         self.evaluator = CandidateEvaluator(self.constraints)
-        self.pop_size = pop_size
-        self.n_gen = n_gen
+        self.pop_size = pop_size if pop_size is not None else int(os.getenv("OPTIMIZER_POP_SIZE", "8"))
+        self.n_gen = n_gen if n_gen is not None else int(os.getenv("OPTIMIZER_GENS", "4"))
 
     def _evaluate(self, cid: str, well_id: str, cycle_number: int, v: Dict[str, float], policy: str,
                   anomaly_day, anomaly_sev, carried_state=None) -> ParetoSolutionPoint:
@@ -169,6 +170,7 @@ class JointOptimizer:
         weight_oil_recovery: float = 0.25,
         weight_sor_minimization: float = 0.15,
         weight_risk_minimization: float = 0.15,
+        weight_energy_minimization: float = 0.15,
         cooling_anomaly_day: Optional[int] = None,
         cooling_anomaly_severity_pct: float = 0.0,
         srp_policy: str = "adaptive",
@@ -178,10 +180,10 @@ class JointOptimizer:
         progress_cb: Optional[Callable[[int, int], None]] = None,
     ) -> OptimizationRunResult:
         t_start = time.time()
-        total_w = weight_net_benefit + weight_oil_recovery + weight_sor_minimization + weight_risk_minimization
+        total_w = weight_net_benefit + weight_oil_recovery + weight_sor_minimization + weight_energy_minimization + weight_risk_minimization
         if total_w > 0 and abs(total_w - 1.0) > 1e-4:
-            weight_net_benefit, weight_oil_recovery, weight_sor_minimization, weight_risk_minimization = (
-                w / total_w for w in (weight_net_benefit, weight_oil_recovery, weight_sor_minimization, weight_risk_minimization))
+            weight_net_benefit, weight_oil_recovery, weight_sor_minimization, weight_energy_minimization, weight_risk_minimization = (
+                w / total_w for w in (weight_net_benefit, weight_oil_recovery, weight_sor_minimization, weight_energy_minimization, weight_risk_minimization))
 
         cur = _current_values(current_cfg)
         cur_policy = current_policy or current_cfg.get("srp_policy", "fixed")
@@ -216,7 +218,8 @@ class JointOptimizer:
 
         pareto_front, ranked = compute_pareto_front(
             evaluated, weight_net_benefit=weight_net_benefit, weight_oil_recovery=weight_oil_recovery,
-            weight_sor_minimization=weight_sor_minimization, weight_risk_minimization=weight_risk_minimization)
+            weight_sor_minimization=weight_sor_minimization, weight_risk_minimization=weight_risk_minimization,
+            weight_energy_minimization=weight_energy_minimization)
         infeasible = sum(1 for c in evaluated if c.status == "INFEASIBLE")
         exec_time = round(time.time() - t_start, 2)
 
@@ -263,6 +266,7 @@ class JointOptimizer:
             row("Economic Cutoff", curr_point.economic_cutoff_bpd, best.economic_cutoff_bpd, "bbl/d"),
             row("Cumulative oil", curr_point.cumulative_oil_bbl, best.cumulative_oil_bbl, "bbl", "{:.0f}", "{:+.0f}"),
             row("Steam-oil ratio", curr_point.steam_oil_ratio, best.steam_oil_ratio, "t/t", "{:.2f}", "{:+.2f}"),
+            row("Energy intensity", curr_point.energy_intensity_kwh_per_bbl, best.energy_intensity_kwh_per_bbl, "kWh/bbl", "{:.2f}", "{:+.2f}"),
             row("Net benefit", curr_point.net_benefit_usd, best.net_benefit_usd, "USD", "{:,.0f}", "{:+,.0f}"),
             row("Min float margin", curr_point.min_float_margin_index, best.min_float_margin_index, "-", "{:.3f}", "{:+.3f}"),
             row("Float-days", curr_point.float_days, best.float_days, "d", "{:.0f}", "{:+.0f}"),

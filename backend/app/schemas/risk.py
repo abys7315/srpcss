@@ -30,4 +30,7 @@ class RiskEvaluationResponse(BaseModel):
     factor_attributions: List[RiskFactorAttributionDTO]
     dominant_failure_mode: str
     suggested_mitigations: List[str]
+    fatigue_damage_fraction: Optional[float] = None
+    mtbf_days_estimated: Optional[float] = None
+    reliability_calibration_source: Optional[str] = "API RP 11L / Empirical Heavy Oil Weibull Benchmark"
     provenance: ProvenanceEnum = ProvenanceEnum.SIMULATED

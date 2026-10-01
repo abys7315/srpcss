@@ -143,7 +143,7 @@ export const CommandCenter: React.FC<Props> = ({ selectedWellId, onSelectWell, o
           value={totalFleetOil > 0 ? `${totalFleetOil}` : "285"}
           unit="BPD"
           subtitle={`Fleet: ${wells.length} wells`}
-          delta="+8.1% vs Base"
+          delta={totalFleetOil > 0 ? `${(totalFleetOil / Math.max(wells.length, 1)).toFixed(1)} bpd/well` : "Active Fleet"}
           deltaPositive={true}
           icon={<Droplets className="w-4 h-4 text-emerald-500" />}
           provenance="SIMULATED"

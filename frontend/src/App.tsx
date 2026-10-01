@@ -31,6 +31,7 @@ export const App: React.FC = () => {
   const [detail, setDetail] = useState<WellDetail | null>(null);
   const [readiness, setReadiness] = useState<Record<string, string> | null>(null);
   const [apiAvailable, setApiAvailable] = useState<boolean>(true);
+  const [retryCountdown, setRetryCountdown] = useState<number>(5);
   const [assistantOpen, setAssistantOpen] = useState<boolean>(false);
   const u = useUnits();
 
@@ -49,6 +50,23 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => { loadWells(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!apiAvailable) {
+      const timer = setInterval(() => {
+        setRetryCountdown((prev) => {
+          if (prev <= 1) {
+            loadWells();
+            return 5;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    } else {
+      setRetryCountdown(5);
+    }
+  }, [apiAvailable]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setDetail(null);
@@ -90,8 +108,12 @@ export const App: React.FC = () => {
       <div role="note" className="bg-steam-t border-b border-steam-b px-4 py-1 text-[12px] text-ink flex flex-wrap items-center justify-between gap-2">
         <span><span className="caps num text-[11px] text-steam font-medium mr-2">SIMULATED</span>Simulated data — not field measurements. Values marked † use assumed or scenario inputs.</span>
         {!apiAvailable && (
-          <span className="text-alarm font-medium">
-            Backend unavailable. <button onClick={loadWells} className="underline hover:text-alarm">Retry</button>
+          <span className="text-amber-700 bg-amber-50 border border-amber-300 px-2.5 py-0.5 rounded text-[11px] font-medium flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            Connecting to twin engine (waking free-tier instance, auto-retry in {retryCountdown}s)...
+            <button onClick={loadWells} className="underline font-bold hover:text-amber-900 ml-1">
+              Retry now
+            </button>
           </span>
         )}
       </div>

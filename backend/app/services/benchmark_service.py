@@ -14,6 +14,7 @@ from ..schemas.benchmark import (
     BaselineComparisonDTO,
     AblationItemDTO,
     SensitivityCurvePointDTO,
+    RodFloatMitigationBenchmarkDTO,
 )
 from ..schemas.common import ProvenanceEnum
 
@@ -74,6 +75,9 @@ class BenchmarkService:
                                              oil_recovery_bbl=float(v["oil_recovery_bbl"]), sor=float(v["sor"]))
                     for v in data.get("sensitivity_analysis", {}).get(name, {}).values() if isinstance(v, dict)]
 
+        rfm_data = data.get("rod_float_mitigation")
+        rfm_dto = RodFloatMitigationBenchmarkDTO(**rfm_data) if rfm_data else RodFloatMitigationBenchmarkDTO()
+
         return BenchmarkSummaryResponse(
             benchmark_name=data.get("benchmark_title", "Benchmark"),
             execution_timestamp=data.get("timestamp", ""),
@@ -81,5 +85,7 @@ class BenchmarkService:
             oil_price_sensitivity=curve("crude_oil_price_usd_bbl"), steam_cost_sensitivity=curve("steam_cost_usd_tonne"),
             overall_net_benefit_gain_pct=float(b.get("net_benefit_gain_pct", 0.0)),
             overall_sor_reduction_pct=float(b.get("sor_reduction_pct", 0.0)),
-            float_events_eliminated=round(b_fd - o_fd, 2), protocol=data.get("protocol", {}),
+            float_events_eliminated=round(b_fd - o_fd, 2),
+            rod_float_mitigation=rfm_dto,
+            protocol=data.get("protocol", {}),
             provenance=ProvenanceEnum.SIMULATED)

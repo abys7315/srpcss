@@ -212,6 +212,31 @@ export const Economics: React.FC<Props> = ({ selectedWellId, onNavigate }) => {
             <span>${Math.round(optEco.netBenefit).toLocaleString()}</span>
           </div>
         </div>
+
+        {/* Steam & Electrical Energy Dual Optimization Callout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-lg flex items-center justify-between text-xs">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-amber-800 tracking-wider block">Steam & Thermal OPEX Optimization</span>
+              <span className="text-slate-600 font-mono">Usage: {baselineSteamT.toLocaleString()} t → {optimizedSteamT.toLocaleString()} t</span>
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-bold text-amber-700 font-mono">-${Math.round(baselineEco.steamCost - optEco.steamCost).toLocaleString()}</span>
+              <span className="text-[10px] text-emerald-600 block font-semibold">{(((baselineSteamT - optimizedSteamT) / Math.max(1, baselineSteamT)) * 100).toFixed(1)}% savings</span>
+            </div>
+          </div>
+
+          <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-lg flex items-center justify-between text-xs">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-blue-800 tracking-wider block">Electrical Energy Intensity (kWh/bbl)</span>
+              <span className="text-slate-600 font-mono">Intensity: {(baselineKwh / Math.max(baselineOilBbl, 1)).toFixed(2)} → {(optimizedKwh / Math.max(optimizedOilBbl, 1)).toFixed(2)} kWh/bbl</span>
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-bold text-blue-700 font-mono">-${Math.round(baselineEco.powerCost - optEco.powerCost).toLocaleString()}</span>
+              <span className="text-[10px] text-emerald-600 block font-semibold">{(((baselineKwh - optimizedKwh) / Math.max(1, baselineKwh)) * 100).toFixed(1)}% kWh cut</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Main Grid: Sensitivity Controls & Waterfall Chart */}

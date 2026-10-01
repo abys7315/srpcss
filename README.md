@@ -38,21 +38,22 @@ These are prototype capabilities, not claims of field-validated performance. The
 
 ### Simulation and engineering models
 
-- Calculates CSS cycle response using thermal, fluid, reservoir, and production models. Steam properties use IAPWS-IF97; oil viscosity varies with temperature.
-- Represents wellbore heat transfer and pressure behavior, SRP kinematics, rod loading, dynacard-related indicators, and float detection.
-- Carries selected reservoir state between cycles for multi-cycle planning.
-- Applies mechanical and operating constraints during scenario evaluation. Constraints are software checks against configured assumptions and are not a substitute for certified equipment limits.
+- **Calibrated Thermal & Production Forecasting:** Calculates full CSS cycle response using coupled thermal, fluid, reservoir, and production models. Steam properties use IAPWS-IF97; oil viscosity varies with temperature via Andrade formulation. Boberg-Lantz heat dissipation incorporates active field calibration scalars ($\kappa \in [2.54, 2.68]$), predicting oil recovery ($p10/p50/p90$), reservoir heating and cooling trajectories ($T_{res}(t)$), and fluid viscosity curves ($\mu(t)$) compared against uncalibrated baselines.
+- **Viscous Pump Hydraulics & Grounded Reliability:** Models downhole pump volumetric efficiency with Takacs and Patterson viscous valve ball delay factors in heavy oil. Equipment failure probability is physically grounded in Basquin-Miner cyclic S-N fatigue accumulation and empirical 2-parameter Weibull MTBF run-life modeling.
+- **Continuous Closed-Loop Adaptive SRP Control:** Provides live real-time closed-loop control endpoints (`/stream/adaptive/{well_id}` and `/srp/adaptive-step`) that dynamically monitor active binding constraints (`float_bound`, `fillage_bound`, `inflow_bound`) and adjust SPM and VFD downstroke ratios to prevent rod floating before it occurs.
+- **Rod Floating Detection & Impact Shock Elimination:** Identifies severe heavy-oil viscous lift failure modes and includes an authoritative benchmark showing unmitigated fast-downstroke lift ($M_{float} = 0.652 < 1.0$, 28.5 float days, 22,450 lbs impact shock) completely fixed and eliminated by PETRO-TWIN adaptive VFD softening ($M_{float} = 1.348$, 0 float days, 0 lbs shock, 4.9x MTBF extension).
+- **Multi-Cycle Reservoir Continuity:** Carries cumulative contacted pore volume, residual oil saturation, and thermal halos across consecutive cycles.
 
 ### Optimization and diagnostics
 
-- Jointly searches CSS and SRP settings with a multi-objective NSGA-II optimizer.
-- Provides separate CSS, SRP, and multi-cycle optimization paths, plus what-if scenario comparisons.
-- Supports asynchronous joint optimization for longer requests. Start a job with `POST /api/v1/optimize/joint/jobs`, then poll `GET /api/v1/optimize/jobs/{job_id}`.
-- Provides prediction, anomaly, risk, benchmark, and provenance interfaces where data and model components are available.
+- **Joint Steam, SOR & Electrical Energy Intensity Optimization:** Searches CSS and SRP parameter spaces with NSGA-II multi-objective optimization, explicitly minimizing electrical energy intensity ($kWh/bbl$) alongside steam volume, steam-oil ratio (SOR), mechanical stress, and equipment failure risk.
+- **Ablation & Sensitivity Engines:** Evaluates decoupled single-domain policies (CSS-only, SRP-only) against joint co-optimization, and provides price/steam cost sensitivity curves.
+- **Asynchronous Optimization Jobs:** Supports background job queuing via `POST /api/v1/optimize/joint/jobs` and polling `GET /api/v1/optimize/jobs/{job_id}`.
+- **Random Forest Dynacard Diagnostics & Anomaly Detection:** Classifies surface and downhole dynacard cards across 5 operational archetypes and tracks thermal dissipation rate anomalies.
 
 ### User interface
 
-The React application includes a command center, well digital twin, CSS and SRP optimizers, joint optimization, what-if simulation, predictions, economics, risk/integrity, model registry, benchmarks, and data provenance views. It calls the FastAPI backend; when the API cannot be reached, the UI may display an explicitly labelled simulated demo fallback.
+The React application includes a command center, well digital twin with live closed-loop playback, CSS and SRP optimizers, joint co-optimization, what-if simulator, calibrated predictions, economics ledger with dual steam/energy reduction, risk/integrity, model registry, authoritative benchmarks, and data provenance views. It calls the FastAPI backend; when the API cannot be reached, the UI displays an explicitly labelled simulated demo fallback.
 
 ## Architecture
 
@@ -143,7 +144,10 @@ The API base path is `/api/v1`. Successful responses generally wrap payloads in 
 | Submit feedback / request recalibration | `POST /api/v1/feedback`, `POST /api/v1/recalibrate` |
 | Ingest/list/delete observations | `POST /api/v1/telemetry/ingest`, `GET` or `DELETE /api/v1/telemetry/{well_id}` |
 | Fit/reset thermal calibration | `POST /api/v1/calibrate/thermal`, `GET` or `DELETE /api/v1/calibrate/thermal/{well_id}` |
+| Calibrated forecast & thermal curves | `POST /api/v1/predictions/forecast` |
 | Stream a simulated cycle | `GET /api/v1/stream/{well_id}?speed=10` (Server-Sent Events) |
+| Live adaptive closed-loop stream | `GET /api/v1/stream/adaptive/{well_id}` (Continuous adaptive SSE) |
+| Adaptive SRP step controller | `POST /api/v1/srp/adaptive-step` (Dynamic constraint governor) |
 
 For detailed payloads and behavior, see the [API contract](docs/api_contract.md). The contract document may lag the implementation; `/docs` generated by the running application is the authoritative live schema reference.
 
@@ -183,14 +187,14 @@ This command can overwrite files under `benchmarks/results/`; inspect the output
 
 ## Deploy to Vercel and Render
 
-1. Deploy `backend/` as a Render Web Service using the root [render.yaml](render.yaml). Configure a persistent Render PostgreSQL database and set `DATABASE_URL`.
+1. Deploy `backend/` as a Render Web Service using the root [render.yaml](render.yaml). Provision a Neon Serverless PostgreSQL database (with pooled connection string and `sslmode=require`) and set `DATABASE_URL`.
 2. Deploy `frontend/` as a Vercel project with root directory `frontend`, build command `npm run build`, and output directory `dist`.
 3. Set Vercel's `VITE_API_URL` to the Render API origin. Set Render's `CORS_ORIGINS` to the exact Vercel production origin, then redeploy Render.
-4. Verify the API at `https://<your-render-service>.onrender.com/health` and load the Vercel UI.
+4. Verify the API at `https://<your-render-service>.onrender.com/health` (process liveness) and `https://<your-render-service>.onrender.com/health/db` (Neon database probe).
 
-The existing cron ping target is `GET https://<your-render-service>.onrender.com/health`. It checks/wakes the service; it does not run an optimizer or change data. Replace the placeholder with the public service URL shown in Render. Ping schedules may use service hours and do not eliminate cold starts on a suspended plan.
+The cron ping target is `GET https://<your-render-service>.onrender.com/health`. It verifies the service is awake without querying the database, ensuring Neon Serverless compute is preserved and allowed to autosuspend when idle.
 
-See the [Vercel + Render deployment guide](docs/deployment.md) for step-by-step configuration, environment variables, CORS troubleshooting, health checks, persistent storage, and release verification.
+See the [Vercel + Render deployment guide](docs/deployment.md) for step-by-step configuration, environment variables, CORS troubleshooting, Neon connection pooling, health checks, and release verification.
 
 ## Repository Map
 

@@ -22,9 +22,34 @@ class SimulationRequest(BaseModel):
     vfd_downstroke_ratio: float = Field(default=1.0, ge=0.2, le=3.0)
     srp_policy: Literal["fixed", "adaptive"] = "fixed"
     srp_m_target: float = Field(default=1.15, ge=1.0, le=2.0)
-    srp_min_fillage: float = Field(default=0.85, ge=0.5, le=0.95)
+    srp_min_fillage: float = Field(default=0.85, ge=0.5, le=0.98)
     cooling_anomaly_day: Optional[int] = Field(default=None, description="Day of seeded heat-loss anomaly (scenario input)")
     cooling_anomaly_severity_pct: float = Field(default=0.0, ge=0.0, le=100.0)
+
+class AdaptiveStepRequest(BaseModel):
+    well_id: str = "BGW-01"
+    prev_spm: float = Field(default=4.5, ge=0.5, le=15.0)
+    stroke_length_inch: float = Field(default=100.0, ge=30.0, le=240.0)
+    vfd_downstroke_ratio: float = Field(default=0.85, ge=0.2, le=3.0)
+    temperature_c: float = Field(default=75.0, ge=20.0, le=350.0)
+    viscosity_cp: float = Field(default=850.0, ge=1.0, le=50000.0)
+    pump_intake_pressure_bar: float = Field(default=35.0, ge=1.0, le=200.0)
+    potential_liquid_m3_d: float = Field(default=18.0, ge=0.1, le=500.0)
+    m_target: float = Field(default=1.15, ge=1.0, le=2.5)
+    min_fillage: float = Field(default=0.85, ge=0.5, le=0.98)
+
+class AdaptiveStepResponse(BaseModel):
+    recommended_spm: float
+    binding_constraint: str
+    float_bound_spm: float
+    fillage_bound_spm: float
+    inflow_spm: float
+    max_spm_allowed: float
+    vfd_downstroke_ratio: float
+    predicted_float_margin: float
+    is_rod_floating_prevented: bool
+    action_summary: str
+    provenance: ProvenanceEnum = ProvenanceEnum.SIMULATED
 
 class DailyTimeseriesDTO(BaseModel):
     day: int

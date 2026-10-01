@@ -4,15 +4,46 @@ SIH 2026, PS26120 — Baghewala Heavy Oil Digital Twin.
 """
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from datetime import datetime, timezone
 from ...schemas.common import APIResponse, ProvenanceEnum
 
 router = APIRouter(tags=["System Health"])
 
+
+def _database_status() -> str:
+    """Cheap connectivity probe (SELECT 1); safe for a cron ping."""
+    try:
+        from sqlalchemy import text
+        from app.db.database import engine
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return "CONNECTED"
+    except Exception:
+        return "UNAVAILABLE"
+
+
+def _model_status(model_id: str) -> str:
+    """Dynamically checks the model registry for registered champion status."""
+    try:
+        from ml.registry.model_registry import ModelRegistry
+        mr = ModelRegistry()
+        champ = mr.get_champion(model_id)
+        if champ:
+            return f"ONLINE ({champ.version})"
+        return "ONLINE (v1.0.0-sim)"
+    except Exception:
+        return "UNLOADED"
+
+
 @router.get("/health")
 def health_check():
-    """Returns digital twin engine operational health, registered model versions, and DB status."""
-    return {
+    """
+    Fast process-is-up liveness check.
+    Does NOT ping the database, ensuring Neon Serverless Postgres can autosuspend when idle
+    and avoiding 503 flapping on cold starts. For an explicit DB probe, call /health/db.
+    """
+    body = {
         "status": "HEALTHY",
         "service": "PETRO-TWIN — Baghewala Heavy Oil Digital Twin",
         "version": "1.0.0",
@@ -21,13 +52,28 @@ def health_check():
             "physics_twin_engine": "ONLINE",
             "constraint_engine": "ENFORCING",
             "joint_optimizer": "READY",
-            "ml_residual_corrector": "ONLINE (v1.2.0)",
-            "dynacard_classifier": "ONLINE (v1.0.0)",
-            "risk_predictor": "ONLINE (v1.0.0)",
-            "database": "CONNECTED"
+            "ml_residual_corrector": _model_status("residual_corrector"),
+            "dynacard_classifier": _model_status("dynacard_classifier"),
+            "risk_predictor": _model_status("rod_failure_risk"),
         },
         "provenance_mode": "SIMULATED"
     }
+    return JSONResponse(body, status_code=200)
+
+
+@router.get("/health/db")
+def database_health_check():
+    """
+    Dedicated database connectivity probe (SELECT 1).
+    Separated from /health so Render / cron ping monitors do not prevent Neon from autosuspending.
+    """
+    db_status = _database_status()
+    body = {
+        "database": db_status,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "autosuspend_safe": True
+    }
+    return JSONResponse(body, status_code=200 if db_status == "CONNECTED" else 503)
 
 @router.get("/system/readiness")
 def system_readiness():

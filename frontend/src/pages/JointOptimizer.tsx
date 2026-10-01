@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Layers,
   Activity,
+  RefreshCw,
 } from 'lucide-react';
 import type { PageId } from '../components/layout/Sidebar';
 
@@ -35,7 +36,11 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
   const [weightEnergy, setWeightEnergy] = useState<number>(0.15);
   const [weightRisk, setWeightRisk] = useState<number>(0.10);
 
-  // No fake fallback objects — show loading/empty state until backend responds
+  // Dynamic approver sign-off role
+  const [approverName, setApproverName] = useState<string>('Lead Operations Engineer');
+
+  // Background optimization job progress tracking
+  const [progressInfo, setProgressInfo] = useState<{ status: string; done: number; total: number; elapsed_s: number } | null>(null);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -49,13 +54,32 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
       setStatusMessage(null);
       setApplySuccessMessage(null);
       setErrorMessage(null);
-      const res = await apiClient.optimizeJoint({
-        well_id: selectedWellId,
-        weight_net_benefit: weightNetBenefit,
-        weight_sor: weightSor,
-        weight_energy: weightEnergy,
-        weight_failure_risk: weightRisk,
-      });
+      setProgressInfo({ status: 'STARTING', done: 0, total: 34, elapsed_s: 0 });
+
+      let res: OptimizationResult;
+      try {
+        res = await apiClient.optimizeJointWithProgress(
+          {
+            well_id: selectedWellId,
+            weight_net_benefit: weightNetBenefit,
+            weight_sor: weightSor,
+            weight_energy: weightEnergy,
+            weight_failure_risk: weightRisk,
+          },
+          (p) => setProgressInfo(p),
+          { intervalMs: 1500, maxWaitMs: 90000 }
+        );
+      } catch (jobErr: any) {
+        console.warn('Async job polling fell back to direct joint optimize:', jobErr);
+        res = await apiClient.optimizeJoint({
+          well_id: selectedWellId,
+          weight_net_benefit: weightNetBenefit,
+          weight_sor: weightSor,
+          weight_energy: weightEnergy,
+          weight_failure_risk: weightRisk,
+        });
+      }
+
       setResult(res);
       setSelectedCandidate(res.recommended_configuration || (res.pareto_front && res.pareto_front[0]) || null);
     } catch (e: any) {
@@ -64,6 +88,7 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
       setErrorMessage(`Optimization request failed for ${selectedWellId}. Reason: ${reason}`);
     } finally {
       setLoading(false);
+      setProgressInfo(null);
     }
   };
 
@@ -79,10 +104,11 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
       setApplySuccessMessage(null);
       setErrorMessage(null);
 
+      const signedBy = approverName.trim() || 'Lead Operations Engineer';
       await apiClient.approveRecommendation(rec.solution_id, {
         well_id: selectedWellId,
         decision_reason: `Operator approved selected feasible setpoint (Solution ${rec.solution_id})`,
-        approved_by: "Lead Operations Engineer",
+        approved_by: signedBy,
         approved_setpoint: {
           steam_volume_tonnes: rec.steam_volume_tonnes,
           soak_duration_days: rec.soak_days,
@@ -99,7 +125,7 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
         vfd_downstroke_ratio: rec.vfd_downstroke_ratio,
         steam_volume_tonnes: rec.steam_volume_tonnes,
         soak_duration_days: rec.soak_days,
-        applied_by: "Lead Operations Engineer"
+        applied_by: signedBy
       });
 
       setApplySuccessMessage(`Successfully approved & applied setpoint ${rec.solution_id} for ${selectedWellId}! Digital twin updated.`);
@@ -170,10 +196,14 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-all disabled:opacity-50"
           >
             {loading ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Evaluating Pareto Candidates...</span>
-              </>
+              <span className="flex items-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>
+                  {progressInfo && progressInfo.done > 0
+                    ? `Evaluating (${progressInfo.done}/${progressInfo.total}, ${progressInfo.elapsed_s}s)...`
+                    : 'Running NSGA-II Optimizer...'}
+                </span>
+              </span>
             ) : (
               <>
                 <Play className="w-3.5 h-3.5 fill-white" />
@@ -246,9 +276,21 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             Decision Panel: Setpoint Comparison & Predicted Changes
           </h2>
-          <span className="text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-semibold">
-            0 modeled float events in benchmark
-          </span>
+          {recommended ? (
+            <span className={`text-[11px] px-2.5 py-0.5 rounded-full border font-semibold ${
+              recommended.min_float_margin_index >= 1.0
+                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                : 'text-amber-700 bg-amber-50 border-amber-200'
+            }`}>
+              {recommended.min_float_margin_index >= 1.0
+                ? `Modeled float margin: ${recommended.min_float_margin_index.toFixed(3)} (Safe)`
+                : `Float margin warning: ${recommended.min_float_margin_index.toFixed(3)} < 1.0`}
+            </span>
+          ) : (
+            <span className="text-[11px] text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200 font-medium">
+              Coupled CSS+SRP Optimization
+            </span>
+          )}
         </div>
 
         {(!current || !recommended) ? (
@@ -328,15 +370,15 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
                   <strong className="text-emerald-700 font-bold">
                     {current.cumulative_oil_bbl > 0
                       ? `${(((recommended.cumulative_oil_bbl - current.cumulative_oil_bbl) / current.cumulative_oil_bbl) * 100) >= 0 ? '+' : ''}${(((recommended.cumulative_oil_bbl - current.cumulative_oil_bbl) / current.cumulative_oil_bbl) * 100).toFixed(1)}%`
-                      : '+8.1%'}
+                      : '—'}
                   </strong>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-sans text-slate-600">SOR:</span>
                   <strong className="text-emerald-700 font-bold">
                     {current.steam_oil_ratio > 0
-                      ? `${(((recommended.steam_oil_ratio - current.steam_oil_ratio) / current.steam_oil_ratio) * 100).toFixed(1)}%`
-                      : '-10.7%'}
+                      ? `${(((recommended.steam_oil_ratio - current.steam_oil_ratio) / current.steam_oil_ratio) * 100) >= 0 ? '+' : ''}${(((recommended.steam_oil_ratio - current.steam_oil_ratio) / current.steam_oil_ratio) * 100).toFixed(1)}%`
+                      : '—'}
                   </strong>
                 </div>
                 <div className="flex justify-between">
@@ -344,7 +386,15 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
                   <strong className="text-emerald-700 font-bold">
                     {current.net_benefit_usd > 0
                       ? `${(((recommended.net_benefit_usd - current.net_benefit_usd) / current.net_benefit_usd) * 100) >= 0 ? '+' : ''}${(((recommended.net_benefit_usd - current.net_benefit_usd) / current.net_benefit_usd) * 100).toFixed(1)}%`
-                      : '+14.7%'}
+                      : '—'}
+                  </strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-sans text-slate-600">Energy intensity:</span>
+                  <strong className="text-emerald-700 font-bold">
+                    {recommended.energy_intensity_kwh_per_bbl != null
+                      ? `${recommended.energy_intensity_kwh_per_bbl.toFixed(2)} kWh/bbl`
+                      : '—'}
                   </strong>
                 </div>
                 <div className="flex justify-between">
@@ -355,7 +405,9 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
                 </div>
               </div>
               <div className="pt-2 border-t border-blue-200 text-[11px] text-blue-900 font-sans">
-                All hard structural constraints satisfied
+                {recommended.min_float_margin_index >= 1.0
+                  ? 'All evaluated hard structural & thermal constraints satisfied'
+                  : 'Candidate has narrow mechanical margin — review before approval'}
               </div>
             </div>
           </div>
@@ -409,7 +461,7 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
                 const cx = getSvgX(p.steam_oil_ratio);
                 const cy = getSvgY(p.net_benefit_usd);
                 const isSelected = selectedCandidate?.solution_id === p.solution_id;
-                const isRec = p.solution_id === 'SOL-PT-04' || recommended?.solution_id === p.solution_id;
+                const isRec = Boolean(recommended && p.solution_id === recommended.solution_id);
 
                 if (isRec) return null; // rendered separately as green
 
@@ -581,7 +633,11 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
               Safety Gate Verification
             </div>
             <p className="text-emerald-800 leading-relaxed text-[11px]">
-              Every point in the Pareto set has undergone full forward simulation of the Gibbs wave equation to verify zero rod-floating risk (M_float ≥ 1.000) and API 11B fatigue limits.
+              {recommended ? (
+                <>Candidate <strong>{recommended.solution_id}</strong> modeled float margin: <strong>{recommended.min_float_margin_index.toFixed(3)}</strong> {recommended.min_float_margin_index >= 1.0 ? '(Safe, M_float ≥ 1.000)' : '(Warning, M_float < 1.000)'}. Goodman stress ratio: <strong>{recommended.goodman_stress_ratio != null ? recommended.goodman_stress_ratio.toFixed(3) : '—'}</strong> (limit ≤ 0.850).</>
+              ) : (
+                'Filter and select candidate setpoints to verify rod-floating risk (M_float ≥ 1.000) and API 11B fatigue limits.'
+              )}
             </p>
           </div>
         </div>
@@ -602,9 +658,22 @@ export const JointOptimizer: React.FC<Props> = ({ selectedWellId, onNavigate }) 
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               Implementation Setpoint Details
             </h2>
-            <span className="text-xs text-slate-500">
-              Candidate: <strong className="text-slate-900 font-semibold">{recommended ? recommended.solution_id : '—'}</strong>
-            </span>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
+              <span>
+                Candidate: <strong className="text-slate-900 font-semibold">{recommended ? recommended.solution_id : '—'}</strong>
+              </span>
+              <span>•</span>
+              <label className="flex items-center gap-1.5 text-slate-600">
+                <span>Sign-off:</span>
+                <input
+                  type="text"
+                  value={approverName}
+                  onChange={(e) => setApproverName(e.target.value)}
+                  className="px-2 py-0.5 bg-slate-50 border border-slate-300 rounded text-slate-800 text-xs font-medium focus:ring-1 focus:ring-emerald-500 outline-none"
+                  placeholder="Approver role / name"
+                />
+              </label>
+            </div>
           </div>
 
           <button

@@ -228,6 +228,7 @@ class CSSCycleSimulator:
             spm=spm, stroke_length_inch=cfg.stroke_length_inch, inflow_liquid_rate_m3_d=liquid_m3,
             pump_intake_pressure_bar=pip_bar, wellhead_pressure_bar=WELLHEAD_PRESSURE_BAR,
             pump_depth_m=cfg.pump_depth_m, fluid_density_kg_m3=mix_density,
+            viscosity_cp=profile.average_viscosity_cp,
         )
         float_res = self.float_detector.evaluate_float_margin(
             spm=spm, stroke_length_inch=cfg.stroke_length_inch, viscosity_cp=profile.average_viscosity_cp,
