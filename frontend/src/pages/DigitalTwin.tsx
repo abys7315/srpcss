@@ -405,24 +405,24 @@ export const DigitalTwin: React.FC<Props> = ({ selectedWellId, onNavigate }) => 
       {/* INTERACTIVE PHYSICS & KINEMATICS STUDIO VIEW */}
       {activeTab === 'kinematics-studio' ? (
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-cyan-950 border border-cyan-500/40 rounded-xl p-5 shadow-2xl flex flex-wrap items-center justify-between gap-4">
+          <div className="bg-cyan-50/90 dark:bg-gradient-to-r dark:from-blue-950 dark:via-slate-900 dark:to-cyan-950 border border-cyan-400/50 dark:border-cyan-500/40 rounded-xl p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse" />
-                <h2 className="text-base font-bold text-white tracking-wide uppercase">
+                <span className="w-3 h-3 rounded-full bg-cyan-600 dark:bg-cyan-400 animate-pulse" />
+                <h2 className="text-base font-bold text-black dark:text-white tracking-wide uppercase">
                   Coupled Multiphysics Kinematics & Subsurface Shock Studio
                 </h2>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-900 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-500/30 font-mono font-semibold">
                   Well: {selectedWellId}
                 </span>
               </div>
-              <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+              <p className="text-xs text-black dark:text-slate-300 mt-1 max-w-2xl leading-relaxed">
                 Directly interact with the four-bar walking beam linkage, test VFD asymmetric downstroke speed modulation, trigger fluid pound acoustic shockwaves in the subsurface pump, and watch the 2D radial thermal steam chest expand in the Jodhpur Sandstone.
               </p>
             </div>
             <button
               onClick={() => setActiveTab('digital-twin')}
-              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-lg text-xs font-semibold transition-colors"
+              className="px-3.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
             >
               ← Back to Digital Twin Overview
             </button>
