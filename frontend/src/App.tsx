@@ -92,7 +92,7 @@ export const App: React.FC = () => {
       case 'model-registry': return <ModelRegistry onNavigate={setCurrentPage} />;
       case 'benchmarks': return <Benchmarks {...p} />;
       case 'provenance': return <DataProvenance onNavigate={setCurrentPage} />;
-      default: return <DigitalTwin selectedWellId={selectedWellId} />;
+      default: return <DigitalTwin {...p} />;
     }
   })();
 
